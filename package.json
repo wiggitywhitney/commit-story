@@ -1,0 +1,35 @@
+{
+  "name": "commit_story",
+  "version": "1.0.0",
+  "description": "Automated Git Journal System with AI Assistant Context Integration",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node tests/connectivity.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wiggitywhitney/commit_story.git"
+  },
+  "keywords": [
+    "git",
+    "journal",
+    "ai",
+    "automation",
+    "development"
+  ],
+  "author": "Whitney Lee",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wiggitywhitney/commit_story/issues"
+  },
+  "homepage": "https://github.com/wiggitywhitney/commit_story#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "openai": "^5.12.2"
+  }
+}
