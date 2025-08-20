@@ -101,11 +101,36 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 4. **AI Content Generator**: Uses OpenAI to create meaningful summaries and extract quotes
 5. **Journal File Manager**: Handles daily file creation and updates
 
+## Design Decisions & Constraints
+
+### DD-001: NO TESTING
+**Decision**: This system will have NO automated tests, unit tests, integration tests, or test frameworks.  
+**Rationale**: Minimal viable approach - ship working code, iterate based on real usage.  
+**Impact**: Faster development, simpler codebase, learn from actual usage patterns.
+
+### DD-002: No CLI Interface
+**Decision**: System operates only through git hooks, no manual command-line interface.  
+**Rationale**: Aligns with "zero workflow interruption" requirement.  
+**Impact**: Pure event-driven automation, simpler architecture.
+
+### DD-003: Simple Debug Strategy
+**Decision**: Debug by running the process in foreground instead of background.  
+**Rationale**: No need for complex logging infrastructure or environment variables.  
+**Implementation**:
+- Normal: Background process, silent operation
+- Debug: Run manually in foreground, see terminal output
+**Impact**: Minimal complexity, easy troubleshooting when needed.
+
+### DD-004: Minimal Implementation Only
+**Decision**: Each milestone delivers exactly what's needed, no extras.  
+**Rationale**: Ship fast, learn fast, avoid over-engineering.  
+**Impact**: Clear scope boundaries, faster iterations.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
 - [x] **M1.1**: Set up Node.js project with OpenAI dependency
-- [ ] **M1.2**: Implement git commit data collection
+- [x] **M1.2**: Implement git commit data collection (core functions only)
 - [ ] **M1.3**: Build Claude Code JSONL file parser
 - [ ] **M1.4**: Create basic journal file management system
 
@@ -113,7 +138,7 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 - [ ] **M2.1**: Implement time-based chat context matching
 - [ ] **M2.2**: Build AI content generation with OpenAI integration
 - [ ] **M2.3**: Create git post-commit hook installation system
-- [ ] **M2.4**: End-to-end testing of commit → journal entry workflow
+- [ ] **M2.4**: Validate commit → journal entry workflow
 
 ### Phase 3: Enhancement & Polish (Week 3)
 - [ ] **M3.1**: Add error handling and graceful degradation
@@ -123,7 +148,7 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 
 ### Phase 4: Production Readiness (Week 4)
 - [ ] **M4.1**: Security review and sensitive data filtering
-- [ ] **M4.2**: Performance optimization and testing
+- [ ] **M4.2**: Performance optimization
 - [ ] **M4.3**: Edge case handling and robustness improvements
 - [ ] **M4.4**: Release preparation and packaging
 
@@ -143,7 +168,7 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 
 ### Low Risk
 - **R-005**: Git hook installation across different systems
-  - *Mitigation*: Cross-platform testing and clear documentation
+  - *Mitigation*: Clear documentation and simple installation
 
 ## Open Questions
 
@@ -171,9 +196,41 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 - Node.js project with ESM modules and modern configuration
 - OpenAI SDK integration with environment-based API key management
 - Modular directory structure ready for core components
-- Basic connectivity test confirms API functionality
+- Basic connectivity validation confirms API functionality
 - `.env.example` template for user configuration
 
 **Next Session Priority**: M1.2 - Implement git commit data collection
+
+### 2025-08-20: Minimal Design Decisions  
+**Duration**: Design session
+**Focus**: Strategic decisions for truly minimal implementation
+
+**Key Design Decisions**:
+- [x] DD-001: NO TESTING - Zero automated tests, ship and iterate based on real usage
+- [x] DD-002: No CLI Interface - Pure git hook automation only  
+- [x] DD-003: Simple Debug Strategy - Foreground process for debugging, no complex logging
+- [x] DD-004: Minimal Implementation Only - Deliver exactly what's needed, nothing more
+
+**PRD Updates**:
+- Removed all testing references from milestones (M2.4, M4.2)
+- Added explicit Design Decisions & Constraints section
+- Clarified M1.2 as "core functions only"
+- Established minimal viable approach as guiding principle
+
+### 2025-08-20: Git Commit Data Collection Complete
+**Duration**: ~2 hours  
+**Focus**: M1.2 implementation with git hook workflow optimization
+
+**Completed PRD Items**:
+- [x] M1.2: Implement git commit data collection (core functions only) - Evidence: Working `src/collectors/git-collector.js` with `getLatestCommitData()` function
+
+**Implementation Details**:
+- Created git collector focused on latest commit (HEAD) for git hook integration
+- Successfully extracts all commit metadata: hash, message, author, timestamp, full diff
+- Handles large diffs with 10MB buffer (tested with 6.5MB Node.js setup diff)
+- Simple error handling returns null on any git command failure
+- Optimized for git post-commit hook workflow - no parameters needed
+
+**Next Session Priority**: M1.3 - Build Claude Code JSONL file parser
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
