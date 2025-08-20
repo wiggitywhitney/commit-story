@@ -1,7 +1,7 @@
 # PRD-001: Automated Git Journal System with AI Assistant Context Integration
 
 **Issue**: [#1](https://github.com/wiggitywhitney/commit_story/issues/1)  
-**Status**: Planning  
+**Status**: In Development  
 **Priority**: P0 - Foundation Feature  
 **Created**: 2025-08-14  
 **Owner**: @wiggitywhitney  
@@ -126,13 +126,19 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 **Rationale**: Ship fast, learn fast, avoid over-engineering.  
 **Impact**: Clear scope boundaries, faster iterations.
 
+### DD-005: Research-First Implementation Approach
+**Decision**: Add discovery/research phases before complex implementations.  
+**Rationale**: Understanding data structures and requirements before building prevents wrong implementations and reduces rework.  
+**Impact**: Adds research phase to complex components, slightly extends timeline but reduces technical risk.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
 - [x] **M1.1**: Set up Node.js project with OpenAI dependency
 - [x] **M1.2**: Implement git commit data collection (core functions only)
-- [ ] **M1.3**: Build Claude Code JSONL file parser
-- [ ] **M1.4**: Create basic journal file management system
+- [x] **M1.3a**: Research Claude Code chat storage structure and time-window correlation
+- [ ] **M1.3b**: Build Claude Code JSONL file parser (based on M1.3a findings)
+- [ ] **M1.5**: Create basic journal file management system
 
 ### Phase 2: Core Integration (Week 2)
 - [ ] **M2.1**: Implement time-based chat context matching
@@ -169,6 +175,8 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 ### Low Risk
 - **R-005**: Git hook installation across different systems
   - *Mitigation*: Clear documentation and simple installation
+- **R-006**: Claude Code conversation correlation complexity
+  - *Mitigation*: Thorough research phase (M1.3a) before implementation
 
 ## Open Questions
 
@@ -231,6 +239,56 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 - Simple error handling returns null on any git command failure
 - Optimized for git post-commit hook workflow - no parameters needed
 
-**Next Session Priority**: M1.3 - Build Claude Code JSONL file parser
+**Next Session Priority**: M1.3a - Research Claude Code chat storage structure
+
+### 2025-08-20: Strategic Pivot to Research-First Approach
+**Duration**: Design session  
+**Focus**: Critical decision to add research phase before parser implementation
+
+**Key Strategic Decision**:
+- [x] DD-005: Research-First Implementation Approach - Add discovery phases before complex implementations
+
+**Implementation Changes**:
+- Split M1.3 into M1.3a (research) and M1.3b (implementation based on research)
+- Renumbered M1.4 to M1.5 to accommodate research phase
+- Added R-006 risk about Claude Code data complexity
+- Recognized that time-window correlation requires understanding data structure first
+
+**Rationale**:
+Initial approach of jumping directly to parser implementation risked building wrong solution. Need to understand:
+- JSONL file structure and session patterns
+- Timestamp formats and correlation challenges
+- How to match conversations to commit time windows
+- Message types and their relevance
+
+**Next Session Priority**: M1.3b - Build Claude Code JSONL parser
+
+### 2025-08-20: Claude Code Chat Storage Research Complete (M1.3a)
+**Duration**: ~2 hours  
+**Focus**: Understanding Claude Code data structure and time-window correlation strategy
+
+**Completed PRD Items**:
+- [x] M1.3a: Research Claude Code chat storage structure and time-window correlation - Evidence: Comprehensive research document at `/docs/claude-chat-research.md`
+
+**Key Research Findings**:
+- **Project filtering**: 99.8% accuracy using simple `cwd` field matching
+- **Time-window extraction**: Successfully tested with 233 messages from 5-day commit window
+- **Partial session extraction**: Confirmed sessions can be split across commit time boundaries
+- **Simple extraction algorithm**: Documented clear implementation approach for M1.3b
+- **Timestamp correlation**: Validated precise time matching (within seconds) between git commits and chat messages
+
+**Research Documentation**: 
+- **Location**: `/docs/claude-chat-research.md`
+- **Contains**: File structure analysis, extraction logic testing, timestamp handling, simple algorithm specification
+- **Key Algorithm**: Project filtering via `cwd` field + time-window filtering between commits
+- **Next Implementation**: M1.3b parser should use this research as specification
+
+**Technical Specifications Ready**:
+- JSONL file structure and message format documented
+- Project filtering strategy validated (use `cwd` field)
+- Time-window correlation strategy proven (previous_commit_time <= chat_time <= current_commit_time)
+- Simple extraction algorithm ready for implementation
+
+**Next Session Priority**: M1.3b - Build Claude Code JSONL parser (implementation specification available in research doc)
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
