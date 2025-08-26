@@ -58,10 +58,10 @@ Developers lose valuable context about their development decisions and reasoning
 - **FR-013**: Use fresh OpenAI instances for each generation (no context bleeding)
 
 #### 4. Journal File Management
-- **FR-014**: Store journal entries in daily markdown files in `journal/` directory
+- **FR-014**: Store journal entries in daily markdown files in `journal/entries/YYYY-MM/` monthly directories
 - **FR-015**: Aggregate multiple commits per day into single file
 - **FR-016**: Maintain chronological order of entries within daily files
-- **FR-017**: Handle file creation, updates, and concurrent access safely
+- **FR-017**: Handle file creation, updates, and directory structure atomically
 
 ### Technical Requirements
 
@@ -74,7 +74,6 @@ Developers lose valuable context about their development decisions and reasoning
 
 #### 2. Performance & Reliability
 - **TR-006**: Journal generation completes within 30 seconds
-- **TR-007**: System handles concurrent commits gracefully
 - **TR-008**: Graceful degradation when AI services unavailable
 - **TR-009**: Local operation with minimal external dependencies
 
@@ -131,6 +130,26 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 **Rationale**: Understanding data structures and requirements before building prevents wrong implementations and reduces rework.  
 **Impact**: Adds research phase to complex components, slightly extends timeline but reduces technical risk.
 
+### DD-006: Monthly Directory Organization
+**Decision**: Journal entries stored in monthly subdirectories: `journal/entries/YYYY-MM/YYYY-MM-DD.md`  
+**Rationale**: Prevents journal directory from becoming unwieldy (365+ files per year in flat structure). Minimal complexity cost for significant usability improvement.  
+**Impact**: Slightly more complex path handling but prevents directory scalability issues.
+
+### DD-007: No Frontmatter/Tags for MVP
+**Decision**: Skip YAML frontmatter and tags in initial implementation  
+**Rationale**: Adds parsing complexity and AI prompt engineering complexity without immediate benefit. Tags would be inconsistent without taxonomy. Can be added when summary generation or search features are implemented.  
+**Impact**: Cleaner, simpler implementation. Tags can be retrofitted later when actually needed.
+
+### DD-008: No File Locking for Concurrent Commits
+**Decision**: Use simple `fs.appendFile()` without file locking mechanisms  
+**Rationale**: Single-developer tool with extremely low probability of simultaneous commits. OS-level atomic appends are sufficient.  
+**Impact**: Massively simplified implementation, eliminates complex locking libraries.
+
+### DD-009: Simple Markdown Entry Format
+**Decision**: Basic markdown format with timestamp and commit hash headers, no structured metadata  
+**Rationale**: Readable by humans, parseable by future tools, minimal complexity. Structured data can be added later if needed.  
+**Impact**: Clean, readable journal entries that work immediately.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -138,7 +157,7 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 - [x] **M1.2**: Implement git commit data collection (core functions only)
 - [x] **M1.3a**: Research Claude Code chat storage structure and time-window correlation
 - [x] **M1.3b**: Build Claude Code JSONL file parser (based on M1.3a findings)
-- [ ] **M1.5**: Create basic journal file management system
+- [x] **M1.5**: Create basic journal file management system
 
 ### Phase 2: Core Integration (Week 2)
 - [ ] **M2.1**: Implement time-based chat context matching
@@ -169,8 +188,6 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 ### Medium Risk
 - **R-003**: Claude Code chat file format changes
   - *Mitigation*: Flexible parsing with version detection
-- **R-004**: Concurrent git operations causing file conflicts
-  - *Mitigation*: Proper file locking and atomic operations
 
 ### Low Risk
 - **R-005**: Git hook installation across different systems
@@ -319,8 +336,32 @@ Initial approach of jumping directly to parser implementation risked building wr
 - Graceful error handling for missing directories, unreadable files, malformed JSON
 - Chronological message sorting for downstream processing
 
-**Phase 1 Foundation Complete**: All 4 milestones (M1.1, M1.2, M1.3a, M1.3b) successfully implemented
+**Phase 1 Foundation Complete**: All 5 milestones (M1.1, M1.2, M1.3a, M1.3b, M1.5) successfully implemented
 
-**Next Session Priority**: M1.5 - Create basic journal file management system
+**Next Session Priority**: M2.1 - Implement time-based chat context matching
+
+### 2025-08-26: Journal File Management System Complete (M1.5)
+**Duration**: ~2 hours  
+**Focus**: MVP journal file management with critical design decisions
+
+**Completed PRD Items**:
+- [x] M1.5: Create basic journal file management system - Evidence: Working `src/managers/journal-manager.js` with `saveJournalEntry()` function and monthly directory structure
+
+**Critical Design Decisions Made**:
+- [x] DD-006: Monthly Directory Organization - `journal/entries/YYYY-MM/YYYY-MM-DD.md` structure
+- [x] DD-007: No Frontmatter/Tags for MVP - Skip YAML and tags to avoid complexity without immediate benefit  
+- [x] DD-008: No File Locking - Use simple `fs.appendFile()` for single-developer use case
+- [x] DD-009: Simple Markdown Format - Clean headers with timestamp and commit hash
+
+**Implementation Details**:
+- Monthly directory structure prevents scalability issues (365+ files per year)
+- Simple append-based file operations with OS-level atomicity
+- Clean markdown format: timestamp headers, commit references, separator lines
+- Tested with multiple entries per day - proper aggregation and chronological ordering
+- Zero complexity features (tags, frontmatter, locking) deferred until actually needed
+
+**Phase 1 Foundation COMPLETE**: All foundation components ready for Phase 2 integration
+
+**Next Session Priority**: M2.1 - Implement time-based chat context matching
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
