@@ -51,10 +51,10 @@ Developers lose valuable context about their development decisions and reasoning
 - **FR-008**: Support multiple conversation sources (extensible architecture)
 
 #### 3. AI-Powered Content Generation
-- **FR-009**: Convert git diffs into meaningful English descriptions of changes
-- **FR-010**: Synthesize chat context with code changes for comprehensive narrative
-- **FR-011**: Extract and preserve key quotes from AI assistant conversations
-- **FR-012**: Generate concise summaries that capture development session essence
+- **FR-009**: Generate Summary section with meaningful narrative of what changed and why
+- **FR-010**: Extract Development Dialogue highlighting valuable learning moments, insights, mistakes, and breakthrough exchanges
+- **FR-011**: Create Technical Decisions section documenting reasoning behind architectural and implementation choices
+- **FR-012**: Generate Changes section programmatically with git metadata (commit hash, files changed, line counts, timing)
 - **FR-013**: Use fresh OpenAI instances for each generation (no context bleeding)
 
 #### 4. Journal File Management
@@ -149,6 +149,21 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 **Decision**: Basic markdown format with timestamp and commit hash headers, no structured metadata  
 **Rationale**: Readable by humans, parseable by future tools, minimal complexity. Structured data can be added later if needed.  
 **Impact**: Clean, readable journal entries that work immediately.
+
+### DD-010: MVP Journal Sections
+**Decision**: For MVP, implement four journal sections: Summary (narrative), Development Dialogue (key exchanges), Technical Decisions (reasoning), and Changes (git metadata)  
+**Rationale**: Focus on highest-value content - what happened, important learning moments, decision rationale, and technical scope.  
+**Impact**: Clear content structure with flexibility for future evolution.
+
+### DD-011: Development Dialogue Content Focus
+**Decision**: Development Dialogue section should capture valuable learning moments - insights, mistakes, effective solutions, and meaningful exchanges  
+**Rationale**: Preserve both mastery moments and learning experiences. Mistakes and "aha moments" are often more valuable than perfect solutions for future reference.  
+**Impact**: Content extraction should identify where developer learned something, made breakthroughs, or had meaningful problem-solving exchanges.
+
+### DD-012: Include Git Metadata Section
+**Decision**: Include Changes section with commit hash, files modified, line counts, and time context  
+**Rationale**: Provides complete archaeological context for reverse engineering decisions. Makes journal entries self-contained technical artifacts.  
+**Impact**: Each entry documents both narrative and precise technical scope without requiring external git access.
 
 ## Implementation Milestones
 
@@ -388,5 +403,27 @@ Initial approach of jumping directly to parser implementation risked building wr
 **Phase 2 Core Integration**: 25% complete (1 of 4 milestones)
 
 **Next Session Priority**: M2.2 - Build AI content generation with OpenAI integration
+
+### 2025-08-27: Journal Section Design Finalized
+**Duration**: Design session  
+**Focus**: Journal section structure and content strategy
+
+**Key Design Decisions**:
+- [x] DD-010: MVP Journal Sections - Summary, Development Dialogue, Technical Decisions, Changes
+- [x] DD-011: Development Dialogue Content Focus - Capture learning moments, insights, mistakes, and breakthroughs  
+- [x] DD-012: Include Git Metadata Section - Programmatic changes section for archaeological context
+
+**Rationale**: 
+- Four sections provide comprehensive coverage: narrative story, valuable learning experiences, decision context, and technical scope
+- Development Dialogue should preserve both mastery moments and learning experiences - mistakes and "aha moments" are often more valuable than perfect solutions
+- Git metadata makes journal entries self-contained for future reverse engineering
+- Avoids rigid constraints while establishing clear content focus
+
+**Feature Requirements Updated**:
+- Updated FR-009 through FR-012 to reflect four-section journal structure
+- Clarified AI generation requirements for each content section
+- Added programmatic git metadata generation requirement
+
+**Impact on M2.2**: AI content generation should focus on extracting meaningful learning moments and technical decision rationale, with git metadata generated programmatically.
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
