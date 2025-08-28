@@ -103,11 +103,108 @@ function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
 }
 ```
 
+## Message Structure Patterns for Filtering
+
+### Content Types Analysis
+Based on investigation of 244 actual messages:
+- **Content Structure**: 205 array-type, 39 string-type
+- **Message Distribution**: 113 user messages, 131 assistant messages
+
+### Message Categories
+
+#### 1. Tool Calls (Assistant → System)
+```json
+{
+  "type": "assistant",
+  "message": {
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "...",
+        "name": "Read",
+        "input": {...}
+      }
+    ]
+  }
+}
+```
+**Filtering Logic**: `msg.type === "assistant"` AND `content.some(item => item.type === "tool_use")`
+
+#### 2. Tool Results (System → Assistant)  
+```json
+{
+  "type": "user", 
+  "message": {
+    "content": [
+      {
+        "type": "tool_result",
+        "tool_use_id": "...",
+        "content": "..."
+      }
+    ]
+  }
+}
+```
+**Filtering Logic**: `msg.type === "user"` AND `content.some(item => item.type === "tool_result")`
+
+#### 3. Human Input (User → Assistant)
+```json
+{
+  "type": "user",
+  "message": {
+    "content": "y"  // String content
+  }
+}
+```
+**Filtering Logic**: `msg.type === "user"` AND `typeof content === "string"` AND NOT `msg.isMeta`
+
+#### 4. Assistant Responses (Assistant → User)
+```json
+{
+  "type": "assistant",
+  "message": {
+    "content": [
+      {
+        "type": "text", 
+        "text": "I'll help you..."
+      }
+    ]
+  }
+}
+```
+**Filtering Logic**: `msg.type === "assistant"` AND `content.some(item => item.type === "text")`
+
+#### 5. Meta/System Messages
+```json
+{
+  "type": "user",
+  "isMeta": true,
+  "message": {
+    "content": "Caveat: The messages below..."
+  }
+}
+```
+**Filtering Logic**: `msg.isMeta === true`
+
+### Filtering Strategy
+
+**REMOVE (Noise)**:
+- Tool calls: `tool_use` type items
+- Tool results: `tool_result` type items  
+- Meta messages: `isMeta === true`
+- Empty content: No meaningful text
+
+**PRESERVE (Human Dialogue)**:
+- Human input: User messages with string content (not meta)
+- Assistant responses: Assistant messages with text content
+
 ## Implementation Notes
 - **No content filtering** during extraction - get everything
 - **Simple project matching** - use cwd field only
 - **Handle partial sessions** - extract relevant portions of long sessions
+- **Content filtering** - Apply during AI processing based on message structure patterns above
 
 ---
 *Research completed: 2025-08-20*  
+*Message structure analysis: 2025-08-28*  
 *Next milestone: M1.3b - Build Claude Code JSONL parser*

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Debug script to examine the actual context data being gathered
+ * Message Structure Investigation
+ * 
+ * Analyzes actual Claude chat message structures to understand how to distinguish
+ * tool calls from human dialogue for accurate filtering implementation.
  */
 
 import { config } from 'dotenv';
@@ -9,77 +12,110 @@ import { gatherContextForCommit } from './src/integrators/context-integrator.js'
 
 config();
 
+function analyzeMessageStructure(messages) {
+  const patterns = {
+    byType: {},
+    byContentType: {},
+    examples: {
+      human: [],
+      assistant: [], 
+      toolCalls: [],
+      toolResults: [],
+      meta: [],
+      other: []
+    }
+  };
+  
+  for (const msg of messages) {
+    // Analyze message.type
+    patterns.byType[msg.type] = (patterns.byType[msg.type] || 0) + 1;
+    
+    // Analyze message.message.content type
+    const content = msg.message?.content;
+    const contentType = Array.isArray(content) ? 'array' : typeof content;
+    patterns.byContentType[contentType] = (patterns.byContentType[contentType] || 0) + 1;
+    
+    // Categorize and collect examples
+    let category = 'other';
+    
+    if (msg.isMeta) {
+      category = 'meta';
+    } else if (Array.isArray(content)) {
+      // Check array elements for tool patterns
+      const hasToolUse = content.some(item => item.type === 'tool_use');
+      const hasToolResult = content.some(item => item.type === 'tool_result');
+      
+      if (hasToolUse) category = 'toolCalls';
+      else if (hasToolResult) category = 'toolResults';
+      else if (msg.type === 'user') category = 'human';
+      else if (msg.type === 'assistant') category = 'assistant';
+    } else if (typeof content === 'string') {
+      if (msg.type === 'user') category = 'human';
+      else if (msg.type === 'assistant') category = 'assistant';
+    }
+    
+    // Collect examples (limit to avoid overwhelming output)
+    if (patterns.examples[category].length < 2) {
+      patterns.examples[category].push({
+        type: msg.type,
+        isMeta: msg.isMeta,
+        contentType: contentType,
+        contentStructure: Array.isArray(content) 
+          ? content.map(item => ({ type: item.type, hasText: !!item.text, hasToolUseId: !!item.tool_use_id }))
+          : null,
+        contentPreview: Array.isArray(content) 
+          ? `[${content.length} items]: ${content.map(item => item.type || 'text').join(', ')}`
+          : typeof content === 'string' 
+            ? content.length > 100 ? content.substring(0, 100) + '...' : content
+            : String(content)
+      });
+    }
+  }
+  
+  return patterns;
+}
+
 async function debugContext() {
   try {
-    console.log('🔍 Debugging context gathering...\n');
+    console.log('🔍 Investigating Claude chat message structure for filtering...\n');
     
     const context = await gatherContextForCommit();
+    const messages = context.chatMessages;
     
-    console.log('=== COMMIT DATA ===');
-    console.log(`Hash: ${context.commit.hash}`);
-    console.log(`Message: "${context.commit.message}"`);
-    console.log(`Author: ${context.commit.author.name} <${context.commit.author.email}>`);
-    console.log(`Timestamp: ${context.commit.timestamp}`);
-    console.log(`Diff length: ${context.commit.diff.length} chars`);
+    console.log(`📊 Total messages found: ${messages.length}\n`);
     
-    console.log('\n=== PREVIOUS COMMIT ===');
-    if (context.previousCommit) {
-      console.log(`Hash: ${context.previousCommit.hash}`);
-      console.log(`Timestamp: ${context.previousCommit.timestamp}`);
-    } else {
-      console.log('No previous commit (first commit)');
+    const analysis = analyzeMessageStructure(messages);
+    
+    console.log('📋 MESSAGE TYPE DISTRIBUTION:');
+    for (const [type, count] of Object.entries(analysis.byType)) {
+      console.log(`   ${type}: ${count}`);
     }
     
-    console.log('\n=== TIME WINDOW ===');
-    const startTime = context.previousCommit?.timestamp || new Date(context.commit.timestamp.getTime() - 24*60*60*1000);
-    console.log(`Start: ${startTime}`);
-    console.log(`End: ${context.commit.timestamp}`);
-    console.log(`Duration: ${Math.round((context.commit.timestamp - startTime) / (1000 * 60))} minutes`);
-    
-    console.log('\n=== CHAT MESSAGES ===');
-    console.log(`Total messages: ${context.chatMessages.length}`);
-    
-    // Filter for messages with actual content
-    const messagesWithContent = context.chatMessages.filter(msg => {
-      const content = msg.message?.content;
-      const contentText = Array.isArray(content) ? content[0]?.text : content;
-      return contentText && contentText.trim().length > 0;
-    });
-    
-    console.log(`Messages with content: ${messagesWithContent.length} (${Math.round(100 * messagesWithContent.length / context.chatMessages.length)}%)`);
-    
-    if (messagesWithContent.length > 0) {
-      console.log('\n=== ALL MEANINGFUL CONTENT ===');
-      messagesWithContent.forEach((msg, i) => {
-        console.log(`\n--- Message ${i+1}/${messagesWithContent.length} ---`);
-        console.log(`Time: ${msg.timestamp}`);
-        console.log(`Type: [${msg.type}] (${msg.message?.role})`);
-        console.log(`Session: ${msg.sessionId?.substring(0, 8)}`);
-        const content = msg.message?.content;
-        const contentText = Array.isArray(content) ? content[0]?.text : content;
-        console.log(`Content:`);
-        console.log(contentText);
-        console.log('---');
-      });
-    } else {
-      console.log('No messages with meaningful content found');
+    console.log('\n📦 CONTENT TYPE DISTRIBUTION:');
+    for (const [type, count] of Object.entries(analysis.byContentType)) {
+      console.log(`   ${type}: ${count}`);
     }
     
-    // Show breakdown of message types
-    console.log('\n=== MESSAGE TYPE BREAKDOWN ===');
-    const typeBreakdown = {};
-    context.chatMessages.forEach(msg => {
-      const hasContent = msg.message?.content && (Array.isArray(msg.message.content) ? msg.message.content[0]?.text : msg.message.content);
-      const key = `${msg.type}-${hasContent ? 'with-content' : 'empty'}`;
-      typeBreakdown[key] = (typeBreakdown[key] || 0) + 1;
-    });
+    console.log('\n🔍 MESSAGE CATEGORY EXAMPLES:');
+    console.log('=' .repeat(80));
     
-    Object.entries(typeBreakdown).forEach(([type, count]) => {
-      console.log(`${type}: ${count}`);
-    });
+    for (const [category, examples] of Object.entries(analysis.examples)) {
+      if (examples.length > 0) {
+        console.log(`\n${category.toUpperCase()}:`);
+        for (const example of examples) {
+          console.log(`  Type: ${example.type}${example.isMeta ? ' (META)' : ''}`);
+          console.log(`  Content: ${example.contentType}`);
+          if (example.contentStructure) {
+            console.log(`  Structure: ${JSON.stringify(example.contentStructure, null, 4)}`);
+          }
+          console.log(`  Preview: ${example.contentPreview}`);
+          console.log('  ' + '-'.repeat(60));
+        }
+      }
+    }
     
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('❌ Error investigating messages:', error.message);
   }
 }
 

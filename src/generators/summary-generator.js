@@ -9,6 +9,7 @@ import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { summaryPrompt } from './prompts/sections/summary-prompt.js';
 import { getAvailableDataDescription } from '../integrators/context-integrator.js';
+import { filterContext } from './filters/context-filter.js';
 
 /**
  * Generates a summary narrative for a development session
@@ -20,6 +21,9 @@ import { getAvailableDataDescription } from '../integrators/context-integrator.j
  * @returns {Promise<string>} Generated summary paragraph
  */
 export async function generateSummary(context) {
+  // Apply intelligent context filtering (DD-024)
+  const filteredContext = filterContext(context);
+  
   // Create fresh OpenAI instance (DD-016: prevent context bleeding)
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -37,25 +41,25 @@ ${summaryPrompt}
 ${guidelines}
   `.trim();
 
-  // Prepare the context for the AI
+  // Prepare the filtered context for the AI
   const contextForAI = {
     git: {
-      hash: context.commit.hash,
-      message: context.commit.message,
-      author: context.commit.author,
-      timestamp: context.commit.timestamp,
-      diff: context.commit.diff,
+      hash: filteredContext.commit.hash,
+      message: filteredContext.commit.message,
+      author: filteredContext.commit.author,
+      timestamp: filteredContext.commit.timestamp,
+      diff: filteredContext.commit.diff,
     },
-    chat: context.chatMessages.map(msg => ({
+    chat: filteredContext.chatMessages.map(msg => ({
       type: msg.type,
-      content: msg.content,
+      content: msg.message?.content,
       timestamp: msg.timestamp,
     }))
   };
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
