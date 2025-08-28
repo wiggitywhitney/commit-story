@@ -83,6 +83,10 @@ Developers lose valuable context about their development decisions and reasoning
 - **TR-012**: No sensitive code content logged or exposed
 - **TR-013**: Chat content filtered for sensitive information before AI processing
 
+#### 4. Prompt Architecture & Testing
+- **TR-014**: Modular prompt architecture enabling independent section optimization
+- **TR-015**: Test harness for prompt validation before system integration
+
 ## Architecture Overview
 
 ```
@@ -165,6 +169,31 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 **Rationale**: Provides complete archaeological context for reverse engineering decisions. Makes journal entries self-contained technical artifacts.  
 **Impact**: Each entry documents both narrative and precise technical scope without requiring external git access.
 
+### DD-013: Separate Prompts Per Journal Section
+**Decision**: Each journal section (Summary, Development Dialogue, Technical Decisions) will have its own dedicated prompt and generation logic.  
+**Rationale**: Different sections have fundamentally different extraction goals. A single mega-prompt would be unclear, have conflicting objectives, and be harder to debug. Separate prompts enable independent iteration and optimization.  
+**Impact**: Create `src/generators/prompts/` directory with separate prompt modules for each section.
+
+### DD-014: Test-First Prompt Development
+**Decision**: Build a test harness for prompt iteration before integrating with the full system.  
+**Rationale**: Prompt engineering is empirical, not theoretical. Real-world testing with actual commit data provides immediate feedback on prompt quality. The feedback loop should be minutes, not hours.  
+**Impact**: Add `test-prompt.js` utility that enables rapid iteration: `node test-prompt.js HEAD summary`.
+
+### DD-015: Hybrid Anti-Hallucination Strategy
+**Decision**: Both factor out common rules AND explicitly repeat them in each prompt.  
+**Rationale**: AI models respond better to reinforcement than abstraction. Critical rules like "Only use provided context" and "Never invent quotes" need both centralization (for consistency) and repetition (for effectiveness).  
+**Impact**: Create `core-rules.js` module with shared rules, but also embed these rules directly in each section's prompt.
+
+### DD-016: Fresh OpenAI Instance Per Generation
+**Decision**: Create new OpenAI client for each journal generation to prevent context bleeding.  
+**Rationale**: Ensures clean slate for each generation, preventing previous journal entries from influencing new ones. Maintains generation independence and consistency.  
+**Impact**: Each call to generate journal content creates a fresh OpenAI client instance.
+
+### DD-017: Extensible Context Object Pattern
+**Decision**: All generator functions accept a single context object parameter instead of individual arguments.  
+**Rationale**: Prevents function signature explosion as the system evolves. When new context is needed (previous journal entries, repo metadata, user preferences), it's added to the context object without changing function signatures. This enables graceful system evolution without constant refactoring.  
+**Impact**: Generator functions use signature `generateSection(context)` where context is an extensible object. The context integrator becomes the single source of truth for context enrichment.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -176,7 +205,11 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 
 ### Phase 2: Core Integration (Week 2)
 - [x] **M2.1**: Implement time-based chat context matching
-- [ ] **M2.2**: Build AI content generation with OpenAI integration
+- [ ] **M2.2**: Build AI content generation with prompt architecture and OpenAI integration
+  - [ ] **M2.2a**: Create prompt architecture with separate prompts per section
+  - [ ] **M2.2b**: Build test harness for rapid prompt iteration
+  - [ ] **M2.2c**: Develop and validate prompts with real commit data
+  - [ ] **M2.2d**: Implement AI generator module with all prompts integrated
 - [ ] **M2.3**: Create git post-commit hook installation system
 - [ ] **M2.4**: Validate commit → journal entry workflow
 
@@ -425,5 +458,31 @@ Initial approach of jumping directly to parser implementation risked building wr
 - Added programmatic git metadata generation requirement
 
 **Impact on M2.2**: AI content generation should focus on extracting meaningful learning moments and technical decision rationale, with git metadata generated programmatically.
+
+### 2025-08-28: AI Content Generation Architecture Defined
+**Duration**: Design session  
+**Focus**: Prompt architecture and testing strategy for AI content generation
+
+**Key Design Decisions**:
+- [x] DD-013: Separate Prompts Per Journal Section - Independent prompts for Summary, Development Dialogue, Technical Decisions
+- [x] DD-014: Test-First Prompt Development - Build test harness before integration for rapid iteration
+- [x] DD-015: Hybrid Anti-Hallucination Strategy - Both centralized rules and prompt-specific repetition
+- [x] DD-016: Fresh OpenAI Instance Per Generation - Prevent context bleeding between generations
+- [x] DD-017: Extensible Context Object Pattern - Single context parameter for all generators to enable evolution
+
+**PRD Updates**:
+- Added five new design decisions (DD-013 through DD-017) establishing prompt architecture strategy
+- Expanded M2.2 into sub-tasks (M2.2a-d) for structured prompt development approach
+- Added technical requirements TR-014 (modular prompt architecture) and TR-015 (test harness)
+- Established test-first approach for empirical prompt engineering
+
+**Architecture Decisions**:
+- Separate `src/generators/prompts/` directory for prompt modularity
+- Test harness (`test-prompt.js`) for rapid feedback loops
+- Core rules module with explicit repetition in individual prompts
+- Fresh OpenAI clients per generation for isolation
+- Extensible context object pattern for future-proof function signatures
+
+**Next Session Priority**: M2.2a-c - Create prompt architecture, test harness, and validate prompts with real data
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
