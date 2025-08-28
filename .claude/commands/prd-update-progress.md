@@ -20,6 +20,7 @@ You are helping update an existing Product Requirements Document (PRD) based on 
 6. **Update PRD** - Apply changes and add work log entry
 7. **Flag Divergences** - Alert when actual work differs from planned work
 8. **Commit Progress Updates** - Preserve progress checkpoint
+9. **Push Progress Updates** - Share progress with remote repository
 
 ## Step 1: Smart PRD Identification
 
@@ -309,4 +310,33 @@ Progress: X% complete - [next major milestone]"
 - **Progress indication**: Include completion status and next steps
 - **Evidence-based**: Only commit when there's actual implementation progress
 
-**Note**: Do NOT push commits unless explicitly requested by the user. Commits preserve local progress checkpoints without affecting remote branches.
+## Step 9: Push Progress Updates
+
+After successfully committing the PRD progress update, ask user if they want to push changes to remote repository:
+
+### Ask User Permission
+```
+"Should I push this PRD progress update to the remote repository to share with your team?"
+```
+
+### Push Implementation Work (Only if User Confirms)
+```bash
+# Push the committed progress to remote repository
+git push
+
+# Verify push succeeded
+git status
+```
+
+### When to Recommend Pushing
+- **After PRD updates**: Suggest pushing PRD progress commits to share with team
+- **Milestone completion**: Recommend push when major milestones are achieved
+- **Before switching contexts**: Suggest preserving progress before moving to different work
+
+**Benefits of pushing PRD updates**:
+- Team visibility into progress
+- Backup of design decisions and progress logs
+- Historical record of implementation evolution
+- Coordination with other contributors
+
+**Note**: Always ask user permission before pushing. Commits preserve local progress checkpoints and should only be pushed when user explicitly approves.

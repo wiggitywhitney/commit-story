@@ -56,6 +56,8 @@ Developers lose valuable context about their development decisions and reasoning
 - **FR-011**: Create Technical Decisions section documenting reasoning behind architectural and implementation choices
 - **FR-012**: Generate Changes section programmatically with git metadata (commit hash, files changed, line counts, timing)
 - **FR-013**: Use fresh OpenAI instances for each generation (no context bleeding)
+- **FR-014**: Guidelines (anti-hallucination, quality, accessibility) maintained separately from section prompts for composition
+- **FR-015**: User-provided initial prompts for iterative refinement based on empirical testing
 
 #### 4. Journal File Management
 - **FR-014**: Store journal entries in daily markdown files in `journal/entries/YYYY-MM/` monthly directories
@@ -194,6 +196,16 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 **Rationale**: Prevents function signature explosion as the system evolves. When new context is needed (previous journal entries, repo metadata, user preferences), it's added to the context object without changing function signatures. This enables graceful system evolution without constant refactoring.  
 **Impact**: Generator functions use signature `generateSection(context)` where context is an extensible object. The context integrator becomes the single source of truth for context enrichment.
 
+### DD-018: Guidelines vs Section Prompts Separation
+**Decision**: Separate cross-cutting guidelines (anti-hallucination, content quality, accessibility) from section-specific prompts. Guidelines are composed with section prompts at runtime.  
+**Rationale**: Guidelines apply across ALL journal sections and should be maintained as single sources of truth. This enables independent iteration of guidelines vs prompts, better testing, and cleaner architecture. Section prompts define WHAT to extract; guidelines define HOW to write it.  
+**Impact**: Create `src/generators/prompts/guidelines/` for cross-cutting concerns and `src/generators/prompts/sections/` for section-specific prompts. Use composition pattern to combine them at runtime.
+
+### DD-019: User-Provided Initial Prompts with AI Refinement Process
+**Decision**: Initial section prompts come from user, followed by collaborative refinement phase before implementation.  
+**Rationale**: User understands desired journal content better than AI. Ensures prompts align with actual needs rather than AI assumptions. Iterative refinement validates prompts against user vision before coding.  
+**Impact**: Restructure M2.2 to include explicit user prompt provision step and refinement phase before test harness development.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -206,10 +218,10 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 ### Phase 2: Core Integration (Week 2)
 - [x] **M2.1**: Implement time-based chat context matching
 - [ ] **M2.2**: Build AI content generation with prompt architecture and OpenAI integration
-  - [ ] **M2.2a**: Create prompt architecture with separate prompts per section
-  - [ ] **M2.2b**: Build test harness for rapid prompt iteration
-  - [ ] **M2.2c**: Develop and validate prompts with real commit data
-  - [ ] **M2.2d**: Implement AI generator module with all prompts integrated
+  - [ ] **M2.2a**: Summary section - initial prompt → refinement → test harness → validation → implementation
+  - [ ] **M2.2b**: Development Dialogue section - initial prompt → refinement → test harness → validation → implementation  
+  - [ ] **M2.2c**: Technical Decisions section - initial prompt → refinement → test harness → validation → implementation
+  - [ ] **M2.2d**: Integration of all three sections into complete AI generator module
 - [ ] **M2.3**: Create git post-commit hook installation system
 - [ ] **M2.4**: Validate commit → journal entry workflow
 
@@ -469,20 +481,64 @@ Initial approach of jumping directly to parser implementation risked building wr
 - [x] DD-015: Hybrid Anti-Hallucination Strategy - Both centralized rules and prompt-specific repetition
 - [x] DD-016: Fresh OpenAI Instance Per Generation - Prevent context bleeding between generations
 - [x] DD-017: Extensible Context Object Pattern - Single context parameter for all generators to enable evolution
+- [x] DD-018: Guidelines vs Section Prompts Separation - Cross-cutting concerns maintained independently
 
 **PRD Updates**:
-- Added five new design decisions (DD-013 through DD-017) establishing prompt architecture strategy
+- Added six new design decisions (DD-013 through DD-018) establishing prompt architecture strategy
 - Expanded M2.2 into sub-tasks (M2.2a-d) for structured prompt development approach
 - Added technical requirements TR-014 (modular prompt architecture) and TR-015 (test harness)
+- Added feature requirements FR-014 (guideline separation) and FR-015 (user-provided prompts)
 - Established test-first approach for empirical prompt engineering
+- Refined architecture to separate guidelines from section prompts for better maintainability
 
 **Architecture Decisions**:
-- Separate `src/generators/prompts/` directory for prompt modularity
+- Structured prompt architecture:
+  ```
+  src/generators/prompts/
+  ├── guidelines/          # Cross-cutting concerns
+  │   ├── anti-hallucination.js
+  │   ├── content-quality.js
+  │   ├── accessibility.js
+  │   └── index.js
+  ├── sections/           # Section-specific prompts
+  │   ├── summary-prompt.js
+  │   ├── dialogue-prompt.js
+  │   ├── decisions-prompt.js
+  │   └── index.js
+  └── prompt-builder.js   # Composes guidelines + prompts
+  ```
 - Test harness (`test-prompt.js`) for rapid feedback loops
-- Core rules module with explicit repetition in individual prompts
+- Guidelines composed with section prompts at runtime
 - Fresh OpenAI clients per generation for isolation
 - Extensible context object pattern for future-proof function signatures
 
-**Next Session Priority**: M2.2a-c - Create prompt architecture, test harness, and validate prompts with real data
+**Next Session Priority**: M2.2a - User provides initial Summary section prompt for refinement phase
+
+### 2025-08-28: Prompt Architecture Implementation Complete
+**Duration**: ~3 hours  
+**Focus**: Guidelines architecture and design decision finalization (DD-013 to DD-019)
+
+**Completed PRD Items**:
+- [x] DD-013 through DD-019: Seven new design decisions for prompt architecture strategy - Evidence: All decisions documented in PRD with rationale and impact
+- [x] Prompt guidelines architecture implementation - Evidence: Working `src/generators/prompts/guidelines/` directory with anti-hallucination and accessibility modules
+- [x] M2.2 milestone restructuring - Evidence: Sequential one-section-at-a-time approach documented
+
+**Implementation Details**:
+- **Guidelines Framework**: Created modular prompt guidelines system with anti-hallucination (4 core rules) and accessibility (5 principles) guidelines
+- **Architecture Design**: Established separation between cross-cutting guidelines and section-specific prompts with composition pattern
+- **User-First Process**: Defined user-provided initial prompts with collaborative refinement approach
+- **Sequential Development**: Restructured M2.2 for one-section-at-a-time completion (Summary → Development Dialogue → Technical Decisions)
+- **Content Quality Removal**: Eliminated redundant content quality guidelines based on critical analysis
+
+**Key Architectural Decisions**:
+- Fresh OpenAI instances per generation to prevent context bleeding
+- Extensible context object pattern for future-proof function signatures  
+- Test-first prompt development with rapid iteration harness
+- Conservative anti-hallucination approach: omit sections rather than fabricate content
+- External reader accessibility focus with concrete language requirements
+
+**Phase 2 Core Integration**: 25% complete (M2.1 done, M2.2 architecture complete, awaiting section implementations)
+
+**Next Session Priority**: M2.2a - User provides initial Summary section prompt to begin refinement phase
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
