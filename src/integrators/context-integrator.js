@@ -10,6 +10,17 @@ import { extractChatForCommit } from '../collectors/claude-collector.js';
 import { execSync } from 'child_process';
 
 /**
+ * Generates dynamic documentation of what data is available in context objects
+ * 
+ * @returns {string} Documentation describing available context data
+ */
+export function getAvailableDataDescription() {
+  return `AVAILABLE DATA:  
+- git: The actual code changes (unified diff), commit message, and technical details of what files were modified
+- chat: Developer conversations with AI assistant(s) during this development session`;
+}
+
+/**
  * Gathers all context for a commit: git data and time-correlated chat messages
  * 
  * @returns {Promise<Object>} Combined context object with commit data and chat messages
