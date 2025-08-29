@@ -6,14 +6,15 @@
 import { execSync } from 'child_process';
 
 /**
- * Get data for the latest commit (HEAD)
- * This is called by the git post-commit hook
- * @returns {Object|null} Latest commit data or null if error
+ * Get data for the specified commit (defaults to HEAD)
+ * This is called by the git post-commit hook or test harness
+ * @param {string} commitRef - Git commit reference (HEAD, HEAD~1, hash, etc.)
+ * @returns {Object|null} Commit data or null if error
  */
-export function getLatestCommitData() {
+export function getLatestCommitData(commitRef = 'HEAD') {
   try {
     // Get commit metadata: hash|author_name|author_email|timestamp|subject
-    const metadataOutput = execSync('git show --format=format:"%H|%an|%ae|%at|%s" --no-patch HEAD', { encoding: 'utf8' }).trim();
+    const metadataOutput = execSync(`git show --format=format:"%H|%an|%ae|%at|%s" --no-patch ${commitRef}`, { encoding: 'utf8' }).trim();
     
     // Parse metadata - handle potential issues with pipe characters in commit message
     const parts = metadataOutput.split('|');
@@ -23,8 +24,8 @@ export function getLatestCommitData() {
     const timestamp = parts[3];
     const message = parts.slice(4).join('|'); // Rejoin in case message contains pipes
     
-    // Get full diff content for the latest commit
-    const diff = execSync('git diff-tree -p HEAD', { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
+    // Get full diff content for the specified commit
+    const diff = execSync(`git diff-tree -p ${commitRef}`, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
     
     return {
       hash,

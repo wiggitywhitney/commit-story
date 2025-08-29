@@ -92,7 +92,7 @@ Developers lose valuable context about their development decisions and reasoning
 - **TR-017**: Intelligent context filtering to maintain gpt-4o-mini compatibility while preserving content quality
 - **TR-018**: Message structure research expansion - claude-chat-research.md must include tool call vs human dialogue examples with actual JSON structure patterns for accurate filtering implementation
 - **TR-019**: Message content normalization - Extract clean text from mixed Claude message formats (string/array) before AI processing to ensure consistent generator input
-- **TR-020**: Multi-commit test capability - Test harness must accept commit parameters to validate prompt consistency across different development session types
+- [x] **TR-020**: Multi-commit test capability - Test harness must accept commit parameters to validate prompt consistency across different development session types
 - **TR-021**: Complete PRD context masking - `--no-prd` flag must remove PRD file diffs AND mask PRD references in commit messages to fully test prompt robustness without structured project context
 
 ## Architecture Overview
@@ -386,14 +386,14 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] Test-mode PRD filtering implementation and validation
     - [ ] **ENHANCED VALIDATION REQUIREMENTS** (DD-046, DD-047, DD-048):
       - [ ] Complete PRD context masking implementation (TR-021)
-      - [ ] Multi-commit testing infrastructure (TR-020) 
+      - [x] Multi-commit testing infrastructure (TR-020) 
       - [ ] Multi-commit `--no-prd` validation across different development session types
       - [ ] Prompt robustness confirmation without PRD scaffolding dependency
-  - [ ] **M2.2b**: Development Dialogue section - BLOCKED pending summary validation (DD-042)
+  - [ ] **M2.2b**: Development Dialogue section - pending summary validation (DD-042)
     - [x] Comprehensive prompt engineering research (6 approaches tested)
     - [x] Research documentation in `/docs/dialogue-extraction-research.md`
     - [x] Architecture decision: summary-guided dialogue extraction (DD-038)  
-    - [ ] **BLOCKED**: Multi-commit testing infrastructure required (TR-020) before validation can proceed
+    - [x] Multi-commit testing infrastructure implementation (TR-020)
     - [ ] **VALIDATION GATE**: Summary section consistency validation across multiple commits
     - [ ] Summary-guided dialogue prompt development
     - [ ] Generator implementation with summary input
@@ -861,6 +861,26 @@ Initial approach of jumping directly to parser implementation risked building wr
 
 **Current Blockers**: Both M2.2a completion and M2.2b progress now depend on infrastructure implementations (TR-020, TR-021)
 
-**Next Session Priority**: Implement multi-commit testing infrastructure (TR-020) and enhanced PRD masking (TR-021) to unblock validation pathway
+**Next Session Priority**: Implement complete PRD context masking (TR-021) to complete enhanced validation requirements
+
+### 2025-08-29 (Session 3): Multi-Commit Testing Infrastructure Complete (TR-020)
+**Duration**: ~1.5 hours  
+**Focus**: Infrastructure implementation to unblock validation pathways
+
+**Completed PRD Items**:
+- [x] **TR-020**: Multi-commit test capability - Evidence: Successfully modified `git-collector.js`, `context-integrator.js`, and `test-prompt.js` to accept commit references; test harness validated with HEAD~1, HEAD~2, HEAD~3
+
+**Technical Implementation**:
+- **git-collector.js**: Added `commitRef` parameter to `getLatestCommitData()`, updated git commands to use variable commit references
+- **context-integrator.js**: Modified `gatherContextForCommit()` and `getPreviousCommitData()` to accept and calculate from specified commits
+- **test-prompt.js**: Updated to pass commit references through entire pipeline
+- **Validation results**: Successfully tested across multiple commits (489, 591, 440 chat messages for different sessions)
+
+**Architecture Impact**:
+- **M2.2b unblocked**: Removed BLOCKED status since multi-commit testing infrastructure now available
+- **Validation pathway ready**: Can now validate summary consistency across different development session types
+- **Foundation complete**: Infrastructure supports comprehensive prompt validation strategy
+
+**Next Session Priority**: Implement TR-021 (complete PRD context masking) to complete enhanced validation requirements and proceed with summary consistency validation
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete

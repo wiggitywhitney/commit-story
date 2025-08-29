@@ -70,7 +70,7 @@ async function main() {
     
     // Gather context for the commit
     console.log('📊 Gathering context...');
-    const context = await gatherContextForCommit();
+    const context = await gatherContextForCommit(commitRef);
     
     // Apply PRD filtering if requested
     if (noPrdFlag) {

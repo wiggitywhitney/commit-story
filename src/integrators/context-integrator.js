@@ -59,21 +59,22 @@ export function getAvailableDataDescription() {
 /**
  * Gathers all context for a commit: git data and time-correlated chat messages
  * 
+ * @param {string} commitRef - Git commit reference (HEAD, HEAD~1, hash, etc.)
  * @returns {Promise<Object>} Combined context object with commit data and chat messages
  * @returns {Object} context.commit - Current commit data from git-collector
  * @returns {Array} context.chatMessages - Chat messages from claude-collector  
  * @returns {Object|null} context.previousCommit - Previous commit basic data or null
  */
-export async function gatherContextForCommit() {
+export async function gatherContextForCommit(commitRef = 'HEAD') {
   try {
     // Get current commit data (returns Date object for timestamp)
-    const currentCommit = await getLatestCommitData();
+    const currentCommit = await getLatestCommitData(commitRef);
     if (!currentCommit) {
       throw new Error('Failed to get current commit data');
     }
 
     // Get previous commit data for time window
-    const previousCommit = await getPreviousCommitData();
+    const previousCommit = await getPreviousCommitData(commitRef);
     
     // Extract chat messages using existing claude-collector API
     // Signature: extractChatForCommit(commitTime, previousCommitTime, repoPath)
@@ -101,13 +102,14 @@ export async function gatherContextForCommit() {
 /**
  * Gets the previous commit data for time window calculation
  * 
+ * @param {string} commitRef - Git commit reference to calculate previous from
  * @returns {Promise<Object|null>} Previous commit data or null if no previous commit
  */
-async function getPreviousCommitData() {
+async function getPreviousCommitData(commitRef = 'HEAD') {
   try {
-    // Get previous commit hash and timestamp (HEAD~1)
+    // Get previous commit hash and timestamp (one commit before the specified commit)
     const previousCommitInfo = execSync(
-      'git log -1 --format="%H|%ct" HEAD~1', 
+      `git log -1 --format="%H|%ct" ${commitRef}~1`, 
       { encoding: 'utf8', cwd: process.cwd() }
     ).trim();
     
