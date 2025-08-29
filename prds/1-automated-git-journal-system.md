@@ -93,7 +93,7 @@ Developers lose valuable context about their development decisions and reasoning
 - **TR-018**: Message structure research expansion - claude-chat-research.md must include tool call vs human dialogue examples with actual JSON structure patterns for accurate filtering implementation
 - **TR-019**: Message content normalization - Extract clean text from mixed Claude message formats (string/array) before AI processing to ensure consistent generator input
 - [x] **TR-020**: Multi-commit test capability - Test harness must accept commit parameters to validate prompt consistency across different development session types
-- **TR-021**: Complete PRD context masking - `--no-prd` flag must remove PRD file diffs AND mask PRD references in commit messages to fully test prompt robustness without structured project context
+- [x] **TR-021**: Complete PRD context masking - `--no-prd` flag must remove PRD file diffs AND mask PRD references in commit messages to fully test prompt robustness without structured project context
 
 ## Architecture Overview
 
@@ -385,8 +385,9 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] Prompt refinement based on quality assessment
     - [x] Test-mode PRD filtering implementation and validation
     - [ ] **ENHANCED VALIDATION REQUIREMENTS** (DD-046, DD-047, DD-048):
-      - [ ] Complete PRD context masking implementation (TR-021)
+      - [x] Complete PRD context masking implementation (TR-021)
       - [x] Multi-commit testing infrastructure (TR-020) 
+      - [x] Summary prompt methodology enhancement with code-first analysis approach
       - [ ] Multi-commit `--no-prd` validation across different development session types
       - [ ] Prompt robustness confirmation without PRD scaffolding dependency
   - [ ] **M2.2b**: Development Dialogue section - pending summary validation (DD-042)
@@ -882,5 +883,28 @@ Initial approach of jumping directly to parser implementation risked building wr
 - **Foundation complete**: Infrastructure supports comprehensive prompt validation strategy
 
 **Next Session Priority**: Implement TR-021 (complete PRD context masking) to complete enhanced validation requirements and proceed with summary consistency validation
+
+### 2025-08-29 (Session 4): Complete PRD Context Masking Implementation and Summary Prompt Enhancement (TR-021)
+**Duration**: ~2 hours  
+**Focus**: Completing enhanced validation infrastructure and improving summary generation quality
+
+**Completed PRD Items**:
+- [x] **TR-021**: Complete PRD context masking implementation - Evidence: Modified `test-prompt.js` to null commit messages and filter PRD codes from chat messages when `--no-prd` flag used; updated `summary-generator.js` to handle null commit messages gracefully
+- [x] Summary prompt methodology enhancement - Evidence: Added 4-step code-first analysis approach to `summary-prompt.js` (examine code changes → extract reasoning from chat → include contextual discussions → combine into complete story)
+
+**Implementation Details**:
+- **Commit Message Nullification**: `--no-prd` flag now sets `context.commit.message = null` removing verbose structured commit messages that provide unrealistic scaffolding for typical developers
+- **Chat PRD Code Filtering**: Added `filterPrdFromChat()` function that removes messages containing patterns like `TR-\d+`, `DD-\d+`, `M\d+\.\d+[a-z]?`, `PRD-\d+` etc. while preserving general PRD discussions
+- **Graceful Null Handling**: Summary generator now conditionally includes commit message only when not null using spread operator pattern
+- **Enhanced Summary Prompt**: Added clear 4-step methodology directing AI to start with code changes, extract reasoning from chat, distinguish work vs discussion, and combine into complete narrative
+
+**Validation Results**:
+- **Filtering Effectiveness**: Successfully tested across HEAD, HEAD~1, HEAD~2, HEAD~3 commits showing appropriate message filtering (11-51 messages filtered per commit)
+- **Summary Quality Improvement**: Generated summaries now follow code-first approach with better focus on actual development work and technical reasoning rather than project management overhead
+- **Authentic Narratives**: Summaries read like genuine development session descriptions suitable for external readers without structured project context
+
+**M2.2a Enhanced Validation Infrastructure**: Complete - All required technical infrastructure (TR-020, TR-021) now implemented and validated
+
+**Next Session Priority**: Conduct multi-commit `--no-prd` validation across different development session types to complete M2.2a final validation gate
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete

@@ -43,6 +43,20 @@ function filterPrdFromDiff(diff) {
   return filteredLines.join('\n');
 }
 
+/**
+ * Filters chat messages containing PRD codes for testing prompt robustness
+ * @param {Array} messages - Original chat messages
+ * @returns {Array} Messages with PRD-referencing messages removed
+ */
+function filterPrdFromChat(messages) {
+  const prdPattern = /(?:TR|DD|FR|R)-\d+|M\d+\.\d+[a-z]?|PRD-\d+|prd-\d+|PRD\s*#\s*\d+/;
+  
+  return messages.filter(msg => {
+    const content = msg.message?.content || '';
+    return !prdPattern.test(content);
+  });
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const commitRef = args[0];
@@ -76,6 +90,12 @@ async function main() {
     if (noPrdFlag) {
       console.log('🚫 Filtering PRD files from context...');
       context.commit.diff = filterPrdFromDiff(context.commit.diff);
+      context.commit.message = null;
+      
+      const originalCount = context.chatMessages.length;
+      context.chatMessages = filterPrdFromChat(context.chatMessages);
+      const filteredCount = originalCount - context.chatMessages.length;
+      console.log(`🚫 Filtered ${filteredCount} PRD-referencing chat messages`);
     }
     
     console.log(`✅ Found ${context.chatMessages.length} chat messages`);

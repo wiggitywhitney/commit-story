@@ -45,7 +45,7 @@ ${guidelines}
   const contextForAI = {
     git: {
       hash: filteredContext.commit.hash,
-      message: filteredContext.commit.message,
+      ...(filteredContext.commit.message !== null && { message: filteredContext.commit.message }),
       author: filteredContext.commit.author,
       timestamp: filteredContext.commit.timestamp,
       diff: filteredContext.commit.diff,
