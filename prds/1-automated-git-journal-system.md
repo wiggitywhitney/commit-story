@@ -92,6 +92,8 @@ Developers lose valuable context about their development decisions and reasoning
 - **TR-017**: Intelligent context filtering to maintain gpt-4o-mini compatibility while preserving content quality
 - **TR-018**: Message structure research expansion - claude-chat-research.md must include tool call vs human dialogue examples with actual JSON structure patterns for accurate filtering implementation
 - **TR-019**: Message content normalization - Extract clean text from mixed Claude message formats (string/array) before AI processing to ensure consistent generator input
+- **TR-020**: Multi-commit test capability - Test harness must accept commit parameters to validate prompt consistency across different development session types
+- **TR-021**: Complete PRD context masking - `--no-prd` flag must remove PRD file diffs AND mask PRD references in commit messages to fully test prompt robustness without structured project context
 
 ## Architecture Overview
 
@@ -331,6 +333,36 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Summary-guided dialogue architecture requires reliable summary foundation; must validate summary quality and consistency before building dependent components.  
 **Impact**: M2.2b delivery timeline depends on M2.2a validation results; may require alternative approaches if summaries prove unreliable.
 
+### DD-043: Multi-Commit Testing Infrastructure Requirement
+**Decision**: Test harness limitation identified as architecture blocker - cannot validate prompt consistency across different commit types due to `gatherContextForCommit()` always using HEAD.  
+**Rationale**: Summary-guided dialogue architecture requires validation that summaries are consistently high quality across different development session types, conversation styles, and technical complexity levels.  
+**Impact**: Blocks M2.2b validation gate; requires TR-020 implementation before summary-guided approach can proceed.
+
+### DD-044: Chat Volume Filtering Alternative Architecture
+**Decision**: Document human-focused dialogue filtering (human messages + adjacent AI context) as fallback approach if summary-guided extraction proves insufficient.  
+**Rationale**: Chat volume may contribute to AI fabrication and attribution issues; focused filtering could improve extraction quality by reducing noise and maintaining conversational context.  
+**Impact**: Provides alternative implementation path if summary-guided approach fails; maintains architecture options without immediate implementation complexity.
+
+### DD-045: Sequential Implementation Priority Strategy
+**Decision**: Test summary-guided approach before adding chat filtering complexity to avoid multiple variables in prompt engineering.  
+**Rationale**: "One thing at a time" approach prevents compounding variables that make it difficult to isolate what works; builds on existing successful components rather than adding new filtering mechanisms.  
+**Impact**: Clear implementation sequence established; chat filtering remains available as fallback without interfering with primary approach validation.
+
+### DD-046: Comprehensive PRD Context Masking Strategy
+**Decision**: Full PRD context removal (files + commit message references) required to validate prompt effectiveness for general development workflows without structured documentation.  
+**Rationale**: Current `--no-prd` implementation only removes PRD files but leaves PRD-specific language in commit messages that AI uses as narrative scaffolding; true prompt robustness requires complete context masking.  
+**Impact**: Raises validation standards significantly; may reveal prompt dependencies on structured project management that indicate insufficient robustness for general use.
+
+### DD-047: Summary Prompt Validation Standards
+**Decision**: Prompt robustness requires quality output generation from informal development contexts (casual commits, unstructured chat) without PRD scaffolding dependency.  
+**Rationale**: System must work for developers with casual workflows ("fix bug", "update styles") not just highly documented projects; prompt that only works with structured documentation isn't broadly applicable.  
+**Impact**: Establishes clear criteria for validated prompt success; ensures system works for typical development patterns beyond structured project management.
+
+### DD-048: Multi-Commit PRD-Free Testing Requirement
+**Decision**: Summary prompt validation requires `--no-prd` testing across multiple commit types to ensure effectiveness beyond current structured development approach.  
+**Rationale**: Single commit testing with PRD masking insufficient to validate prompt robustness across diverse development session types and casual development workflows.  
+**Impact**: Creates dependency on both TR-020 (multi-commit testing) and TR-021 (complete PRD masking) before M2.2a completion; establishes rigorous validation methodology.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -343,7 +375,7 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 ### Phase 2: Core Integration (Week 2)
 - [x] **M2.1**: Implement time-based chat context matching
 - [ ] **M2.2**: Build AI content generation with prompt architecture and OpenAI integration
-  - [x] **M2.2a**: Summary section - initial prompt → refinement → test harness → validation → implementation
+  - [ ] **M2.2a**: Summary section - initial prompt → refinement → test harness → validation → implementation
     - [x] Initial prompt and refinement
     - [x] Test harness development  
     - [x] Generator implementation
@@ -352,11 +384,17 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] Summary quality evaluation (user review of generated content)
     - [x] Prompt refinement based on quality assessment
     - [x] Test-mode PRD filtering implementation and validation
+    - [ ] **ENHANCED VALIDATION REQUIREMENTS** (DD-046, DD-047, DD-048):
+      - [ ] Complete PRD context masking implementation (TR-021)
+      - [ ] Multi-commit testing infrastructure (TR-020) 
+      - [ ] Multi-commit `--no-prd` validation across different development session types
+      - [ ] Prompt robustness confirmation without PRD scaffolding dependency
   - [ ] **M2.2b**: Development Dialogue section - BLOCKED pending summary validation (DD-042)
     - [x] Comprehensive prompt engineering research (6 approaches tested)
     - [x] Research documentation in `/docs/dialogue-extraction-research.md`
     - [x] Architecture decision: summary-guided dialogue extraction (DD-038)  
-    - [ ] **DEPENDENCY**: Summary section consistency validation across multiple commits
+    - [ ] **BLOCKED**: Multi-commit testing infrastructure required (TR-020) before validation can proceed
+    - [ ] **VALIDATION GATE**: Summary section consistency validation across multiple commits
     - [ ] Summary-guided dialogue prompt development
     - [ ] Generator implementation with summary input
     - [ ] Technical pipeline validation (system runs without errors, gpt-4o-mini compatible)
@@ -788,5 +826,41 @@ Initial approach of jumping directly to parser implementation risked building wr
 **Current M2.2b Status**: Research complete, architecture defined, implementation paused pending summary validation across multiple commits
 
 **Next Session Priority**: Validate Summary section consistency across multiple commit types before proceeding with summary-guided dialogue implementation
+
+### 2025-08-29 (Session 2): Enhanced Validation Requirements and Infrastructure Planning
+**Duration**: ~2 hours  
+**Focus**: Comprehensive validation strategy refinement and infrastructure requirements analysis
+
+**Completed PRD Items**:
+- [x] **Test Harness Infrastructure Analysis** - Evidence: Identified critical limitation that `gatherContextForCommit()` always uses HEAD, preventing multi-commit testing
+- [x] **Enhanced Validation Standards Development** - Evidence: DD-046 through DD-048 documented requiring complete PRD context masking and multi-commit validation
+- [x] **Summary Validation Requirements Expansion** - Evidence: M2.2a reverted from complete to pending with enhanced validation gate requirements
+- [x] **Technical Requirements Architecture** - Evidence: TR-020 and TR-021 documented for multi-commit testing and complete PRD masking capabilities
+
+**Strategic Architecture Insights**:
+- **Validation rigor enhancement**: Current `--no-prd` flag insufficient - must also mask commit message PRD references to truly test prompt robustness
+- **Infrastructure blocker identification**: Cannot validate summary consistency across commits without multi-commit testing capability (TR-020)
+- **Prompt dependency risk**: Summaries may appear successful due to PRD scaffolding rather than true prompt effectiveness
+- **Alternative approach documentation**: Chat volume filtering documented as fallback architecture if summary-guided approach fails
+
+**Critical Validation Standards Established**:
+- **Complete context masking**: Remove both PRD files AND commit message references for true robustness testing
+- **Multi-commit validation**: Test across different development session types to ensure broad applicability
+- **Informal workflow compatibility**: Ensure prompts work for casual development ("fix bug" commits) not just structured workflows
+- **PRD-free quality confirmation**: Validate summaries maintain quality without structured project management scaffolding
+
+**Four New Design Decisions Documented**:
+- **DD-043**: Multi-Commit Testing Infrastructure Requirement
+- **DD-044**: Chat Volume Filtering Alternative Architecture  
+- **DD-045**: Sequential Implementation Priority Strategy
+- **DD-046**: Comprehensive PRD Context Masking Strategy
+- **DD-047**: Summary Prompt Validation Standards
+- **DD-048**: Multi-Commit PRD-Free Testing Requirement
+
+**M2.2a Status Change**: Reverted from complete to pending - enhanced validation requirements must be satisfied before summary section considered validated
+
+**Current Blockers**: Both M2.2a completion and M2.2b progress now depend on infrastructure implementations (TR-020, TR-021)
+
+**Next Session Priority**: Implement multi-commit testing infrastructure (TR-020) and enhanced PRD masking (TR-021) to unblock validation pathway
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
