@@ -8,12 +8,14 @@
  * 
  * Examples:
  *   node test-prompt.js HEAD summary
+ *   node test-prompt.js HEAD dialogue
  *   node test-prompt.js HEAD~1 summary
  *   node test-prompt.js abc1234 summary
  */
 
 import { gatherContextForCommit } from './src/integrators/context-integrator.js';
 import { generateSummary } from './src/generators/summary-generator.js';
+import { generateDevelopmentDialogue } from './src/generators/dialogue-generator.js';
 
 /**
  * Filters PRD files from git diff for testing prompt robustness
@@ -51,13 +53,14 @@ async function main() {
     console.error('Usage: node test-prompt.js <commit> <section> [--no-prd]');
     console.error('Examples:');
     console.error('  node test-prompt.js HEAD summary');
+    console.error('  node test-prompt.js HEAD dialogue');
     console.error('  node test-prompt.js HEAD~1 summary');
     console.error('  node test-prompt.js HEAD summary --no-prd');
     process.exit(1);
   }
   
-  if (section !== 'summary') {
-    console.error('Only "summary" section is currently implemented');
+  if (section !== 'summary' && section !== 'dialogue') {
+    console.error('Only "summary" and "dialogue" sections are currently implemented');
     process.exit(1);
   }
   
@@ -79,15 +82,27 @@ async function main() {
     console.log(`✅ Commit: ${context.commit.hash.substring(0, 8)} - ${context.commit.message}`);
     console.log('');
     
-    // Generate the summary
-    console.log('🤖 Generating summary...');
-    const summary = await generateSummary(context);
-    
-    console.log('');
-    console.log('📝 Generated Summary:');
-    console.log('━'.repeat(60));
-    console.log(summary);
-    console.log('━'.repeat(60));
+    // Generate the requested section
+    let result;
+    if (section === 'summary') {
+      console.log('🤖 Generating summary...');
+      result = await generateSummary(context);
+      
+      console.log('');
+      console.log('📝 Generated Summary:');
+      console.log('━'.repeat(60));
+      console.log(result);
+      console.log('━'.repeat(60));
+    } else if (section === 'dialogue') {
+      console.log('🤖 Generating development dialogue...');
+      result = await generateDevelopmentDialogue(context);
+      
+      console.log('');
+      console.log('💬 Generated Development Dialogue:');
+      console.log('━'.repeat(60));
+      console.log(result);
+      console.log('━'.repeat(60));
+    }
     
   } catch (error) {
     console.error('❌ Error testing prompt:', error.message);

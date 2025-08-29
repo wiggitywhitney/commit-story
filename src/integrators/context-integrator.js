@@ -10,6 +10,42 @@ import { extractChatForCommit } from '../collectors/claude-collector.js';
 import { execSync } from 'child_process';
 
 /**
+ * Extracts clean text content from Claude messages, handling mixed content formats
+ * 
+ * @param {Array} messages - Array of Claude message objects
+ * @returns {Array} Messages with normalized content (always strings)
+ */
+export function extractTextFromMessages(messages) {
+  return messages.map(msg => {
+    const content = msg.message?.content;
+    let cleanContent = '';
+    
+    if (!content) {
+      cleanContent = '';
+    } else if (typeof content === 'string') {
+      cleanContent = content;
+    } else if (Array.isArray(content)) {
+      // Extract text from array format: [{type: "text", text: "actual content"}]
+      cleanContent = content
+        .filter(item => item.type === 'text' && item.text)
+        .map(item => item.text)
+        .join(' ');
+    } else {
+      // Fallback for unknown content types
+      cleanContent = JSON.stringify(content);
+    }
+    
+    return {
+      ...msg,
+      message: {
+        ...msg.message,
+        content: cleanContent
+      }
+    };
+  });
+}
+
+/**
  * Generates dynamic documentation of what data is available in context objects
  * 
  * @returns {string} Documentation describing available context data
@@ -41,15 +77,18 @@ export async function gatherContextForCommit() {
     
     // Extract chat messages using existing claude-collector API
     // Signature: extractChatForCommit(commitTime, previousCommitTime, repoPath)
-    const chatMessages = await extractChatForCommit(
+    const rawChatMessages = await extractChatForCommit(
       currentCommit.timestamp,           // Date object - current commit time
       previousCommit?.timestamp || null, // Date object or null - previous commit time  
       process.cwd()                      // string - repo path for cwd filtering
     );
     
+    // Extract clean text content from messages (DD-034)
+    const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
+    
     return {
       commit: currentCommit,              // Full git data (hash, message, author, timestamp, diff)
-      chatMessages: chatMessages || [],  // Array of complete chat message objects
+      chatMessages: cleanChatMessages,    // Array of chat messages with clean text content
       previousCommit: previousCommit      // { hash, timestamp } or null
     };
     
