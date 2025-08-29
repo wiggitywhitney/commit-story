@@ -57,21 +57,24 @@ ${guidelines}
     }))
   };
 
+  const requestPayload = {
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt
+      },
+      {
+        role: 'user', 
+        content: `Generate a summary for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`
+      }
+    ],
+    temperature: 0.7,
+  };
+
+
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user', 
-          content: `Generate a summary for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`
-        }
-      ],
-      temperature: 0.7,
-    });
+    const completion = await openai.chat.completions.create(requestPayload);
 
     return completion.choices[0].message.content.trim();
 

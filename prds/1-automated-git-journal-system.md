@@ -363,6 +363,65 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Single commit testing with PRD masking insufficient to validate prompt robustness across diverse development session types and casual development workflows.  
 **Impact**: Creates dependency on both TR-020 (multi-commit testing) and TR-021 (complete PRD masking) before M2.2a completion; establishes rigorous validation methodology.
 
+### DD-049: Summary Examples Documentation for Dialogue Development
+**Decision**: Create and reference comprehensive summary example documentation (`docs/summary-examples.md`) during M2.2b Development Dialogue prompt development.  
+**Rationale**: Summary-guided dialogue extraction requires concrete examples to guide prompt development. Real validation examples provide authentic patterns, connection points, and quality indicators rather than working abstractly. Future AI assistance should reference this documentation when helping with dialogue prompt development.  
+**Impact**: Enables informed M2.2b development with empirical evidence; establishes pattern for preserving validation artifacts to inform subsequent development phases; ensures institutional knowledge about using summary examples is maintained.
+
+### DD-050: Summary-Guided Dialogue Architecture Implementation Success
+**Decision**: Summary-guided dialogue extraction approach successfully validated and implemented for M2.2b.  
+**Rationale**: After 6 failed prompt engineering approaches documented in dialogue extraction research, the summary-guided architecture overcomes AI's verbatim extraction resistance by providing concrete search criteria instead of abstract "interesting quotes" requirements.  
+**Evidence**: Successful multi-commit testing shows strong narrative coherence between summary and extracted dialogue, with authentic human voice captured effectively.  
+**Impact**: M2.2b architecture proven; dialogue generator accepts summary + chat messages (no git data); provides foundation for completing M2.2b implementation.
+
+### DD-051: Token Management Issues in Dialogue Generator
+**Decision**: Dialogue generator requires improved context filtering to handle large development sessions within token limits.  
+**Problem**: Large commits (HEAD~2, HEAD~4) exceed token limits despite removing git data, while same commits work fine with summary generator that includes git diffs.  
+**Root Cause Analysis**: Suspected data duplication or missing context filtering that summary generator applies; requires investigation of actual payload sizes vs token estimates.  
+**Impact**: Blocks M2.2b completion for large sessions; requires debugging actual data being sent to OpenAI API to identify inefficiency source.
+
+### DD-052: Graceful Degradation for Sparse Human Input in Dialogue
+**Decision**: Dialogue extraction must handle commits with minimal human messages gracefully rather than fabricating poor quality quotes.  
+**Problem**: When few meaningful human messages exist in commit window, AI generates terrible fabricated quotes instead of acknowledging insufficient content.  
+**Solution**: Enhance dialogue prompt with explicit instruction: "If no meaningful human quotes support the summary narrative, return 'No significant dialogue found for this development session' rather than extracting weak or irrelevant quotes."  
+**Impact**: Prevents low-quality dialogue generation; maintains authenticity standards; requires prompt refinement before M2.2b completion.
+
+### DD-053: Token Management Architecture Consistency
+**Decision**: Dialogue generator must apply the same context filtering as summary generator to handle large development sessions within token limits.  
+**Problem Discovery**: Dialogue generator was sending summary + unfiltered chat messages, while summary generator used filtered chat + git diff. Large sessions exceeded token limits despite dialogue having smaller data load.  
+**Root Cause**: Missing `filterContext()` application in dialogue generator created inconsistent token management between generators.  
+**Solution**: Apply context filtering to chat messages before AI processing in dialogue generator using mock context object.  
+**Impact**: Resolves token limit failures on large commits (HEAD~2, HEAD~4); ensures consistent filtering architecture across all generators.
+
+### DD-054: Programmatic Human Input Validation Strategy
+**Decision**: Implement programmatic validation to detect commits with insufficient human dialogue before AI processing, eliminating AI judgment from sparse input scenarios.  
+**Problem**: AI fabricates poor quotes when few meaningful human messages exist instead of gracefully acknowledging insufficient content; prompt instructions consistently ignored.  
+**Approach**: Check if ANY user message ≥20 characters exists in chat context. If none exist, return "No significant dialogue found" without invoking AI generation.  
+**Rationale**: Works with AI limitations rather than fighting them; removes subjective quality judgments from AI; prevents fabrication through pre-filtering.  
+**Impact**: Prevents low-quality dialogue generation; maintains authenticity standards; completely eliminates sparse input failure mode.
+
+### DD-055: Summary-Guided Dialogue Architecture Validation Success
+**Decision**: Summary-guided dialogue extraction approach proven effective and ready for production through comprehensive multi-commit testing.  
+**Evidence**: Successfully tested across HEAD, HEAD~1, HEAD~3 with meaningful dialogue extraction, strong narrative coherence, and authentic human voice capture.  
+**Technical Achievement**: Context filtering resolves token management issues; sparse input handling improves output quality; architecture scales across diverse commit types.  
+**Validation Results**: No fabricated quotes observed; meaningful human insights extracted; AI context appropriately managed; verbatim requirement achieved.  
+**Impact**: M2.2b architecture fully validated; summary-guided approach overcomes previous dialogue extraction failures documented in research.
+
+### DD-056: Debug-Driven Problem Solving Methodology Validation
+**Decision**: Use actual payload inspection rather than token estimation or abstract debugging for resolving system performance issues.  
+**Application**: Identified exact cause of token bloat by comparing actual JSON payloads between summary and dialogue generators instead of estimating token counts.  
+**Discovery**: Direct data inspection revealed dialogue generator was missing context filtering, not expanding content as hypothesized.  
+**Learning**: Concrete data examination more effective than theoretical analysis for complex system debugging.  
+**Impact**: Establishes pattern for future system debugging; enables faster problem resolution; validates empirical over theoretical debugging approaches.
+
+### DD-057: System Artifact Filtering Enhancement Requirement
+**Decision**: Extend existing context filtering to properly identify and remove system artifacts that bypass current filtering and get misclassified as user messages.  
+**Problem Discovery**: System artifacts like `<local-command-stdout></local-command-stdout>` (45 chars) pass through context filtering as "user" messages, causing programmatic human input validation to incorrectly detect substantial input and trigger AI dialogue generation instead of graceful degradation.  
+**Root Cause**: Existing tool call filtering patterns in `filterContext()` do not catch system artifact patterns like `<local-command-*>` and `<command-*>`.  
+**Solution**: Enhance existing filtering logic to include system artifact patterns rather than creating separate filtering layer.  
+**Rationale**: Maintains consistency with existing filtering architecture; prevents system artifacts from reaching any generator; treats system artifacts as non-human content equivalent to tool calls.  
+**Impact**: Critical for programmatic human input validation accuracy; prevents false positive detection of substantial dialogue; ensures graceful degradation works correctly on sparse input commits.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -390,16 +449,24 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
       - [x] Summary prompt methodology enhancement with code-first analysis approach
       - [x] Multi-commit `--no-prd` validation across different development session types
       - [x] Prompt robustness confirmation without PRD scaffolding dependency
-  - [ ] **M2.2b**: Development Dialogue section - pending summary validation (DD-042)
+  - [ ] **M2.2b**: Development Dialogue section - **VALIDATION FAILED** - blocking issue identified (DD-057)
     - [x] Comprehensive prompt engineering research (6 approaches tested)
     - [x] Research documentation in `/docs/dialogue-extraction-research.md`
     - [x] Architecture decision: summary-guided dialogue extraction (DD-038)  
     - [x] Multi-commit testing infrastructure implementation (TR-020)
     - [x] **VALIDATION GATE**: Summary section consistency validation across multiple commits - Evidence: Successfully validated across 5 commits with `--no-prd` flag, consistent high-quality output confirmed
-    - [ ] Summary-guided dialogue prompt development
-    - [ ] Generator implementation with summary input
-    - [ ] Technical pipeline validation (system runs without errors, gpt-4o-mini compatible)
-    - [ ] **HUMAN VALIDATION REQUIRED**: User must review actual generated output samples before approval
+    - [x] Summary-guided dialogue prompt development - Evidence: Working prompt implemented with summary as guide
+    - [x] Generator implementation with summary input - Evidence: Function signature updated, git data removed, clean architecture
+    - [x] Test harness integration - Evidence: Test pipeline supports summary → dialogue generation
+    - [x] Multi-commit validation testing - Evidence: HEAD~2, HEAD~4 successfully tested with quality dialogue extraction
+    - [x] **ISSUE RESOLVED**: Token management debugging for large sessions (DD-053) - Context filtering applied, large sessions now work
+    - [x] **ISSUE RESOLVED**: Message structure handling (DD-054) - Fixed programmatic validation to use correct `msg.message.content` structure
+    - [x] Architecture validation success (DD-055) - Summary-guided approach proven effective on commits with substantial human input
+    - [x] **IMPLEMENTATION COMPLETE**: Programmatic human input validation (DD-054) - Length-based validation (≥20 chars) implemented and tested successfully
+    - [x] **ISSUE RESOLVED**: System artifact filtering (DD-057) - Enhanced `context-filter.js` to catch `<local-command-*>` patterns, prevents false positive validation
+    - [x] **VALIDATION SUCCESSFUL**: Multi-commit validation demonstrates consistent behavior - HEAD shows graceful degradation, HEAD~2/3/4 extract quality dialogue
+    - [ ] **QUALITY REFINEMENTS NEEDED**: Dialogue optimization - deduplication logic needed (HEAD~2 repetitive quotes), AI context addition for clarity (HEAD~3 filtering discussions)
+    - [ ] **HUMAN VALIDATION REQUIRED**: User review of dialogue quality across commits after refinements complete
     - [ ] Test-mode PRD filtering implementation and validation
   - [ ] **M2.2c**: Technical Decisions section - initial prompt → refinement → test harness → validation → implementation
     - [ ] Initial prompt and refinement
@@ -931,5 +998,33 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.2a Status**: ✅ COMPLETE - Summary section meets all quality and robustness requirements for production use
 
 **Next Session Priority**: Implement M2.2b Development Dialogue section using summary-guided extraction approach
+
+### 2025-08-29 (Session 6): M2.2b Development Dialogue - System Artifact Filtering Fix and Validation Success
+**Duration**: ~3 hours  
+**Focus**: Resolving critical system artifact filtering bug and completing core M2.2b implementation with validation
+
+**Completed PRD Items**:
+- [x] **DD-057**: System artifact filtering enhancement - Evidence: Enhanced `isNoisyMessage()` in `context-filter.js` to catch `<local-command-*>` and `<command-*>` patterns, preventing false positive validation
+- [x] **Programmatic human input validation (DD-054)** - Evidence: Length-based validation (≥20 chars) implemented and tested successfully across multiple commits
+- [x] **Multi-commit validation pipeline** - Evidence: HEAD (graceful degradation), HEAD~2/HEAD~3 (quality extraction), HEAD~4 (large sessions) all validated successfully
+- [x] **Token management architecture consistency** - Evidence: Applied context filtering to dialogue generator, resolving large session processing issues
+
+**Critical Bug Resolution**:
+- **Problem**: System artifacts like `<local-command-stdout></local-command-stdout>` (45 chars) bypassed context filtering, causing false positive validation and fabricated dialogue generation instead of graceful degradation
+- **Root Cause**: `isNoisyMessage()` filter patterns didn't catch local command artifacts
+- **Solution**: Enhanced filtering patterns to include `<local-command` and `<command-` patterns
+- **Result**: HEAD commit now correctly returns "No significant dialogue found" instead of fabricating quotes
+
+**Validation Results**:
+- **HEAD**: Graceful degradation works correctly (both with/without PRD context)
+- **HEAD~2**: Quality human dialogue extracted with meaningful strategic discussions  
+- **HEAD~3**: Good dialogue extraction capturing authentic problem-solving moments
+- **HEAD~4**: Large sessions process without token errors, quality extraction maintained
+
+**Architecture Success**: Summary-guided dialogue extraction proven effective - uses summary narrative to guide meaningful quote selection, overcoming AI's verbatim extraction resistance documented in comprehensive research.
+
+**Remaining Quality Refinements**: Deduplication logic needed (HEAD~2 repetitive quotes), AI context addition for clarity (HEAD~3 filtering discussions), overall quality optimization for final polish.
+
+**Next Session Priority**: Complete dialogue quality refinements and final M2.2b validation
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete

@@ -1,52 +1,57 @@
 /**
  * Development Dialogue Section Prompt
  * 
- * Extracts interesting quotes and exchanges from development sessions
- * to capture valuable learning moments and authentic development dialogue.
+ * Extracts supporting human quotes based on summary content
+ * using the summary-guided extraction approach.
  */
 
 export const dialoguePrompt = `
-CRITICAL: The quality of the entire development journal depends on getting this dialogue extraction exactly right. This is the most important section for capturing authentic development experience.
+CRITICAL: The quality of the entire development journal depends on getting this dialogue extraction exactly right. This section captures the authentic human voice that brought the development session to life.
 
 Overall Goal:
-Your goal is to capture authentic dialogue that shows how the development session actually unfolded, with a focus on the human developer's reasoning, decision-making, and authentic voice.
+Your goal is to find human quotes from the chat messages that illustrate, support, or provide authentic voice to the points made in the development session summary. Use the summary as your guide for what matters.
 
-Step 1: Extract all human quotes
-Output every message from the human verbatim.
-Preserve original text exactly.
-Do not paraphrase, shorten, or omit.
+Summary-Guided Approach:
+You have been provided with a summary of this development session. Use it as your roadmap to identify what was important in this session, then find human quotes that show how those important moments actually unfolded in conversation.
 
-Step 2: Select ONLY the most interesting 3–8 quotes
-This is a curated selection, not a comprehensive list.
-Find 3-8 quotes (not necessarily the maximum).
-Only include quotes that are genuinely compelling.
-It's better to have 3 great quotes than 8 mediocre ones.
+Step 1: Understand the summary context
+Read the provided summary carefully.
+Identify the key points, decisions, discoveries, and challenges mentioned.
+These are your targets for finding supporting quotes.
 
-Review the full set from Step 1.
-Pick only the absolute best quotes that show:
-- Human reasoning, decision-making, or technical insight
-- Challenges the AI or corrects it
-- Expresses frustration, excitement, or discovery
-- Contains meaningful questions that led to progress
-- Marks a turning point or course correction
-- Captures the developer's authentic voice, personality, or genuine reactions
-- Anything else that reveals interesting human moments from the development session
+Step 2: Find supporting human quotes
+Look through the chat messages for messages where type: "user" - these contain the human developer's actual input.
 
-Choose quotes that capture humanness, not just process.
-Discard everything else: filler, mechanical instructions, greetings, confirmations, and routine responses.
+Find user messages that:
+- Illustrate decisions or reasoning mentioned in the summary
+- Show the human's authentic reaction to challenges described
+- Demonstrate the problem-solving process that led to outcomes in the summary  
+- Capture the human's voice during key moments identified in the summary
+- Reveal the human's thought process behind actions summarized
 
-Step 3: Add AI context where useful
-For each chosen human quote, decide if nearby AI messages help the reader understand context.
-If yes, include the relevant assistant quote(s) immediately before or after the human's message.
-Truncate long assistant replies using [...] but keep the part that explains the human's point or shows the back-and-forth.
-Never fabricate or reword assistant messages.
+AVOID simple confirmations and commands like "yes", "ok", "git push", "run the tests", or other routine responses.
 
-Step 4: Final output
-Present the selected dialogue in chronological order.
-Use clear spacing between different dialogue segments.
-Group human + assistant quotes together where context is added.
-Output only the verbatim dialogue excerpts.
-Do not add commentary or explanations.
+Extract 3-8 quotes MAXIMUM. Quality over quantity.
+Only include quotes that genuinely support or illustrate the summary narrative.
+If no user messages support the summary narrative, return "No significant dialogue found for this development session".
+
+Step 3: Verify authenticity
+Every human quote must be EXACTLY verbatim from the chat messages.
+Do not paraphrase, shorten, edit, or "improve" any human text.
+If a quote needs context to be understood, add AI context in Step 4.
+If a quote can't be extracted verbatim, skip it entirely.
+
+Step 4: Add AI context where essential
+For each human quote, decide if nearby AI messages are essential for understanding.
+If yes, include relevant assistant quotes immediately before or after.
+Use [...] to truncate long assistant replies, keeping only the essential part.
+Do not paraphrase, rephrase, or fabricate any assistant text - only truncate if needed.
+
+Step 5: Final output
+Present quotes in chronological order.
+Format each as shown below.
+No commentary, explanations, or analysis.
+Let the authentic dialogue speak for itself.
 
 Format example:
 > **Human:** "Wait, why is this function returning undefined?"  
@@ -54,8 +59,8 @@ Format example:
 
 > **Human:** "Actually, let's try a different approach - this is getting too complex."
 
-> **Human:** "I'm frustrated with this bug - it worked yesterday and I haven't changed anything."
+> **Human:** "I think I see the issue now - we're overthinking this completely."
 
 Reminder:
-The final output should reflect how the development session actually unfolded, highlighting the human developer's authentic voice and expertise while showing the AI's role only where it adds clarity. The success of the entire journal system depends on extracting these authentic moments accurately.
+Use the summary as your guide to find quotes that matter. Extract only verbatim text. The goal is to let readers hear the human developer's authentic voice during the key moments that shaped this development session.
 `.trim();

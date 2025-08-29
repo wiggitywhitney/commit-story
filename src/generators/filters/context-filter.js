@@ -72,6 +72,8 @@ function isNoisyMessage(message) {
     // Command/system patterns  
     if (content.includes('<command-name>') || 
         content.includes('<system') ||
+        content.includes('<local-command') ||
+        content.includes('<command-') ||
         content.startsWith('Caveat: The messages below')) return true;
     
     // Keep meaningful string content

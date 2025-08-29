@@ -114,9 +114,17 @@ async function main() {
       console.log(result);
       console.log('━'.repeat(60));
     } else if (section === 'dialogue') {
-      console.log('🤖 Generating development dialogue...');
-      result = await generateDevelopmentDialogue(context);
+      console.log('🤖 Generating summary first (required for dialogue extraction)...');
+      const summary = await generateSummary(context);
       
+      console.log('🤖 Generating development dialogue using summary guidance...');
+      result = await generateDevelopmentDialogue(summary, context.chatMessages);
+      
+      console.log('');
+      console.log('📝 Summary (used as guidance):');
+      console.log('─'.repeat(60));
+      console.log(summary);
+      console.log('─'.repeat(60));
       console.log('');
       console.log('💬 Generated Development Dialogue:');
       console.log('━'.repeat(60));

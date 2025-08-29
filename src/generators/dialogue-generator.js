@@ -1,28 +1,44 @@
 /**
  * Development Dialogue Generator
  * 
- * Extracts interesting quotes and exchanges from development sessions
- * using OpenAI with the simple dialogue prompt architecture.
+ * Extracts supporting human quotes based on summary content
+ * using the summary-guided extraction approach.
  */
 
 import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { dialoguePrompt } from './prompts/sections/dialogue-prompt.js';
-import { getAvailableDataDescription } from '../integrators/context-integrator.js';
+import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { filterContext } from './filters/context-filter.js';
 
 /**
- * Generates development dialogue for a development session
+ * Generates development dialogue for a development session using summary-guided extraction
  * 
- * @param {Object} context - The context object from context integrator
- * @param {Object} context.commit - Git commit data
- * @param {Array} context.chatMessages - Chat messages from development session
- * @param {Object|null} context.previousCommit - Previous commit data or null
+ * @param {string} summary - Generated summary of the development session
+ * @param {Array} chatMessages - Chat messages from development session  
  * @returns {Promise<string>} Generated dialogue section
  */
-export async function generateDevelopmentDialogue(context) {
-  // Apply intelligent context filtering (DD-024)
-  const filteredContext = filterContext(context);
+export async function generateDevelopmentDialogue(summary, chatMessages) {
+  // Apply context filtering to manage token limits (same as summary generator)
+  const mockContext = { chatMessages: chatMessages };
+  const filteredContext = filterContext(mockContext);
+  
+  // Extract clean text from filtered messages for AI processing
+  const cleanMessages = extractTextFromMessages(filteredContext.chatMessages);
+  
+  // Check if any user messages are substantial enough for dialogue extraction (DD-054)
+  const hasSubstantialInput = cleanMessages.some(msg => {
+    if (msg.type === 'user') {
+      const content = msg.message?.content || '';
+      return content.length >= 20;
+    }
+    return false;
+  });
+  
+  // Return early if no substantial user input exists
+  if (!hasSubstantialInput) {
+    return "No significant dialogue found for this development session";
+  }
   
   // Create fresh OpenAI instance (DD-016: prevent context bleeding)
   const openai = new OpenAI({
@@ -30,48 +46,42 @@ export async function generateDevelopmentDialogue(context) {
   });
 
   // Build the complete prompt (DD-018: compose guidelines + section prompt)
-  const availableDataDescription = getAvailableDataDescription();
   const guidelines = getAllGuidelines();
   
   const systemPrompt = `
-${availableDataDescription}
+You have access to:
+1. A summary of this development session (as your guide for what matters)
+2. Chat messages from the development session (as your source for quotes)
 
 ${dialoguePrompt}
 
 ${guidelines}
   `.trim();
 
-  // Prepare the filtered context for the AI
+  // Prepare the context for AI processing
   const contextForAI = {
-    git: {
-      hash: filteredContext.commit.hash,
-      message: filteredContext.commit.message,
-      author: filteredContext.commit.author,
-      timestamp: filteredContext.commit.timestamp,
-      diff: filteredContext.commit.diff,
-    },
-    chat: filteredContext.chatMessages.map(msg => ({
-      type: msg.type,
-      content: msg.message?.content,
-      timestamp: msg.timestamp,
-    }))
+    summary: summary,
+    chat: cleanMessages
   };
 
+  const requestPayload = {
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: systemPrompt
+      },
+      {
+        role: 'user', 
+        content: `Extract supporting dialogue for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`
+      }
+    ],
+    temperature: 0.7,
+  };
+
+
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user', 
-          content: `Extract interesting dialogue from this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`
-        }
-      ],
-      temperature: 0.7,
-    });
+    const completion = await openai.chat.completions.create(requestPayload);
 
     return completion.choices[0].message.content.trim();
 
