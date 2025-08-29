@@ -15,14 +15,44 @@
 import { gatherContextForCommit } from './src/integrators/context-integrator.js';
 import { generateSummary } from './src/generators/summary-generator.js';
 
+/**
+ * Filters PRD files from git diff for testing prompt robustness
+ * @param {string} diff - Original git diff content
+ * @returns {string} Diff with PRD file changes removed
+ */
+function filterPrdFromDiff(diff) {
+  const lines = diff.split('\n');
+  const filteredLines = [];
+  let skipMode = false;
+  
+  for (const line of lines) {
+    // Check if we're starting a new file diff
+    if (line.startsWith('diff --git')) {
+      // Check if this is a PRD file
+      skipMode = line.includes('prds/') || line.includes('.md') && line.toLowerCase().includes('prd');
+    }
+    
+    // If we're not in skip mode, keep the line
+    if (!skipMode) {
+      filteredLines.push(line);
+    }
+  }
+  
+  return filteredLines.join('\n');
+}
+
 async function main() {
-  const [,, commitRef, section] = process.argv;
+  const args = process.argv.slice(2);
+  const commitRef = args[0];
+  const section = args[1];
+  const noPrdFlag = args.includes('--no-prd');
   
   if (!commitRef || !section) {
-    console.error('Usage: node test-prompt.js <commit> <section>');
+    console.error('Usage: node test-prompt.js <commit> <section> [--no-prd]');
     console.error('Examples:');
     console.error('  node test-prompt.js HEAD summary');
     console.error('  node test-prompt.js HEAD~1 summary');
+    console.error('  node test-prompt.js HEAD summary --no-prd');
     process.exit(1);
   }
   
@@ -32,12 +62,18 @@ async function main() {
   }
   
   try {
-    console.log(`🔄 Testing ${section} prompt with commit ${commitRef}...`);
+    console.log(`🔄 Testing ${section} prompt with commit ${commitRef}${noPrdFlag ? ' (excluding PRD)' : ''}...`);
     console.log('');
     
     // Gather context for the commit
     console.log('📊 Gathering context...');
     const context = await gatherContextForCommit();
+    
+    // Apply PRD filtering if requested
+    if (noPrdFlag) {
+      console.log('🚫 Filtering PRD files from context...');
+      context.commit.diff = filterPrdFromDiff(context.commit.diff);
+    }
     
     console.log(`✅ Found ${context.chatMessages.length} chat messages`);
     console.log(`✅ Commit: ${context.commit.hash.substring(0, 8)} - ${context.commit.message}`);
