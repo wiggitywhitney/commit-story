@@ -26,7 +26,7 @@ Find user messages that:
 - Illustrate decisions or reasoning mentioned in the summary
 - Show the human's authentic reaction to challenges described
 - Demonstrate the problem-solving process that led to outcomes in the summary  
-- Capture the human's voice during key moments identified in the summary
+- Capture the human's voice and mood during key moments identified in the summary
 - Reveal the human's thought process behind actions summarized
 
 AVOID simple confirmations and commands like "yes", "ok", "git push", "run the tests", or other routine responses.
@@ -41,25 +41,42 @@ Do not paraphrase, shorten, edit, or "improve" any human text.
 If a quote needs context to be understood, add AI context in Step 4.
 If a quote can't be extracted verbatim, skip it entirely.
 
-Step 4: Add AI context where essential
-For each human quote, decide if nearby AI messages are essential for understanding.
-If yes, include relevant assistant quotes immediately before or after.
-Use [...] to truncate long assistant replies, keeping only the essential part.
-Do not paraphrase, rephrase, or fabricate any assistant text - only truncate if needed.
+Step 4: Add AI context where helpful (STRONGLY ENCOURAGED)
+For each human quote, look for nearby AI messages that would add value. Most human quotes benefit from AI context showing:
+- What the AI suggested that the human responded to
+- AI validation, agreement, or disagreement with human ideas
+- Technical explanations that informed the human's thinking
+- Clarifying exchanges that led to the human's conclusion
+- Questions or prompts that sparked the human's response
 
-Step 5: Final output
+When adding AI context (do this generously):
+- Include relevant assistant quotes immediately before or after the human quote
+- Use [...] to truncate long assistant replies, keeping only the relevant part
+- Do not paraphrase, rephrase, or fabricate any assistant text - only truncate if needed
+
+Step 5: Quality check before final output
+Before presenting your final dialogue, verify:
+✓ No duplicate or repetitive human quotes (each human quote should be unique)
+✓ Quotes are in chronological order from the chat
+✓ Each human quote genuinely supports the summary narrative
+✓ AI context is included where it adds value for understanding
+✓ All quotes are exactly verbatim from the source messages
+✓ 3-8 quotes maximum - quality over quantity
+
+Step 6: Final output
 Present quotes in chronological order.
+Separate each quote block with an empty line.
+IMPORTANT: When human and AI messages are part of the same conversational exchange, do NOT put empty lines between them.
+Always use "Human:" not "User:" in the labels.
 Format each as shown below.
 No commentary, explanations, or analysis.
 Let the authentic dialogue speak for itself.
 
-Format example:
-> **Human:** "Wait, why is this function returning undefined?"  
+Format examples (DO NOT include these examples in your actual output):
+> **Human:** "Wait, why is this function returning undefined?"
 > **Assistant:** "[...] That happens because the variable is declared inside the block."
 
 > **Human:** "Actually, let's try a different approach - this is getting too complex."
-
-> **Human:** "I think I see the issue now - we're overthinking this completely."
 
 Reminder:
 Use the summary as your guide to find quotes that matter. Extract only verbatim text. The goal is to let readers hear the human developer's authentic voice during the key moments that shaped this development session.
