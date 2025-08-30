@@ -10,6 +10,7 @@ import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { dialoguePrompt } from './prompts/sections/dialogue-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { filterContext } from './filters/context-filter.js';
+import { hasSubstantialUserInput } from '../utils/message-validation.js';
 
 /**
  * Generates development dialogue for a development session using summary-guided extraction
@@ -27,16 +28,7 @@ export async function generateDevelopmentDialogue(summary, chatMessages) {
   const cleanMessages = extractTextFromMessages(filteredContext.chatMessages);
   
   // Check if any user messages are substantial enough for dialogue extraction (DD-054)
-  const hasSubstantialInput = cleanMessages.some(msg => {
-    if (msg.type === 'user') {
-      const content = msg.message?.content || '';
-      return content.length >= 20;
-    }
-    return false;
-  });
-  
-  // Return early if no substantial user input exists
-  if (!hasSubstantialInput) {
+  if (!hasSubstantialUserInput(cleanMessages)) {
     return "No significant dialogue found for this development session";
   }
   

@@ -9,6 +9,7 @@
  * Examples:
  *   node test-prompt.js HEAD summary
  *   node test-prompt.js HEAD dialogue
+ *   node test-prompt.js HEAD technical-decisions
  *   node test-prompt.js HEAD~1 summary
  *   node test-prompt.js abc1234 summary
  */
@@ -16,6 +17,7 @@
 import { gatherContextForCommit } from './src/integrators/context-integrator.js';
 import { generateSummary } from './src/generators/summary-generator.js';
 import { generateDevelopmentDialogue } from './src/generators/dialogue-generator.js';
+import { generateTechnicalDecisions } from './src/generators/technical-decisions-generator.js';
 
 /**
  * Filters PRD files from git diff for testing prompt robustness
@@ -68,13 +70,14 @@ async function main() {
     console.error('Examples:');
     console.error('  node test-prompt.js HEAD summary');
     console.error('  node test-prompt.js HEAD dialogue');
+    console.error('  node test-prompt.js HEAD technical-decisions');
     console.error('  node test-prompt.js HEAD~1 summary');
     console.error('  node test-prompt.js HEAD summary --no-prd');
     process.exit(1);
   }
   
-  if (section !== 'summary' && section !== 'dialogue') {
-    console.error('Only "summary" and "dialogue" sections are currently implemented');
+  if (section !== 'summary' && section !== 'dialogue' && section !== 'technical-decisions') {
+    console.error('Only "summary", "dialogue", and "technical-decisions" sections are currently implemented');
     process.exit(1);
   }
   
@@ -127,6 +130,15 @@ async function main() {
       console.log('─'.repeat(60));
       console.log('');
       console.log('💬 Generated Development Dialogue:');
+      console.log('━'.repeat(60));
+      console.log(result);
+      console.log('━'.repeat(60));
+    } else if (section === 'technical-decisions') {
+      console.log('🤖 Generating technical decisions...');
+      result = await generateTechnicalDecisions(context);
+      
+      console.log('');
+      console.log('🔧 Generated Technical Decisions:');
       console.log('━'.repeat(60));
       console.log(result);
       console.log('━'.repeat(60));

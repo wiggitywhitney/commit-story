@@ -422,6 +422,12 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Maintains consistency with existing filtering architecture; prevents system artifacts from reaching any generator; treats system artifacts as non-human content equivalent to tool calls.  
 **Impact**: Critical for programmatic human input validation accuracy; prevents false positive detection of substantial dialogue; ensures graceful degradation works correctly on sparse input commits.
 
+### DD-058: Technical Decisions Section Implementation Approach
+**Decision**: Technical Decisions section will analyze code diffs and cleaned chat messages to document technical decisions made during the development session, with clear distinction between implemented changes and discussed-only ideas.  
+**Rationale**: Provides valuable "why" documentation for future reference while preventing fabrication through evidence-based approach. Uses same proven input pipeline as Summary section (code diffs + filtered chat) with fresh AI invocation to maintain system consistency.  
+**Key Requirements**: Must distinguish between implemented changes (verified by code diffs) versus ideas that were only discussed; document decisions, reasoning, and trade-offs only when explicitly present in chat conversations or code; include graceful degradation for commits without explicit technical decisions.  
+**Impact**: Completes the four-section journal structure (Summary, Development Dialogue, Technical Decisions, Changes) with consistent architecture and evidence-based content extraction approach.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -469,11 +475,13 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] **HUMAN VALIDATION COMPLETE**: User review of dialogue quality confirmed - Evidence: User expressed satisfaction ("I'm happy with that output!") after testing HEAD~2, HEAD~3, HEAD~4 commits showing quality dialogue extraction with proper AI context and no repetition
     - [x] **Test-mode PRD filtering implementation and validation complete** - Evidence: Successfully tested `--no-prd` flag with dialogue generator across multiple commits, properly filters PRD references and nullifies commit messages while maintaining quality output
   - [ ] **M2.2c**: Technical Decisions section - initial prompt → refinement → test harness → validation → implementation
-    - [ ] Initial prompt and refinement
-    - [ ] Generator implementation  
+    - [x] Initial prompt and refinement (based on DD-058 vision) - Evidence: Collaborative prompt development with PURPOSE/CRITICAL structure, DECISION: format, flexible bullet reasoning, analysis steps
+    - [x] Generator implementation with code diff + filtered chat input - Evidence: Created `technical-decisions-generator.js` following established architecture patterns with context filtering and OpenAI integration
+    - [x] Implemented vs discussed-only distinction logic - Evidence: Analysis steps guide cross-referencing chat discussions with code changes, proper status marking in output format
+    - [x] Graceful degradation for commits without explicit technical decisions - Evidence: Shared validation utility with ≥20 character check, returns appropriate fallback message for sparse commits
     - [ ] Technical pipeline validation (system runs without errors, gpt-4o-mini compatible)
-    - [ ] **HUMAN VALIDATION REQUIRED**: User must review actual generated output samples before approval
-    - [ ] Prompt refinement based on user quality assessment
+    - [x] **HUMAN VALIDATION COMPLETE**: User declared prompt "a success" after comprehensive testing - Evidence: Tested HEAD, HEAD~1, HEAD~2, HEAD~3 commits with --no-prd flag, user approval confirmed
+    - [x] Prompt refinement based on user quality assessment - Evidence: Multiple refinement iterations (format changes, brevity improvements, DECISION: labels, flexible bullets, brief phrases)
     - [ ] Test-mode PRD filtering implementation and validation
   - [ ] **M2.2d**: Integration of all three sections into complete AI generator module
 - [ ] **M2.3**: Create git post-commit hook installation system
@@ -1052,5 +1060,61 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.2b COMPLETE**: Development Dialogue section ready for production use with all quality issues resolved
 
 **Next Session Priority**: M2.2c Technical Decisions section - initial prompt development and refinement
+
+### 2025-08-30 (Session 2): Technical Decisions Section Planning and PRD Documentation
+**Duration**: Strategic discussion  
+**Focus**: Defining Technical Decisions section vision and updating PRD requirements
+
+**Completed PRD Items**:
+- [x] **DD-058**: Technical Decisions Section Implementation Approach - Evidence: Vision documented with evidence-based approach requiring distinction between implemented vs discussed-only decisions
+- [x] **M2.2c Enhanced Requirements** - Evidence: Milestone updated with specific implementation approach, graceful degradation requirements, and validation criteria consistent with other sections
+
+**Technical Decisions Vision Confirmed**:
+- **Input**: Code diffs + filtered chat messages (same pipeline as Summary section)
+- **Output**: Technical decisions with evidence-based reasoning and trade-offs
+- **Key Requirement**: Clear distinction between implemented changes (verified by code) vs ideas that were only discussed
+- **Architecture**: Fresh AI invocation consistent with other generators, graceful degradation for commits without explicit decisions
+
+**Strategic Insights**:
+- **Anti-hallucination approach**: Vision aligns with existing guidelines that have proven effective across Summary and Development Dialogue sections
+- **Evidence-based validation**: Test-first approach will reveal what works through real data rather than theoretical concerns
+- **Architectural consistency**: Uses same proven input pipeline and fresh AI invocation pattern as other sections
+
+**Design Philosophy**: Build and test with real data rather than over-engineering theoretical solutions - consistent with empirical development approach that has proven successful throughout the project
+
+**M2.2c Planning Complete**: Vision documented, requirements updated, ready for initial prompt development and implementation phase
+
+**Next Session Priority**: Begin M2.2c implementation with initial prompt development based on DD-058 requirements
+
+### 2025-08-30 (Session 3): M2.2c Technical Decisions Implementation and Architectural Improvements Complete
+**Duration**: ~4 hours  
+**Focus**: Technical Decisions section implementation and shared validation utility refactoring
+
+**Completed PRD Items**:
+- [x] **M2.2c Core Implementation**: Technical Decisions prompt and generator development - Evidence: Complete prompt with DECISION: format, flexible bullet structure, analysis steps for evidence-based extraction
+- [x] **Human Validation Success**: User declared prompt "a success" after comprehensive testing - Evidence: Tested across multiple commits (HEAD, HEAD~1, HEAD~2, HEAD~3) with --no-prd flag validation
+- [x] **Prompt Refinement Complete**: Multiple collaborative iterations - Evidence: Format improvements (DECISION: labels), brevity requirements (brief phrases), flexible bullet counts, analysis steps for rigor
+
+**Architectural Improvements Completed**:
+- **Shared Validation Utility**: Created `src/utils/message-validation.js` with `hasSubstantialUserInput()` function for consistent ≥20 character validation across all generators
+- **Code Consistency Enhancement**: Refactored both dialogue and technical decisions generators to use shared validation, eliminating inconsistent logic and arbitrary keyword filtering
+- **Maintainability Improvement**: Single source of truth for validation criteria, easier maintenance and consistent behavior system-wide
+
+**Technical Decisions Section Achievements**:
+- **Evidence-based approach**: Analysis steps guide systematic extraction from chat and code verification
+- **Implemented vs Discussed-only distinction**: Successfully demonstrated in testing with proper status categorization  
+- **Graceful degradation**: Appropriate handling of sparse input commits using shared validation
+- **Format consistency**: DECISION: labels with flexible bullet reasoning, brief phrases, optional tradeoffs
+- **External reader accessibility**: Automatic composition with established guidelines system
+
+**Validation Results**:
+- **Format validation**: DECISION: structure working correctly across all test commits
+- **Content quality**: Authentic technical decisions extracted with proper reasoning breakdown
+- **Graceful degradation**: HEAD~2 correctly returned "No significant technical decisions documented"
+- **Status distinction**: HEAD~1 showed both Implemented and Discussed-only decisions appropriately
+
+**M2.2c Progress**: 75% complete (6 of 8 items) - Core implementation and validation complete, pipeline validation and PRD filtering remaining
+
+**Next Session Priority**: Complete remaining M2.2c validation tasks and begin M2.2d integration of all three journal sections
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
