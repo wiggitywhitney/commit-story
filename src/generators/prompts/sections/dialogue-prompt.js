@@ -18,9 +18,10 @@ Step 1: Understand the summary context
 Read the provided summary carefully.
 Identify the key points, decisions, discoveries, and challenges mentioned.
 These are your targets for finding supporting quotes.
+Note: The chat data contains messages with type: "user" (human input) and type: "assistant" (AI responses).
 
 Step 2: Find supporting human quotes
-Look through the chat messages for messages where type: "user" - these contain the human developer's actual input.
+Look through the chat messages for messages where type: "user" - ONLY these messages contain the human developer's actual input. Messages where type: "assistant" are AI responses and must NEVER be attributed to the human.
 
 Find user messages that:
 - Illustrate decisions or reasoning mentioned in the summary
@@ -31,7 +32,7 @@ Find user messages that:
 
 AVOID simple confirmations and commands like "yes", "ok", "git push", "run the tests", or other routine responses.
 
-Extract 3-8 quotes MAXIMUM. Quality over quantity.
+Extract 1-8 quotes maximum. Quality over quantity.
 Only include quotes that genuinely support or illustrate the summary narrative.
 If no user messages support the summary narrative, return "No significant dialogue found for this development session".
 
@@ -61,6 +62,7 @@ Before presenting your final dialogue, verify:
 ✓ Each human quote genuinely supports the summary narrative
 ✓ AI context is included where it adds value for understanding
 ✓ All quotes are exactly verbatim from the source messages
+✓ All human quotes come from messages with type: "user" ONLY
 ✓ 3-8 quotes maximum - quality over quantity
 
 Step 6: Final output

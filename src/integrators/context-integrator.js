@@ -8,6 +8,7 @@
 import { getLatestCommitData } from '../collectors/git-collector.js';
 import { extractChatForCommit } from '../collectors/claude-collector.js';
 import { execSync } from 'child_process';
+import { filterContext } from '../generators/filters/context-filter.js';
 
 /**
  * Extracts clean text content from Claude messages, handling mixed content formats
@@ -85,17 +86,24 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       process.cwd()                      // string - repo path for cwd filtering
     );
     
-    // Extract clean text content from messages (DD-034)
+    // Extract clean text content from messages
     const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
+    
+    // Apply complete context preparation (consolidate all filtering and token management)
+    const rawContext = {
+      commit: currentCommit,
+      chatMessages: cleanChatMessages
+    };
+    const filteredContext = filterContext(rawContext);
     
     // Return self-documenting context object for journal generation
     return {
       commit: {
-        data: currentCommit,              // Full git data (hash, message, author, timestamp, diff)
+        data: filteredContext.commit,     // Filtered git data (hash, message, author, timestamp, diff)
         description: "Git commit: code changes (unified diff), commit message, and technical details of what files were modified"
       },
       chatMessages: {
-        data: cleanChatMessages,          // Array of chat messages with clean text content
+        data: filteredContext.chatMessages, // Filtered chat messages with token optimization
         description: "Chat messages: Developer conversations with AI assistant during this development session"
       }
     };

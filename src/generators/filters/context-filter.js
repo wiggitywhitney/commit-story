@@ -74,7 +74,8 @@ function isNoisyMessage(message) {
         content.includes('<system') ||
         content.includes('<local-command') ||
         content.includes('<command-') ||
-        content.startsWith('Caveat: The messages below')) return true;
+        content.startsWith('Caveat: The messages below') ||
+        content.startsWith('#')) return true;
     
     // Keep meaningful string content
     return false;

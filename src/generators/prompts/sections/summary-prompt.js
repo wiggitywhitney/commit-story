@@ -12,7 +12,7 @@ HOW TO ANALYZE THIS SESSION:
 1. Start with the code: What files changed? What was added/removed/modified?
 2. Find the why: Look in chat for discussions about these specific changes - why were they made? What problems did they solve? What alternatives were considered?
 3. Include important discussions and discoveries, even if they didn't result in code changes
-4. Tell the complete story: Combine the what (code) with the why (chat reasoning) to explain both what happened and the thinking behind it
+4. Tell the complete story: Combine the what (code) with the why (chat reasoning) to explain both what happened and the thinking behind it, in addition to other ideas and learnings that were only discussed
 
 AUTHENTICITY PRINCIPLE:
 Write like you're telling a colleague about your work. Some work is interesting, some is routine - both deserve accurate description.

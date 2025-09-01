@@ -79,7 +79,14 @@ ${dialoguePrompt}
   try {
     const completion = await openai.chat.completions.create(requestPayload);
 
-    return completion.choices[0].message.content.trim();
+    const dialogue = completion.choices[0].message.content.trim();
+    
+    // Clean up formatting in assistant quotes for readability
+    const cleanedDialogue = dialogue
+      .replace(/\\"/g, '"')        // Remove escape characters from quotes
+      .replace(/\\n/g, '\n');      // Convert literal \n to actual newlines
+    
+    return cleanedDialogue;
 
   } catch (error) {
     console.error('Error generating development dialogue:', error.message);
