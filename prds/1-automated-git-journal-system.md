@@ -428,6 +428,13 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Key Requirements**: Must distinguish between implemented changes (verified by code diffs) versus ideas that were only discussed; document decisions, reasoning, and trade-offs only when explicitly present in chat conversations or code; include graceful degradation for commits without explicit technical decisions.  
 **Impact**: Completes the four-section journal structure (Summary, Development Dialogue, Technical Decisions, Changes) with consistent architecture and evidence-based content extraction approach.
 
+### DD-059: Context Data Optimization with Generator-Specific Preparation
+**Decision**: Implement generator-specific context preparation functions that filter unneeded data before AI processing while preserving the unified context object interface.  
+**Problem**: Current architecture has diverged from DD-017's unified context vision, with dialogue generator using mock objects to work around interface requirements and inconsistent data filtering patterns across generators.  
+**Solution**: All generators continue receiving full context object (preserves DD-017); each generator uses dedicated preparation function that filters out unneeded data; dialogue preparation explicitly removes git diff to avoid wasted tokens; summary and Technical Decisions preparation keeps git diff as needed; eliminates mock object anti-pattern.  
+**Architecture**: `Raw Context → Generator-Specific Preparation → AI Processing` where `prepareContextForSummary()` includes diff + chat, `prepareContextForDialogue()` excludes diff (chat only), `prepareContextForTechnicalDecisions()` includes diff + chat.  
+**Impact**: Resolves architectural inconsistency while optimizing token costs; maintains interface consistency for future extensibility; eliminates mock object anti-pattern; creates explicit contract about what data each generator actually uses.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -1034,6 +1041,20 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.2b Status**: ✅ COMPLETE - All quality refinements implemented and validated, human approval confirmed
 
 **Next Session Priority**: M2.2c Technical Decisions section implementation
+
+### 2025-09-01: Context Architecture Planning and Strategic Decision Documentation
+**Duration**: ~1 hour
+**Focus**: Architectural analysis and design decision planning (no implementation)
+
+**Strategic Planning Complete**:
+- [x] **DD-059 Documentation**: Context Data Optimization strategy - Evidence: Architectural analysis complete, design decision documented with rationale and implementation approach
+
+**Implementation Work Identified**:
+- Context preparation functions need implementation
+- Mock object anti-pattern needs elimination
+- Generator-specific data filtering architecture needs development
+
+**Next Session Priority**: Complete M2.2c validation OR implement DD-059 context architecture improvements
 
 ### 2025-08-30: M2.2b Development Dialogue Quality Refinements Complete
 **Duration**: ~3 hours  
