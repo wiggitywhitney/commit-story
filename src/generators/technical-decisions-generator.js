@@ -58,14 +58,6 @@ ${guidelines}
     chat: cleanMessages
   };
 
-  // DEBUG: Log what the generator sees
-  console.log('\n=== TECHNICAL DECISIONS GENERATOR DEBUG ===');
-  console.log('1. SELECTED CONTEXT:');
-  console.log(JSON.stringify(selected, null, 2));
-  console.log('\n2. FINAL AI PROMPT:');
-  console.log('System:', systemPrompt);
-  console.log('\nUser:', `Here is the development session data:\n\n${JSON.stringify(contextForAI, null, 2)}`);
-  console.log('=== END DEBUG ===\n');
 
   try {
     const response = await openai.chat.completions.create({

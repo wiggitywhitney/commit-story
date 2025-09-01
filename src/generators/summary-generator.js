@@ -55,14 +55,6 @@ ${guidelines}
     }))
   };
 
-  // DEBUG: Log what the generator sees
-  console.log('\n=== SUMMARY GENERATOR DEBUG ===');
-  console.log('1. SELECTED CONTEXT:');
-  console.log(JSON.stringify(selected, null, 2));
-  console.log('\n2. FINAL AI PROMPT:');
-  console.log('System:', systemPrompt);
-  console.log('\nUser:', `Generate a summary for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`);
-  console.log('=== END DEBUG ===\n');
 
   const requestPayload = {
     model: 'gpt-4o-mini',
