@@ -94,6 +94,7 @@ Developers lose valuable context about their development decisions and reasoning
 - **TR-019**: Message content normalization - Extract clean text from mixed Claude message formats (string/array) before AI processing to ensure consistent generator input
 - [x] **TR-020**: Multi-commit test capability - Test harness must accept commit parameters to validate prompt consistency across different development session types
 - [x] **TR-021**: Complete PRD context masking - `--no-prd` flag must remove PRD file diffs AND mask PRD references in commit messages to fully test prompt robustness without structured project context
+- [ ] **TR-022**: Chat metadata calculation fixes - Resolve undefined totalMessages, NaN averageMessageLength, and missing maxMessageLength in context metadata system for proper debugging and system introspection
 
 ## Architecture Overview
 
@@ -449,6 +450,43 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rules**: "Extract exactly verbatim, never paraphrase"; "If no supporting quotes exist, return specific message"; "Do not fabricate or combine quotes"; allows human/assistant quote truncation with [...].  
 **Impact**: Eliminates contradictory guidance; dialogue-specific extraction rules prevent fabrication; maintains universal guidelines for content-creating generators.
 
+### DD-062: Context Description Clarity for Human Voice Extraction
+**Decision**: Context descriptions must explicitly clarify that USER messages represent the developer's authentic voice and ASSISTANT messages represent AI responses.  
+**Problem**: First production test revealed AI generators may not distinguish between human developer input and AI assistant responses, leading to inaccurate attribution and fabricated dialogue extraction.  
+**Solution**: Enhance context descriptions to specify "USER messages contain the developer's authentic thoughts, questions, and decisions. ASSISTANT messages contain AI responses and should not be attributed as human dialogue."  
+**Impact**: Enables accurate human voice extraction for Development Dialogue section, prevents misattribution of AI responses as developer quotes.
+
+### DD-063: Hybrid Parallel/Sequential AI Generation Architecture
+**Decision**: Run Summary + Technical Decisions generators in parallel (independent), wait for Summary completion, then run Development Dialogue with Summary result.  
+**Rationale**: Summary-guided dialogue extraction requires Summary as input (DD-038), but Summary and Technical Decisions are independent and can run concurrently for performance optimization.  
+**Architecture**: `Phase 1: Summary + Technical Decisions (parallel) → Phase 2: Wait for Summary → Phase 3: Dialogue with Summary → Phase 4: Wait for all completion`  
+**Impact**: Optimal performance while respecting architectural dependencies; ~33-50% faster than pure sequential execution.
+
+### DD-064: Time-Only Journal Entry Headers with Semantic Commit Labels
+**Decision**: Use time-only entry headers with "Commit:" labels and commit hashes on each section header for enhanced parsing and readability.  
+**Format**: `## 11:45:32 PM EST - Commit: f74d764a` with section headers like `### Summary - f74d764a`  
+**Rationale**: Date context provided by filename (one file per day), semantic clarity for humans unfamiliar with git, improved AI parsing through explicit labeling, visual separation between entries.  
+**Impact**: Major change from original timestamp format; enhanced human/AI readability and parsing accuracy.
+
+### DD-065: Simplified Commit Details Using Existing Context
+**Decision**: Generate Commit Details section from existing git diff content rather than additional git calls, showing files changed, approximate line counts, and first line of commit message.  
+**Rationale**: Avoids architectural inconsistency of collecting file statistics separately; uses already-available diff data; prevents context bloat by not sending file stats to all AI generators.  
+**Implementation**: Parse file names from diff headers, count +/- lines from diff content, extract first line of multi-line commit messages.  
+**Impact**: Clean architecture without redundant git calls; useful archaeological information without complexity overhead.
+
+### DD-066: Generator/Manager Separation of Concerns
+**Decision**: Journal generator returns sections object, journal manager handles all formatting and file operations.  
+**Rationale**: Single responsibility principle - generator focuses on content creation, manager focuses on file formatting and persistence; enables independent evolution of formatting vs generation logic.  
+**Interface**: `generateJournalEntry(context) → {summary, dialogue, technicalDecisions, commitDetails}` then `saveJournalEntry(hash, timestamp, sections) → filePath`  
+**Impact**: Clean architectural boundaries; easier maintenance and testing; formatting changes isolated to manager component.
+
+### DD-067: Production Quality Validation Requirements
+**Decision**: Establish M2.2e milestone for quality refinement with human verification after discovering significant quality issues in first production test.  
+**Problems Identified**: Fabricated dialogue quotes, PRD bureaucracy treated as "technical decisions", verbose summaries focusing on process rather than actual development work.  
+**Root Causes**: Context clarity issues (DD-062), possible --no-prd testing flag impact on real-world generation, insufficient distinction between milestone updates and architectural decisions.  
+**Solution**: Systematic quality refinement including human verification process, context description enhancements, and prompt refinements based on real-world usage patterns.  
+**Impact**: Ensures production system generates authentic, valuable journal entries that accurately reflect development sessions.
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -460,7 +498,7 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 
 ### Phase 2: Core Integration (Week 2)
 - [x] **M2.1**: Implement time-based chat context matching
-- [ ] **M2.2**: Build AI content generation with prompt architecture and OpenAI integration
+- [x] **M2.2**: Build AI content generation with prompt architecture and OpenAI integration - **COMPLETE** ✅ (Quality issues identified in M2.2e)
   - [x] **M2.2a**: Summary section - initial prompt → refinement → test harness → validation → implementation
     - [x] Initial prompt and refinement
     - [x] Test harness development  
@@ -504,7 +542,21 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] **HUMAN VALIDATION COMPLETE**: User declared prompt "a success" after comprehensive testing - Evidence: Tested HEAD, HEAD~1, HEAD~2, HEAD~3 commits with --no-prd flag, user approval confirmed, consistent DECISION: format with proper implemented vs discussed-only distinction
     - [x] Prompt refinement based on user quality assessment - Evidence: Multiple refinement iterations (format changes, brevity improvements, DECISION: labels, flexible bullets, brief phrases)
     - [x] Test-mode PRD filtering implementation and validation - Evidence: --no-prd flag working correctly across all test commits, system operates without structured project context, maintains quality output
-  - [ ] **M2.2d**: Integration of all three sections into complete AI generator module
+  - [x] **M2.2d**: Integration of all three sections into complete AI generator module - **COMPLETE** ✅
+    - [x] Hybrid parallel/sequential execution architecture - Summary + Technical Decisions in parallel, then Dialogue with Summary result
+    - [x] Unified journal generator with proper separation of concerns - generator creates sections, journal-manager handles formatting
+    - [x] Updated journal entry formatting with time-only headers, "Commit:" labels, and commit hashes on each section header
+    - [x] Simplified Commit Details section using existing git context (files from diff headers, line counts from diff content, first line of commit message)
+    - [x] End-to-end pipeline validation from context gathering → section generation → formatted file saving
+    - [x] Production testing completed with quality issues identified requiring M2.2e refinement
+  - [ ] **M2.2e**: Quality refinement and production debugging
+    - [ ] Investigate poor journal quality in first production run (fabricated quotes, PRD bureaucracy as "technical decisions")
+    - [ ] Fix chat metadata calculation errors (undefined totalMessages, NaN averageMessageLength) via TR-022
+    - [ ] Enhance context descriptions to clarify USER=developer, ASSISTANT=AI for accurate human voice extraction (DD-062)
+    - [ ] Analyze impact of --no-prd testing flag on real-world generation quality
+    - [ ] Validate dialogue extraction quality with actual development sessions vs test scenarios
+    - [ ] Technical Decisions prompt refinement to avoid treating milestone updates as architectural decisions
+    - [ ] Human verification of journal entry quality - establish process for reviewing generated entries against actual development sessions
 - [ ] **M2.3**: Create git post-commit hook installation system
 - [ ] **M2.4**: Validate commit → journal entry workflow
 
@@ -1262,5 +1314,42 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.2c Status**: ✅ COMPLETE - Technical Decisions section meets all production quality standards and validation requirements. All three journal sections (Summary, Development Dialogue, Technical Decisions) now complete and ready for M2.2d integration.
 
 **Next Session Priority**: Implement M2.2d integration of all three sections into unified journal generator module
+
+### 2025-09-01 (Session 6): M2.2d Integration Complete with Quality Issues Identified
+**Duration**: ~3 hours  
+**Focus**: Complete integration of all journal sections with production testing revealing critical quality refinement needs
+
+**Completed PRD Items**:
+- [x] **M2.2d Integration Complete**: All three sections successfully integrated into unified journal generator - Evidence: End-to-end pipeline working from context gathering to saved journal files
+- [x] **Hybrid execution architecture**: Summary + Technical Decisions run in parallel, then Dialogue with Summary result - Evidence: Optimal performance while respecting architectural dependencies
+- [x] **Journal formatting redesign**: Time-only headers with "Commit:" labels and commit hashes on each section - Evidence: Enhanced human/AI parsing with semantic clarity
+- [x] **Simplified Commit Details**: Extract file info and line counts from existing git diff rather than additional calls - Evidence: Clean architecture using already-collected data
+- [x] **Generator/Manager separation**: Clean interface between content generation and file formatting - Evidence: Proper separation of concerns maintained
+
+**Technical Architecture Achievements**:
+- **Complete pipeline**: `src/index.js` orchestrates context → generation → formatting → file saving
+- **Production validation**: Successfully generated journal entry at `journal/entries/2025-09/2025-09-01.md`
+- **Performance optimization**: ~33-50% faster than sequential execution through parallel processing
+- **Clean separation**: Generator returns sections object, manager handles all formatting and persistence
+
+**Critical Quality Issues Discovered**:
+- **Fabricated dialogue quotes**: AI generating plausible but inaccurate human quotes despite summary-guided extraction
+- **PRD bureaucracy as technical decisions**: Milestone updates treated as architectural decisions rather than project management
+- **Verbose process-focused summaries**: Emphasis on methodology rather than actual development work performed
+- **Chat metadata bugs**: Undefined totalMessages, NaN averageMessageLength affecting debugging capabilities
+
+**Root Cause Analysis**:
+- **Context clarity deficit**: AI confusion between USER=developer vs ASSISTANT=AI attribution
+- **Testing artifact impact**: Possible --no-prd flag conditioning affecting real-world generation quality
+- **Prompt specificity gaps**: Insufficient distinction between milestone tracking and technical decision-making
+
+**Design Decisions Documented**:
+- **DD-062 through DD-067**: Six new design decisions covering context clarity, execution architecture, formatting, and quality validation requirements
+- **TR-022**: Technical requirement for chat metadata calculation fixes
+- **M2.2e milestone**: Comprehensive quality refinement roadmap with human verification process
+
+**M2.2d Status**: ✅ COMPLETE - Technical integration successful, end-to-end functionality validated, but quality refinement (M2.2e) required before production deployment
+
+**Next Session Priority**: M2.2e quality refinement - investigate and resolve fabricated quotes, PRD bureaucracy categorization, and context clarity issues before proceeding to git hook installation (M2.3)
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete

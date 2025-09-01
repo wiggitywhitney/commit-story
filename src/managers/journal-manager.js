@@ -10,10 +10,14 @@ import { dirname, join } from 'path';
  * Saves a journal entry to the appropriate daily file
  * @param {string} commitHash - Git commit hash
  * @param {string} timestamp - ISO timestamp string
- * @param {string} entryContent - The journal entry content
+ * @param {Object} sections - Object containing all journal sections
+ * @param {string} sections.summary - Generated summary content
+ * @param {string} sections.dialogue - Generated dialogue content  
+ * @param {string} sections.technicalDecisions - Generated technical decisions content
+ * @param {string} sections.commitDetails - Generated commit details content
  * @returns {Promise<string>} - Path to the file where entry was saved
  */
-export async function saveJournalEntry(commitHash, timestamp, entryContent) {
+export async function saveJournalEntry(commitHash, timestamp, sections) {
   const date = new Date(timestamp);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -28,18 +32,59 @@ export async function saveJournalEntry(commitHash, timestamp, entryContent) {
   const dirPath = dirname(filePath);
   await fs.mkdir(dirPath, { recursive: true });
   
-  // Format the entry with header
-  const formattedTimestamp = date.toISOString().slice(0, 19).replace('T', ' ');
-  const shortHash = commitHash.slice(0, 7);
-  
-  const entryHeader = `## ${formattedTimestamp} - Commit ${shortHash}\n\n`;
-  const entryFooter = `\n---\n\n`;
-  const fullEntry = entryHeader + entryContent + entryFooter;
-  
-  // Append to the daily file
-  await fs.appendFile(filePath, fullEntry, 'utf8');
+  // Format entry and append to daily file
+  const formattedEntry = formatJournalEntry(timestamp, commitHash, sections);
+  await fs.appendFile(filePath, formattedEntry, 'utf8');
   
   return filePath;
+}
+
+/**
+ * Formats the complete journal entry
+ * Uses time-only headers since date is provided by filename context
+ * 
+ * @param {string} timestamp - ISO timestamp string
+ * @param {string} commitHash - Git commit hash
+ * @param {Object} sections - All journal sections
+ * @returns {string} Complete formatted journal entry
+ */
+function formatJournalEntry(timestamp, commitHash, sections) {
+  const date = new Date(timestamp);
+  
+  // Format time with user's local timezone
+  const timeString = date.toLocaleTimeString('en-US', {
+    hour12: true,
+    timeZoneName: 'short'
+  });
+  
+  const shortHash = commitHash.substring(0, 8);
+  
+  // Build journal entry with visual separation and four-section structure
+  let entry = '\n\n';  // Newlines for visual separation between entries
+  
+  // Time-only header with commit label
+  entry += `## ${timeString} - Commit: ${shortHash}\n\n`;
+  
+  // Summary section
+  entry += `### Summary - ${shortHash}\n\n`;
+  entry += sections.summary + '\n\n';
+  
+  // Development Dialogue section
+  entry += `### Development Dialogue - ${shortHash}\n\n`;
+  entry += sections.dialogue + '\n\n';
+  
+  // Technical Decisions section  
+  entry += `### Technical Decisions - ${shortHash}\n\n`;
+  entry += sections.technicalDecisions + '\n\n';
+  
+  // Commit Details section
+  entry += `### Commit Details - ${shortHash}\n\n`;
+  entry += sections.commitDetails + '\n\n';
+  
+  // Separator for multiple entries in same day
+  entry += '═══════════════════════════════════════\n\n';
+  
+  return entry;
 }
 
 /**

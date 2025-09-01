@@ -7,6 +7,8 @@
 
 import { config } from 'dotenv';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
+import { generateJournalEntry } from './generators/journal-generator.js';
+import { saveJournalEntry } from './managers/journal-manager.js';
 
 config();
 
@@ -21,13 +23,20 @@ export default async function main() {
     const context = await gatherContextForCommit();
     
     console.log('📊 Context Summary:');
-    console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);'
+    console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
     console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
     
-    // TODO: M2.2 - Pass context to AI content generator
-    // TODO: M2.3 - Save generated content to journal via journal-manager
+    // Generate all journal sections using AI and programmatic content
+    const sections = await generateJournalEntry(context);
     
-    console.log('✅ Context gathering complete - ready for AI processing');
+    // Save the complete journal entry to daily file
+    const filePath = await saveJournalEntry(
+      context.commit.data.hash,
+      context.commit.data.timestamp,
+      sections
+    );
+    
+    console.log(`✅ Journal entry saved to: ${filePath}`);
     
   } catch (error) {
     console.error('❌ Error generating journal entry:', error.message);
