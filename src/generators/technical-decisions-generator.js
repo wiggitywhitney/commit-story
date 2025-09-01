@@ -10,7 +10,6 @@ import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { technicalDecisionsPrompt } from './prompts/sections/technical-decisions-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { selectContext } from './utils/context-selector.js';
-import { hasSubstantialUserInput } from '../utils/message-validation.js';
 
 /**
  * Generates technical decisions documentation for a development session
@@ -27,7 +26,7 @@ export async function generateTechnicalDecisions(context) {
   const cleanMessages = selected.data.chatMessages;
   
   // Check if any user messages are substantial enough for technical decisions analysis
-  if (!hasSubstantialUserInput(cleanMessages)) {
+  if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
     return "No significant technical decisions documented for this development session";
   }
   

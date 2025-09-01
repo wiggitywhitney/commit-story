@@ -48,6 +48,41 @@ export function extractTextFromMessages(messages) {
 }
 
 /**
+ * Calculates metadata about chat messages for context enrichment
+ * 
+ * @param {Array} messages - Array of clean messages from extractTextFromMessages()
+ * @returns {Object} Metadata object with message statistics
+ */
+function calculateChatMetadata(messages) {
+  const userMessages = messages.filter(msg => msg.type === 'user');
+  const assistantMessages = messages.filter(msg => msg.type === 'assistant');
+  
+  const overTwentyCharMessages = userMessages.filter(msg => {
+    const content = msg.message?.content || '';
+    return content.length >= 20;
+  });
+  
+  const userLengths = userMessages.map(msg => (msg.message?.content || '').length);
+  const assistantLengths = assistantMessages.map(msg => (msg.message?.content || '').length);
+  
+  return {
+    userMessageCount: userMessages.length,
+    assistantMessageCount: assistantMessages.length,
+    userMessages: {
+      total: userMessages.length,
+      overTwentyCharacters: overTwentyCharMessages.length,
+      averageLength: userLengths.length > 0 ? Math.round(userLengths.reduce((a, b) => a + b, 0) / userLengths.length) : 0,
+      maxLength: userLengths.length > 0 ? Math.max(...userLengths) : 0
+    },
+    assistantMessages: {
+      total: assistantMessages.length,
+      averageLength: assistantLengths.length > 0 ? Math.round(assistantLengths.reduce((a, b) => a + b, 0) / assistantLengths.length) : 0,
+      maxLength: assistantLengths.length > 0 ? Math.max(...assistantLengths) : 0
+    }
+  };
+}
+
+/**
  * Generates dynamic documentation of what data is available in context objects
  * 
  * @returns {string} Documentation describing available context data
@@ -96,6 +131,9 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
     };
     const filteredContext = filterContext(rawContext);
     
+    // Calculate metadata from cleaned messages (before filtering for richer data)
+    const metadata = calculateChatMetadata(cleanChatMessages);
+    
     // Return self-documenting context object for journal generation
     return {
       commit: {
@@ -105,6 +143,10 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       chatMessages: {
         data: filteredContext.chatMessages, // Filtered chat messages with token optimization
         description: "Chat messages: Developer conversations with AI assistant during this development session"
+      },
+      chatMetadata: {
+        data: metadata,
+        description: "Chat statistics: Message counts, lengths, and quality metrics for decision-making"
       }
     };
     

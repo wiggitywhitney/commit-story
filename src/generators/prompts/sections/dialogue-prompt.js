@@ -32,8 +32,8 @@ Find user messages that:
 
 AVOID simple confirmations and commands like "yes", "ok", "git push", "run the tests", or other routine responses.
 
-Extract 1-8 quotes maximum. Quality over quantity.
-Only include quotes that genuinely support or illustrate the summary narrative.
+Extract no more than {maxQuotes} quotes maximum.
+Quality over quantity - only include quotes that genuinely support or illustrate the summary narrative.
 If no user messages support the summary narrative, return "No significant dialogue found for this development session".
 
 Step 3: Verify authenticity

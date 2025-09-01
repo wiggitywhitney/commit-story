@@ -10,7 +10,6 @@ import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { dialoguePrompt } from './prompts/sections/dialogue-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { selectContext } from './utils/context-selector.js';
-import { hasSubstantialUserInput } from '../utils/message-validation.js';
 
 /**
  * Generates development dialogue for a development session using summary-guided extraction
@@ -20,12 +19,12 @@ import { hasSubstantialUserInput } from '../utils/message-validation.js';
  * @returns {Promise<string>} Generated dialogue section
  */
 export async function generateDevelopmentDialogue(context, summary) {
-  // Select only chat messages for dialogue extraction (ignore git data)
-  const selected = selectContext(context, ['chatMessages']);
+  // Select chat messages and metadata for dialogue extraction (ignore git data)
+  const selected = selectContext(context, ['chatMessages', 'chatMetadata']);
   const cleanMessages = selected.data.chatMessages;
   
   // Check if any user messages are substantial enough for dialogue extraction (DD-054)
-  if (!hasSubstantialUserInput(cleanMessages)) {
+  if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
     return "No significant dialogue found for this development session";
   }
   
@@ -46,9 +45,13 @@ ${dialoguePrompt}
   `.trim();
 
   // Prepare the context for AI processing
+  // Calculate maximum quotes based on available content - prevents AI from fabricating 
+  // quotes when few meaningful user messages exist. Cap at 8 to maintain quality focus.
+  const maxQuotes = Math.min(context.chatMetadata.data.userMessages.overTwentyCharacters, 8);
   const contextForAI = {
     summary: summary,
-    chat: cleanMessages
+    chat: cleanMessages,
+    maxQuotes: maxQuotes
   };
 
   // DEBUG: Log what the generator sees
