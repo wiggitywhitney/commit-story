@@ -9,23 +9,20 @@ import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { dialoguePrompt } from './prompts/sections/dialogue-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
-import { filterContext } from './filters/context-filter.js';
+import { selectContext } from './utils/context-selector.js';
 import { hasSubstantialUserInput } from '../utils/message-validation.js';
 
 /**
  * Generates development dialogue for a development session using summary-guided extraction
  * 
+ * @param {Object} context - Self-documenting context object from context integrator
  * @param {string} summary - Generated summary of the development session
- * @param {Array} chatMessages - Chat messages from development session  
  * @returns {Promise<string>} Generated dialogue section
  */
-export async function generateDevelopmentDialogue(summary, chatMessages) {
-  // Apply context filtering to manage token limits (same as summary generator)
-  const mockContext = { chatMessages: chatMessages };
-  const filteredContext = filterContext(mockContext);
-  
-  // Extract clean text from filtered messages for AI processing
-  const cleanMessages = extractTextFromMessages(filteredContext.chatMessages);
+export async function generateDevelopmentDialogue(context, summary) {
+  // Select only chat messages for dialogue extraction (ignore git data)
+  const selected = selectContext(context, ['chatMessages']);
+  const cleanMessages = selected.data.chatMessages;
   
   // Check if any user messages are substantial enough for dialogue extraction (DD-054)
   if (!hasSubstantialUserInput(cleanMessages)) {
@@ -43,11 +40,9 @@ export async function generateDevelopmentDialogue(summary, chatMessages) {
   const systemPrompt = `
 You have access to:
 1. A summary of this development session (as your guide for what matters)
-2. Chat messages from the development session (as your source for quotes)
+2. ${selected.description.replace('AVAILABLE DATA:\n- ', '')}
 
 ${dialoguePrompt}
-
-${guidelines}
   `.trim();
 
   // Prepare the context for AI processing
@@ -55,6 +50,15 @@ ${guidelines}
     summary: summary,
     chat: cleanMessages
   };
+
+  // DEBUG: Log what the generator sees
+  console.log('\n=== DIALOGUE GENERATOR DEBUG ===');
+  console.log('1. SELECTED CONTEXT:');
+  console.log(JSON.stringify(selected, null, 2));
+  console.log('\n2. FINAL AI PROMPT:');
+  console.log('System:', systemPrompt);
+  console.log('\nUser:', `Extract supporting dialogue for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`);
+  console.log('=== END DEBUG ===\n');
 
   const requestPayload = {
     model: 'gpt-4o-mini',

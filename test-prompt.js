@@ -92,17 +92,17 @@ async function main() {
     // Apply PRD filtering if requested
     if (noPrdFlag) {
       console.log('🚫 Filtering PRD files from context...');
-      context.commit.diff = filterPrdFromDiff(context.commit.diff);
-      context.commit.message = null;
+      context.commit.data.diff = filterPrdFromDiff(context.commit.data.diff);
+      context.commit.data.message = null;
       
-      const originalCount = context.chatMessages.length;
-      context.chatMessages = filterPrdFromChat(context.chatMessages);
-      const filteredCount = originalCount - context.chatMessages.length;
+      const originalCount = context.chatMessages.data.length;
+      context.chatMessages.data = filterPrdFromChat(context.chatMessages.data);
+      const filteredCount = originalCount - context.chatMessages.data.length;
       console.log(`🚫 Filtered ${filteredCount} PRD-referencing chat messages`);
     }
     
-    console.log(`✅ Found ${context.chatMessages.length} chat messages`);
-    console.log(`✅ Commit: ${context.commit.hash.substring(0, 8)} - ${context.commit.message}`);
+    console.log(`✅ Found ${context.chatMessages.data.length} chat messages`);
+    console.log(`✅ Commit: ${context.commit.data.hash.substring(0, 8)} - ${context.commit.data.message}`);
     console.log('');
     
     // Generate the requested section
@@ -121,7 +121,7 @@ async function main() {
       const summary = await generateSummary(context);
       
       console.log('🤖 Generating development dialogue using summary guidance...');
-      result = await generateDevelopmentDialogue(summary, context.chatMessages);
+      result = await generateDevelopmentDialogue(context, summary);
       
       console.log('');
       console.log('📝 Summary (used as guidance):');

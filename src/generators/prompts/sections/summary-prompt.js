@@ -11,7 +11,7 @@ PURPOSE: Describe what happened in this development session, matching your tone 
 HOW TO ANALYZE THIS SESSION:
 1. Start with the code: What files changed? What was added/removed/modified?
 2. Find the why: Look in chat for discussions about these specific changes - why were they made? What problems did they solve? What alternatives were considered?
-3. Include the journey: Note any broader discussions or reflections that happened during the session, but clearly mark them as context, not work performed
+3. Include important discussions and discoveries, even if they didn't result in code changes
 4. Tell the complete story: Combine the what (code) with the why (chat reasoning) to explain both what happened and the thinking behind it
 
 AUTHENTICITY PRINCIPLE:

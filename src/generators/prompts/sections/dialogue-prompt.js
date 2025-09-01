@@ -78,6 +78,14 @@ Format examples (DO NOT include these examples in your actual output):
 
 > **Human:** "Actually, let's try a different approach - this is getting too complex."
 
+ANTI-HALLUCINATION RULES FOR EXTRACTION:
+- Every quote must be EXACTLY verbatim from the chat messages - never paraphrase, edit, or improve
+- Only extract quotes that actually exist in the provided chat data
+- If no meaningful human quotes support the summary narrative, return "No significant dialogue found for this development session"
+- Do not fabricate, invent, or create any quotes
+- Do not combine multiple messages into one quote
+- Human and assistant quotes can be truncated with [...] if needed, but remaining text must be verbatim
+
 Reminder:
 Use the summary as your guide to find quotes that matter. Extract only verbatim text. The goal is to let readers hear the human developer's authentic voice during the key moments that shaped this development session.
 `.trim();

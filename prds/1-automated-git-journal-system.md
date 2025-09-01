@@ -428,12 +428,26 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Key Requirements**: Must distinguish between implemented changes (verified by code diffs) versus ideas that were only discussed; document decisions, reasoning, and trade-offs only when explicitly present in chat conversations or code; include graceful degradation for commits without explicit technical decisions.  
 **Impact**: Completes the four-section journal structure (Summary, Development Dialogue, Technical Decisions, Changes) with consistent architecture and evidence-based content extraction approach.
 
-### DD-059: Context Data Optimization with Generator-Specific Preparation
-**Decision**: Implement generator-specific context preparation functions that filter unneeded data before AI processing while preserving the unified context object interface.  
-**Problem**: Current architecture has diverged from DD-017's unified context vision, with dialogue generator using mock objects to work around interface requirements and inconsistent data filtering patterns across generators.  
-**Solution**: All generators continue receiving full context object (preserves DD-017); each generator uses dedicated preparation function that filters out unneeded data; dialogue preparation explicitly removes git diff to avoid wasted tokens; summary and Technical Decisions preparation keeps git diff as needed; eliminates mock object anti-pattern.  
-**Architecture**: `Raw Context → Generator-Specific Preparation → AI Processing` where `prepareContextForSummary()` includes diff + chat, `prepareContextForDialogue()` excludes diff (chat only), `prepareContextForTechnicalDecisions()` includes diff + chat.  
-**Impact**: Resolves architectural inconsistency while optimizing token costs; maintains interface consistency for future extensibility; eliminates mock object anti-pattern; creates explicit contract about what data each generator actually uses.
+### DD-059: Self-Documenting Context Architecture with Explicit Selection
+**Decision**: Implement self-documenting context objects where each context piece includes both data and description, with generators using `selectContext()` utility for explicit data selection and automatic prompt generation.  
+**Problem**: Original preparation function approach was over-engineered; needed solution for token optimization, accurate AI prompt descriptions, and future extensibility when adding new context types like previous journal entries.  
+**Solution**: Context integrator returns `{commit: {data, description}, chatMessages: {data, description}}` structure; generators call `selectContext(context, ['commit', 'chatMessages'])` to opt-in to specific data; selected descriptions automatically generate accurate "AVAILABLE DATA" prompts; eliminates mock objects and hardcoded descriptions.  
+**Architecture**: `Self-Documenting Context → selectContext(selections) → Filtered Data + Auto-Generated Description → AI Processing`  
+**Benefits**: Token optimization through explicit selection; future-proof extensibility; automatic prompt accuracy; eliminates architectural inconsistencies; clean separation between data and metadata.
+
+### DD-060: Universal Context Preparation Architecture  
+**Decision**: Move ALL context preparation (cleaning, filtering, token management) into context integrator; generators perform only pure data selection without additional processing.  
+**Problem**: Double-processing discovered during DD-059 implementation - context integrator cleans messages, then generators filter again; filtering concerns scattered across system creating maintenance burden.  
+**Solution**: `gatherContextForCommit()` performs complete context preparation including `filterContext()` logic; `selectContext()` becomes pure selection utility without filtering; generators receive production-ready context requiring no additional processing.  
+**Architecture**: `Raw Data Collection → Complete Preparation (Clean + Filter) → Self-Documenting Storage → Pure Selection → AI Processing`  
+**Impact**: Eliminates double-processing; single source of truth for context preparation; cleaner generator architecture; consistent token management across all generators.
+
+### DD-061: Dialogue-Specific Anti-Hallucination Architecture
+**Decision**: Remove universal guidelines from dialogue generator and embed extraction-specific anti-hallucination rules directly in dialogue prompt.  
+**Problem**: Universal guidelines designed for content creation conflict with extraction requirements - guidelines say "omit sections entirely" while dialogue needs "return specific fallback message"; external reader rules inappropriate for verbatim extraction.  
+**Solution**: Dialogue generator uses only extraction-focused anti-hallucination rules embedded in dialogue prompt; other generators continue using universal guidelines for content creation.  
+**Rules**: "Extract exactly verbatim, never paraphrase"; "If no supporting quotes exist, return specific message"; "Do not fabricate or combine quotes"; allows human/assistant quote truncation with [...].  
+**Impact**: Eliminates contradictory guidance; dialogue-specific extraction rules prevent fabrication; maintains universal guidelines for content-creating generators.
 
 ## Implementation Milestones
 
@@ -1137,5 +1151,41 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.2c Progress**: 75% complete (6 of 8 items) - Core implementation and validation complete, pipeline validation and PRD filtering remaining
 
 **Next Session Priority**: Complete remaining M2.2c validation tasks and begin M2.2d integration of all three journal sections
+
+### 2025-09-01 (Session 4): DD-059 Context Architecture Optimization Implementation
+**Duration**: In progress  
+**Focus**: Implementing comprehensive context architecture improvements for token optimization and future extensibility
+
+**Architectural Decisions Documented**:
+- [x] **DD-059**: Self-Documenting Context Architecture - Evidence: Evolved from preparation functions to self-documenting structure with explicit selection and automatic description generation
+- [x] **DD-060**: Universal Context Preparation - Evidence: Decision to consolidate ALL filtering and preparation in context integrator, eliminating double-processing across generators
+- [x] **DD-061**: Dialogue-Specific Anti-Hallucination Rules - Evidence: Identified guideline conflicts with extraction requirements, embedded extraction-specific rules directly in dialogue prompt
+
+**Implementation Progress**:
+- [x] **Self-documenting context structure**: Context integrator returns `{commit: {data, description}, chatMessages: {data, description}}` format
+- [x] **selectContext utility**: Created `src/generators/utils/context-selector.js` for explicit data selection with automatic description generation
+- [x] **Mock object elimination**: Dialogue generator refactored to accept full context object, eliminated architectural hack
+- [x] **Guidelines separation**: Removed universal guidelines from dialogue generator, embedded extraction-specific anti-hallucination rules in dialogue prompt
+- [x] **Message cleaning optimization**: Fixed `extractTextFromMessages()` to return minimal objects (type, content, timestamp) eliminating Claude Code metadata bloat
+- [x] **Interface consistency**: All generators use `selectContext()` with consistent `.data` structure for clean architectural boundaries
+- [ ] **Context preparation consolidation**: Move `filterContext()` logic into context integrator to eliminate double-processing
+- [ ] **Six-point validation process**: Human approval required for all three generators' context and prompt pairs
+
+**Token Optimization Achievements**:
+- **Message size reduction**: Each chat message reduced from ~200+ tokens to ~20 tokens through metadata elimination
+- **Context selection accuracy**: Dialogue generator no longer receives unnecessary git diff data, eliminating token waste
+- **Prompt description accuracy**: AI prompts automatically describe only the data actually provided, preventing confusion
+
+**Architecture Success Indicators**:
+- **Dialogue context isolation**: `selectContext(context, ['chatMessages'])` successfully returns only chat data with accurate description
+- **Future extensibility preserved**: Adding new context types (previous entries, repo metadata) requires no generator changes
+- **Maintenance simplification**: Single source of truth for context preparation logic
+
+**Validation Requirements for Session Completion**:
+1. **Complete context preparation consolidation** - Move all filtering to context integrator
+2. **Six-point human validation** - User approval of context + prompt pairs for all three generators
+3. **Full system testing** - Verify no regressions in generation quality after architectural changes
+
+**Next Priority**: Complete DD-060 implementation and conduct comprehensive validation of optimized context architecture
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete

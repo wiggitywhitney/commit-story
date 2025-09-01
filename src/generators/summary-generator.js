@@ -8,8 +8,7 @@
 import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { summaryPrompt } from './prompts/sections/summary-prompt.js';
-import { getAvailableDataDescription } from '../integrators/context-integrator.js';
-import { filterContext } from './filters/context-filter.js';
+import { selectContext } from './utils/context-selector.js';
 
 /**
  * Generates a summary narrative for a development session
@@ -21,8 +20,8 @@ import { filterContext } from './filters/context-filter.js';
  * @returns {Promise<string>} Generated summary paragraph
  */
 export async function generateSummary(context) {
-  // Apply intelligent context filtering (DD-024)
-  const filteredContext = filterContext(context);
+  // Select both commit and chat data for summary generation
+  const selected = selectContext(context, ['commit', 'chatMessages']);
   
   // Create fresh OpenAI instance (DD-016: prevent context bleeding)
   const openai = new OpenAI({
@@ -30,11 +29,10 @@ export async function generateSummary(context) {
   });
 
   // Build the complete prompt (DD-018: compose guidelines + section prompt)
-  const availableDataDescription = getAvailableDataDescription();
   const guidelines = getAllGuidelines();
   
   const systemPrompt = `
-${availableDataDescription}
+${selected.description}
 
 ${summaryPrompt}
 
@@ -44,18 +42,27 @@ ${guidelines}
   // Prepare the filtered context for the AI
   const contextForAI = {
     git: {
-      hash: filteredContext.commit.hash,
-      ...(filteredContext.commit.message !== null && { message: filteredContext.commit.message }),
-      author: filteredContext.commit.author,
-      timestamp: filteredContext.commit.timestamp,
-      diff: filteredContext.commit.diff,
+      hash: selected.data.commit.hash,
+      ...(selected.data.commit.message !== null && { message: selected.data.commit.message }),
+      author: selected.data.commit.author,
+      timestamp: selected.data.commit.timestamp,
+      diff: selected.data.commit.diff,
     },
-    chat: filteredContext.chatMessages.map(msg => ({
+    chat: selected.data.chatMessages.map(msg => ({
       type: msg.type,
       content: msg.message?.content,
       timestamp: msg.timestamp,
     }))
   };
+
+  // DEBUG: Log what the generator sees
+  console.log('\n=== SUMMARY GENERATOR DEBUG ===');
+  console.log('1. SELECTED CONTEXT:');
+  console.log(JSON.stringify(selected, null, 2));
+  console.log('\n2. FINAL AI PROMPT:');
+  console.log('System:', systemPrompt);
+  console.log('\nUser:', `Generate a summary for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`);
+  console.log('=== END DEBUG ===\n');
 
   const requestPayload = {
     model: 'gpt-4o-mini',

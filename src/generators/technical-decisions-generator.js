@@ -9,7 +9,7 @@ import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { technicalDecisionsPrompt } from './prompts/sections/technical-decisions-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
-import { filterContext } from './filters/context-filter.js';
+import { selectContext } from './utils/context-selector.js';
 import { hasSubstantialUserInput } from '../utils/message-validation.js';
 
 /**
@@ -22,11 +22,9 @@ import { hasSubstantialUserInput } from '../utils/message-validation.js';
  * @returns {Promise<string>} Generated technical decisions section
  */
 export async function generateTechnicalDecisions(context) {
-  // Apply intelligent context filtering (same as summary generator)
-  const filteredContext = filterContext(context);
-  
-  // Extract clean text from filtered messages for AI processing
-  const cleanMessages = extractTextFromMessages(filteredContext.chatMessages);
+  // Select both commit and chat data for technical decisions analysis
+  const selected = selectContext(context, ['commit', 'chatMessages']);
+  const cleanMessages = selected.data.chatMessages;
   
   // Check if any user messages are substantial enough for technical decisions analysis
   if (!hasSubstantialUserInput(cleanMessages)) {
@@ -42,9 +40,7 @@ export async function generateTechnicalDecisions(context) {
   const guidelines = getAllGuidelines();
   
   const systemPrompt = `
-You have access to:
-1. Git commit data including code changes (diffs)
-2. Chat messages from the development session
+${selected.description}
 
 ${technicalDecisionsPrompt}
 
@@ -54,14 +50,23 @@ ${guidelines}
   // Prepare the filtered context for the AI
   const contextForAI = {
     git: {
-      hash: filteredContext.commit.hash,
-      ...(filteredContext.commit.message !== null && { message: filteredContext.commit.message }),
-      author: filteredContext.commit.author,
-      timestamp: filteredContext.commit.timestamp,
-      diff: filteredContext.commit.diff
+      hash: selected.data.commit.hash,
+      ...(selected.data.commit.message !== null && { message: selected.data.commit.message }),
+      author: selected.data.commit.author,
+      timestamp: selected.data.commit.timestamp,
+      diff: selected.data.commit.diff
     },
     chat: cleanMessages
   };
+
+  // DEBUG: Log what the generator sees
+  console.log('\n=== TECHNICAL DECISIONS GENERATOR DEBUG ===');
+  console.log('1. SELECTED CONTEXT:');
+  console.log(JSON.stringify(selected, null, 2));
+  console.log('\n2. FINAL AI PROMPT:');
+  console.log('System:', systemPrompt);
+  console.log('\nUser:', `Here is the development session data:\n\n${JSON.stringify(contextForAI, null, 2)}`);
+  console.log('=== END DEBUG ===\n');
 
   try {
     const response = await openai.chat.completions.create({

@@ -168,15 +168,19 @@ function filterGitDiff(diff) {
 
 /**
  * Applies intelligent filtering to context to stay within token limits
- * @param {Object} context - Original context object from context-integrator
+ * @param {Object} context - Context object (handles both old and new structure)
  * @returns {Object} Filtered context object
  */
 export function filterContext(context) {
+  // Handle both old structure (context.chatMessages) and new structure (context.chatMessages.data)
+  const chatMessages = context.chatMessages?.data || context.chatMessages || [];
+  const commit = context.commit?.data || context.commit;
+  
   // Filter chat messages  
-  const filteredChatMessages = filterChatMessages(context.chatMessages || []);
+  const filteredChatMessages = filterChatMessages(chatMessages);
   
   // Filter git diff if needed
-  const filteredDiff = filterGitDiff(context.commit?.diff);
+  const filteredDiff = filterGitDiff(commit?.diff);
   
   // Calculate token usage after initial filtering
   const chatTokens = filteredChatMessages.reduce((sum, msg) => {
@@ -216,7 +220,7 @@ export function filterContext(context) {
     ...context,
     chatMessages: finalChatMessages,
     commit: {
-      ...context.commit,
+      ...commit,
       diff: filteredDiff
     }
   };

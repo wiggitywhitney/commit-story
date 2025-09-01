@@ -21,9 +21,8 @@ export default async function main() {
     const context = await gatherContextForCommit();
     
     console.log('📊 Context Summary:');
-    console.log(`   Commit: ${context.commit.hash.substring(0, 8)} - "${context.commit.message}"`);
-    console.log(`   Chat Messages: ${context.chatMessages.length} messages found`);
-    console.log(`   Previous Commit: ${context.previousCommit ? context.previousCommit.hash.substring(0, 8) : 'none (first commit)'}`);
+    console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);'
+    console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
     
     // TODO: M2.2 - Pass context to AI content generator
     // TODO: M2.3 - Save generated content to journal via journal-manager

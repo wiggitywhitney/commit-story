@@ -35,12 +35,13 @@ export function extractTextFromMessages(messages) {
       cleanContent = JSON.stringify(content);
     }
     
+    // Return minimal message object for AI processing (eliminates Claude Code metadata bloat)
     return {
-      ...msg,
+      type: msg.type || 'assistant', // user or assistant
       message: {
-        ...msg.message,
         content: cleanContent
-      }
+      },
+      timestamp: msg.timestamp
     };
   });
 }
@@ -87,10 +88,16 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
     // Extract clean text content from messages (DD-034)
     const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
     
+    // Return self-documenting context object for journal generation
     return {
-      commit: currentCommit,              // Full git data (hash, message, author, timestamp, diff)
-      chatMessages: cleanChatMessages,    // Array of chat messages with clean text content
-      previousCommit: previousCommit      // { hash, timestamp } or null
+      commit: {
+        data: currentCommit,              // Full git data (hash, message, author, timestamp, diff)
+        description: "Git commit: code changes (unified diff), commit message, and technical details of what files were modified"
+      },
+      chatMessages: {
+        data: cleanChatMessages,          // Array of chat messages with clean text content
+        description: "Chat messages: Developer conversations with AI assistant during this development session"
+      }
     };
     
   } catch (error) {
