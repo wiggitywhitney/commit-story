@@ -507,6 +507,31 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Generic names like "install-hook" are ambiguous in multi-tool environments; explicit names clearly indicate purpose (commit-triggered journal generation); improves user experience and reduces confusion  
 **Impact**: Longer script names but crystal clear functionality; better user experience for distributed system
 
+### DD-072: Debug Toggle Script Elimination for MVP
+**Decision**: Remove debug toggle scripts (`enable-journal-debug`, `disable-journal-debug`) and direct users to edit commit-story.config.json directly  
+**Rationale**: Two boolean config values don't warrant script automation; config file has inline documentation making direct editing simple; reduces complexity and maintenance overhead; single source of truth principle  
+**Impact**: Simpler user experience with fewer scripts to manage; users need to understand config file but gain better control over settings
+
+### DD-073: Privacy-First Default Configuration Strategy
+**Decision**: Automatically add `journal/` to .gitignore during installation with clear instructions for making journals public  
+**Rationale**: Journal entries may contain sensitive data (API keys, passwords) from chat context before TR-013 sensitive data filtering is implemented; safer to default to private and allow opt-in to public  
+**Impact**: Protects users from accidental sensitive data exposure; requires explicit action to make journals public; aligns with security-first development principles
+
+### DD-074: Local Installation MVP Focus
+**Decision**: Simplify hook to support only local npm installations (`node_modules/.bin/commit-story`) vs global/local detection complexity for MVP  
+**Rationale**: Reduces complexity of installation detection logic; most users will install locally; global detection adds edge cases without significant value for MVP validation  
+**Impact**: Simpler hook logic and more reliable operation; global installation support can be added post-MVP
+
+### DD-075: JSON Configuration with Inline Documentation Architecture
+**Decision**: Use standard JSON with `_instructions` and `_help` fields for configuration documentation rather than JSON5, JavaScript config, or external README  
+**Rationale**: Standard JSON has universal compatibility; inline documentation keeps help text visible during config editing; avoids additional dependencies or parsing complexity; simple two-boolean config doesn't warrant JSON5  
+**Impact**: Self-documenting configuration file; no additional dependencies; universal tool compatibility
+
+### DD-076: Journal Content Quality Analysis Framework
+**Decision**: Collect 5+ real journal entries before implementing prompt improvements; analyze patterns including primacy bias, technical depth, and design reasoning capture quality  
+**Rationale**: Need empirical data to identify systematic prompt issues rather than optimizing based on assumptions; primacy bias (overweighting session start) identified as potential concern requiring data validation; authentic usage generates better insights than synthetic testing  
+**Impact**: Defers prompt optimization to evidence-based approach; ensures improvements address real usage patterns; establishes quality validation methodology for ongoing system refinement
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -1465,5 +1490,28 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.3 Progress**: ✅ COMPLETE (8 of 9 items, 1 deferred) - Git hook installation system fully functional and ready for production testing
 
 **Next Session Priority**: Begin M2.4 validation testing with actual commit workflow
+
+### 2025-09-02: Design Decisions and Quality Analysis Framework (Post M2.3)
+**Duration**: ~30 minutes  
+**Focus**: Strategic design decisions and journal quality analysis framework establishment
+
+**New Design Decisions Added**:
+- [x] **DD-072**: Debug toggle script elimination - Evidence: Removed debug toggle scripts in favor of direct config file editing for simpler UX
+- [x] **DD-073**: Privacy-first default configuration - Evidence: Automatic journal/ gitignore addition due to sensitive data exposure risk before filtering implementation
+- [x] **DD-074**: Local installation MVP focus - Evidence: Simplified hook to support only local npm installations vs global/local complexity
+- [x] **DD-075**: JSON configuration with inline documentation - Evidence: Standard JSON with _instructions/_help fields after JSON5 vs standard JSON research
+- [x] **DD-076**: Journal content quality analysis framework - Evidence: Decision to collect 5+ real journal entries before prompt optimization to identify primacy bias and other systematic issues
+
+**Key Strategic Changes**:
+- **MVP scope clarification**: Deferred configurable journal paths and debug toggle automation to focus on core automation workflow
+- **Security-first approach**: Privacy-by-default configuration due to potential sensitive data exposure in chat context
+- **Evidence-based optimization**: Established framework for analyzing real journal quality patterns rather than theoretical prompt improvements
+- **Simplification principle**: Consistently chose simpler solutions (direct config editing, local-only installation, standard JSON) over complex alternatives
+
+**Quality Analysis Framework**: Established methodology for collecting empirical data on journal entry quality, specifically identifying primacy bias as a concern where AI may overweight early session content vs substantial technical discussions throughout the conversation
+
+**Current System Status**: M2.3 complete and validated with successful auto-trigger testing. System generating real journal entries for ongoing quality analysis data collection.
+
+**Next Session Priority**: Continue development work to generate additional journal entries for quality analysis data collection before M2.4 formal validation
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
