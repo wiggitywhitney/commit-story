@@ -94,7 +94,7 @@ Developers lose valuable context about their development decisions and reasoning
 - **TR-019**: Message content normalization - Extract clean text from mixed Claude message formats (string/array) before AI processing to ensure consistent generator input
 - [x] **TR-020**: Multi-commit test capability - Test harness must accept commit parameters to validate prompt consistency across different development session types
 - [x] **TR-021**: Complete PRD context masking - `--no-prd` flag must remove PRD file diffs AND mask PRD references in commit messages to fully test prompt robustness without structured project context
-- [ ] **TR-022**: Chat metadata calculation fixes - Resolve undefined totalMessages, NaN averageMessageLength, and missing maxMessageLength in context metadata system for proper debugging and system introspection
+- [x] **TR-022**: Chat metadata calculation fixes - Resolve undefined totalMessages, NaN averageMessageLength, and missing maxMessageLength in context metadata system for proper debugging and system introspection
 
 ## Architecture Overview
 
@@ -551,7 +551,7 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] Production testing completed with quality issues identified requiring M2.2e refinement
   - [ ] **M2.2e**: Quality refinement and production debugging
     - [ ] Investigate poor journal quality in first production run (fabricated quotes, PRD bureaucracy as "technical decisions")
-    - [ ] Fix chat metadata calculation errors (undefined totalMessages, NaN averageMessageLength) via TR-022
+    - [x] Fix chat metadata calculation errors (undefined totalMessages, NaN averageMessageLength) via TR-022
     - [ ] Enhance context descriptions to clarify USER=developer, ASSISTANT=AI for accurate human voice extraction (DD-062)
     - [ ] Analyze impact of --no-prd testing flag on real-world generation quality
     - [ ] Validate dialogue extraction quality with actual development sessions vs test scenarios
@@ -1350,6 +1350,26 @@ Initial approach of jumping directly to parser implementation risked building wr
 
 **M2.2d Status**: ✅ COMPLETE - Technical integration successful, end-to-end functionality validated, but quality refinement (M2.2e) required before production deployment
 
-**Next Session Priority**: M2.2e quality refinement - investigate and resolve fabricated quotes, PRD bureaucracy categorization, and context clarity issues before proceeding to git hook installation (M2.3)
+### 2025-09-02: TR-022 Chat Metadata Calculation Fixes Complete
+**Duration**: ~45 minutes  
+**Focus**: Debugging and fixing chat metadata calculation errors in production system
+
+**Completed PRD Items**:
+- [x] **TR-022**: Chat metadata calculation fixes - Evidence: Added missing `totalMessages` property to `calculateChatMetadata()` function in context-integrator.js:69, resolved undefined/NaN issues, validated zero-message handling works correctly
+
+**Implementation Details**:
+- **Root cause analysis**: Missing `totalMessages` property in metadata object (expected by debugging systems but not calculated)
+- **Zero-handling validation**: Existing code already handled empty arrays correctly with `length > 0` checks preventing NaN values
+- **Property addition**: Added `totalMessages: userMessages.length + assistantMessages.length` to provide complete message count summary
+- **Testing validation**: Confirmed metadata calculation works correctly across commits with varying message volumes (0, 70, 262 messages)
+
+**Quality Observations from Testing**:
+- **Technical Decisions section**: Shows proper DECISION: format but tends to categorize all work as "Implemented" regardless of actual implementation status
+- **Summary generation**: Comprehensive but verbose, focusing on methodology/process rather than core development work
+- **Dialogue extraction**: Strong human voice capture with authentic conversational exchanges
+
+**M2.2e Progress**: 17% complete (1 of 6 items) - Chat metadata issues resolved, quality refinement items remaining
+
+**Next Session Priority**: M2.2e continued - investigate fabricated quotes and PRD bureaucracy categorization issues in journal generation quality
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete

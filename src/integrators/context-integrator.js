@@ -66,6 +66,7 @@ function calculateChatMetadata(messages) {
   const assistantLengths = assistantMessages.map(msg => (msg.message?.content || '').length);
   
   return {
+    totalMessages: userMessages.length + assistantMessages.length,
     userMessageCount: userMessages.length,
     assistantMessageCount: assistantMessages.length,
     userMessages: {
