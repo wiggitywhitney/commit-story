@@ -34,6 +34,44 @@ Commit Story automatically generates meaningful development narratives by combin
 
 *Coming soon - this project is currently in active development*
 
+## Configuration
+
+<!-- PRD-002: File exclusion configuration system per requirements TR-023, TR-024, TR-025 -->
+
+### File Exclusions
+
+You can exclude files and directories from journal generation by creating a `.commitstoryignore` file in your repository root. This is useful for filtering out administrative files, task management documents, or other content that creates noise in your development journal.
+
+**Example `.commitstoryignore`:**
+```
+# Exclude PRD and project management files
+prds/
+*.prd.md
+project-management/
+
+# Exclude documentation drafts
+docs/drafts/
+*.draft.md
+
+# Exclude specific files
+TODO.md
+ROADMAP.md
+```
+
+**Supported Patterns:**
+- File paths: `specific-file.md`
+- Directory paths: `directory/` (trailing slash recommended)
+- Glob patterns: `*.extension`, `path/**/*.md`
+- Comments: Lines starting with `#`
+
+**What Gets Filtered:**
+- **Git diffs** - Changes to excluded files are removed from context
+- **Chat messages** - Messages heavily referencing excluded files are filtered
+- **Preserved** - Commit messages remain intact for narrative continuity
+
+**Built-in Exclusions:**
+- `journal/` directory is automatically excluded to prevent recursion
+
 ## Architecture
 
 <!-- PRD-001: Technical implementation follows requirements TR-001 through TR-013 -->
@@ -71,7 +109,9 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 
 - **[Project Specification](./project-spec.md)** - Technical requirements and implementation details
 - **[Product Requirements Document](./prds/1-automated-git-journal-system.md)** - Complete feature specification and milestones
+- **[File Exclusion System PRD](./prds/2-file-exclusion-system.md)** - Configuration and filtering requirements
 - **[GitHub Issue #1](https://github.com/wiggitywhitney/commit_story/issues/1)** - Feature concept and discussion
+- **[GitHub Issue #2](https://github.com/wiggitywhitney/commit_story/issues/2)** - File exclusion system requirements
 
 ## Development
 
