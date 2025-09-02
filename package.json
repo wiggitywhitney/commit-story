@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "test": "node tests/connectivity.js",
+    "start-commit-story": "node src/index.js",
+    "journal-ai-connectivity": "node tests/connectivity.js",
     "install-commit-journal-hook": "bash scripts/install-commit-journal-hook.sh",
     "uninstall-commit-journal-hook": "bash scripts/uninstall-commit-journal-hook.sh"
   },

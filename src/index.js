@@ -6,6 +6,7 @@
  */
 
 import { config } from 'dotenv';
+import OpenAI from 'openai';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
@@ -34,6 +35,28 @@ export default async function main(commitRef = 'HEAD') {
     console.log('📊 Context Summary:');
     console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
     console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
+    
+    // Validate OpenAI connectivity before expensive processing
+    console.log('🔑 Validating OpenAI connectivity...');
+    if (!process.env.OPENAI_API_KEY) {
+      console.log(`⚠️  OPENAI_API_KEY not found in environment`);
+      console.log(`   Set your API key in .env file or run: npm run journal-ai-connectivity`);
+      process.exit(1);
+    }
+    
+    try {
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'test' }],
+        max_tokens: 1
+      });
+      console.log('   ✅ OpenAI connectivity confirmed');
+    } catch (error) {
+      console.log(`⚠️  OpenAI connectivity failed: ${error.message}`);
+      console.log(`   Run: npm run journal-ai-connectivity for detailed diagnostics`);
+      process.exit(1);
+    }
     
     // Generate all journal sections using AI and programmatic content
     const sections = await generateJournalEntry(context);
