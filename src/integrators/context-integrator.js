@@ -83,16 +83,6 @@ function calculateChatMetadata(messages) {
   };
 }
 
-/**
- * Generates dynamic documentation of what data is available in context objects
- * 
- * @returns {string} Documentation describing available context data
- */
-export function getAvailableDataDescription() {
-  return `AVAILABLE DATA:  
-- git: The actual code changes (unified diff), commit message, and technical details of what files were modified
-- chat: Developer conversations with AI assistant(s) during this development session`;
-}
 
 /**
  * Gathers all context for a commit: git data and time-correlated chat messages
@@ -143,7 +133,7 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       },
       chatMessages: {
         data: filteredContext.chatMessages, // Filtered chat messages with token optimization
-        description: "Chat messages: Developer conversations with AI assistant during this development session"
+        description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"
       },
       chatMetadata: {
         data: metadata,

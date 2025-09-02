@@ -26,6 +26,11 @@ When deciding what to emphasize, consider:
 DESCRIBE WHAT ACTUALLY HAPPENED:
 Tell the story of this development session factually, without adding drama or invented connections. If multiple activities occurred, give them proportional attention based on their actual significance.
 
+PLANNING vs IMPLEMENTATION:
+- Creating PRDs, documentation, or design documents = planning/design work
+- Writing functional code that changes system behavior = implementation work
+- Use accurate verbs: "planned", "designed", "documented" for documentation work; "implemented", "built", "coded" for functional code changes
+
 SIGNIFICANCE MATCHING:
 - Routine work gets straightforward, factual description
 - Complex work gets more detailed explanation  

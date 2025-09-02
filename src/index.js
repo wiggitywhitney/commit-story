@@ -15,12 +15,12 @@ config();
 /**
  * Main entry point - orchestrates the complete journal generation flow
  */
-export default async function main() {
+export default async function main(commitRef = 'HEAD') {
   try {
-    console.log('🚀 Commit Story - Generating journal entry...');
+    console.log(`🚀 Commit Story - Generating journal entry for ${commitRef}...`);
     
-    // Gather all context for the latest commit
-    const context = await gatherContextForCommit();
+    // Gather all context for the specified commit
+    const context = await gatherContextForCommit(commitRef);
     
     console.log('📊 Context Summary:');
     console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
@@ -45,5 +45,6 @@ export default async function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  const commitRef = process.argv[2] || 'HEAD';
+  main(commitRef);
 }

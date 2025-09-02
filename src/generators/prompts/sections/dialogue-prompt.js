@@ -18,7 +18,7 @@ Step 1: Understand the summary context
 Read the provided summary carefully.
 Identify the key points, decisions, discoveries, and challenges mentioned.
 These are your targets for finding supporting quotes.
-Note: The chat data contains messages with type: "user" (human input) and type: "assistant" (AI responses).
+CRITICAL: In the chat data, type:"user" messages are from the HUMAN DEVELOPER, type:"assistant" messages are from the AI ASSISTANT.
 
 Step 2: Find supporting human quotes
 Look through the chat messages for messages where type: "user" - ONLY these messages contain the human developer's actual input. Messages where type: "assistant" are AI responses and must NEVER be attributed to the human.

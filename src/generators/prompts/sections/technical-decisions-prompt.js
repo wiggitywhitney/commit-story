@@ -8,8 +8,10 @@
 export const technicalDecisionsPrompt = `
 PURPOSE: Document technical decisions and reasoning from this development session
 
+FOCUS ON: Architectural choices, implementation approaches, algorithm selections, framework decisions, performance optimizations, error handling strategies, data structure choices, API design decisions.
+
 OUTPUT FORMAT: Use bullet point format:
-- **DECISION: [Decision title]** (Implemented | Discussed only)
+- **DECISION: [Decision title]** (Implemented | Discussed) - FILES: [List specific related files from git diff that support this classification]
   - [Brief reason/phrase]
   - [Brief reason/phrase]
   - [Additional reasons as needed]
@@ -19,15 +21,17 @@ Keep each reason as a brief phrase. Break long reasoning into multiple separate 
 
 CRITICAL: The quality of the entire development journal depends on accurately documenting the technical reasoning behind code changes. This section captures the "why" that makes development decisions understandable months later.
 
-Find technical decisions discussed in the chat, then use the code changes to figure out which were actually implemented.
+Find technical decisions discussed in the chat, then use the code changes to figure out which were IMPLEMENTED vs which were DISCUSSED, and label them accordingly.
+
 
 ANALYSIS STEPS:
-1. Find technical discussions in the chat
+1. Find technical discussions in the chat conversations
 2. Extract only explicitly stated reasoning from the chat - do not infer or assume reasoning that isn't clearly stated
-3. Use the code changes to verify whether each decision was actually implemented or only discussed
+3. Follow the INSTRUCTION above to mark each decision appropriately
 4. Format output with clear evidence - each reason should be traceable to the chat conversations
 
-If no technical decisions were discussed, return: "No significant technical decisions documented for this development session"
+FALLBACK (when no decisions found):
+If no technical decisions were discussed in the chat, return only: "No significant technical decisions documented for this development session"
 
 REMINDER: Document technical decisions and reasoning so future developers can understand why choices were made
 `.trim();
