@@ -65,7 +65,6 @@ INSTRUCTION: Mark decisions as "Implemented" only if they relate to these change
 INSTRUCTION: This commit only changes documentation files (${docFiles.join(', ')}). Mark ALL technical decisions as "Discussed" since no functional code was changed.`;
   }
   
-  console.log('   Implementation guidance:', implementationGuidance);
 
   // Create fresh OpenAI instance (DD-016: prevent context bleeding)
   const openai = new OpenAI({

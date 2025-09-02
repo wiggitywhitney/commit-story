@@ -24,8 +24,8 @@ debug_log() {
 
 # Check if Commit Story is configured for this repository
 is_commit_story_enabled() {
-    # Must have both config file and local installation
-    [[ -f "commit-story.config.json" ]] && [[ -f "node_modules/.bin/commit-story" ]]
+    # Must have config file and either local installation or development mode
+    [[ -f "commit-story.config.json" ]] && ([[ -f "node_modules/.bin/commit-story" ]] || [[ -f "src/index.js" ]])
 }
 
 # Function to check if debug mode is enabled
@@ -57,10 +57,18 @@ if is_commit_story_enabled; then
     # Run in foreground if debug mode, background otherwise
     if is_debug_enabled; then
         debug_log "Debug mode enabled - running in foreground"
-        ./node_modules/.bin/commit-story HEAD
+        if [[ -f "node_modules/.bin/commit-story" ]]; then
+            ./node_modules/.bin/commit-story HEAD
+        else
+            node src/index.js HEAD
+        fi
     else
         debug_log "Running in background"
-        (./node_modules/.bin/commit-story HEAD >/dev/null 2>&1 &)
+        if [[ -f "node_modules/.bin/commit-story" ]]; then
+            (./node_modules/.bin/commit-story HEAD >/dev/null 2>&1 &)
+        else
+            (node src/index.js HEAD >/dev/null 2>&1 &)
+        fi
     fi
     
     debug_log "Journal generation completed"
