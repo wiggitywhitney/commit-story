@@ -487,6 +487,26 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Solution**: Systematic quality refinement including human verification process, context description enhancements, and prompt refinements based on real-world usage patterns.  
 **Impact**: Ensures production system generates authentic, valuable journal entries that accurately reflect development sessions.
 
+### DD-068: Git Hook Chat Data Validation Strategy
+**Decision**: Add repository-specific chat validation to main process (src/index.js) rather than in git hook itself  
+**Rationale**: Git hooks should be simple and robust; validation complexity belongs in main process; enables clear debugging via manual execution; prevents silent hook failures  
+**Impact**: Hook stays minimal, validation provides informative feedback, debugging workflow maintained per DD-003
+
+### DD-069: Universal Git Hook Distribution Architecture  
+**Decision**: Create universal git hook that works in any repository where Commit Story is installed, not hardcoded for development repository  
+**Rationale**: Enables actual distribution and use by other developers; prevents silent failures in other repositories; provides clear feedback when configuration missing  
+**Impact**: Requires universal compatibility design, installation validation, and informative user feedback systems
+
+### DD-070: Configuration File Architecture for System Settings
+**Decision**: Use dedicated `commit-story.config.json` file for system configuration (debug mode, log settings) instead of environment variables or flag files  
+**Rationale**: Clean separation of concerns from .env (API keys vs system config); more intuitive boolean values; extensible for future configuration needs; avoids environment variable proliferation  
+**Impact**: Requires config file loading, parsing, and validation; enables structured configuration management for future features
+
+### DD-071: Explicit Naming Convention for Hook Management
+**Decision**: Use explicit naming pattern: `install-commit-journal-hook`, `uninstall-commit-journal-hook`, `enable-journal-debug`, `disable-journal-debug`  
+**Rationale**: Generic names like "install-hook" are ambiguous in multi-tool environments; explicit names clearly indicate purpose (commit-triggered journal generation); improves user experience and reduces confusion  
+**Impact**: Longer script names but crystal clear functionality; better user experience for distributed system
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -558,6 +578,15 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
     - [x] Technical Decisions prompt refinement to avoid treating milestone updates as architectural decisions
     - [x] Human verification of journal entry quality - establish process for reviewing generated entries against actual development sessions
 - [ ] **M2.3**: Create git post-commit hook installation system
+  - [ ] Implement repository-specific chat validation in main process (DD-068)
+  - [ ] Create universal git post-commit hook script (DD-069)
+  - [ ] Design commit-story.config.json configuration architecture (DD-070)
+  - [ ] Create install-commit-journal-hook.sh with comprehensive validation
+  - [ ] Create uninstall-commit-journal-hook.sh with cleanup
+  - [ ] Create debug mode toggle scripts with explicit naming (DD-071)
+  - [ ] Update package.json with descriptive hook management scripts
+  - [ ] Update .gitignore for hook-related files
+  - [ ] Test universal installation and debug mode functionality
 - [ ] **M2.4**: Validate commit → journal entry workflow
 
 ### Phase 3: Enhancement & Polish (Week 3)
@@ -1387,6 +1416,28 @@ Initial approach of jumping directly to parser implementation risked building wr
 
 **M2.2e Progress**: ✅ COMPLETE (6 of 6 items) - All quality refinement tasks completed with production validation
 
-**Next Session Priority**: M2.3 git hook installation system or M2.4 workflow validation
+**Next Session Priority**: Begin M2.3 implementation with first sub-task
+
+### 2025-09-02: M2.3 Git Hook Installation Planning Complete
+**Duration**: ~1.5 hours  
+**Focus**: Strategic planning and design decisions for git hook installation system
+
+**Planning Work Completed**:
+- **Design Decision Documentation**: Added DD-068 through DD-071 covering validation strategy, universal distribution, configuration architecture, and naming conventions
+- **M2.3 Milestone Breakdown**: Expanded milestone into 9 specific sub-tasks for systematic implementation
+- **Architecture Planning**: Designed universal compatibility approach vs development-only hardcoded solution
+- **User Experience Strategy**: Planned explicit naming conventions and comprehensive validation for professional distribution
+
+**Key Planning Decisions**:
+- **Validation Strategy**: Decided to implement chat data validation in main process (src/index.js) rather than git hook for better debugging
+- **Universal Compatibility**: Planned hook that works in any repository where system is installed, not hardcoded for development environment  
+- **Configuration Architecture**: Decided on dedicated commit-story.config.json for system settings vs environment variables
+- **Explicit Naming**: Planned install-commit-journal-hook pattern for clarity in multi-tool environments
+
+**Implementation Readiness**: All M2.3 sub-tasks defined and ready for systematic implementation. Planning session prevented scope creep and established clear implementation priorities.
+
+**Current System Status**: Core journal generation (Phase 2) 100% complete and production-ready. M2.3 planning complete, implementation pending.
+
+**Next Session Priority**: Begin M2.3 implementation with repository-specific chat validation (first sub-task)
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
