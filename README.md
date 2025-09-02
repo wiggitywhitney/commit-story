@@ -110,8 +110,10 @@ Git Commit → Post-commit Hook → Context Collection → AI Processing → Jou
 - **[Project Specification](./project-spec.md)** - Technical requirements and implementation details
 - **[Product Requirements Document](./prds/1-automated-git-journal-system.md)** - Complete feature specification and milestones
 - **[File Exclusion System PRD](./prds/2-file-exclusion-system.md)** - Configuration and filtering requirements
+- **[Historical Journal Backfill PRD](./prds/3-journal-history-backfill.md)** - Retrospective journal generation for existing commits
 - **[GitHub Issue #1](https://github.com/wiggitywhitney/commit_story/issues/1)** - Feature concept and discussion
 - **[GitHub Issue #2](https://github.com/wiggitywhitney/commit_story/issues/2)** - File exclusion system requirements
+- **[GitHub Issue #3](https://github.com/wiggitywhitney/commit_story/issues/3)** - Historical journal backfill requirements
 
 ## Development
 
