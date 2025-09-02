@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "test": "node tests/connectivity.js"
+    "test": "node tests/connectivity.js",
+    "install-commit-journal-hook": "bash scripts/install-commit-journal-hook.sh",
+    "uninstall-commit-journal-hook": "bash scripts/uninstall-commit-journal-hook.sh"
   },
   "repository": {
     "type": "git",

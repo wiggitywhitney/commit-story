@@ -16,3 +16,8 @@ node_modules/
 # Logs
 *.log
 npm-debug.log*
+
+# Commit Story Configuration (repository-specific)
+commit-story.config.json
+# Journal entries (private by default - remove this line to make journals public)
+journal/

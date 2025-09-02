@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Universal Git Post-Commit Hook
+# Works in any repository where Commit Story is locally installed
+# Only triggers journal generation if Commit Story is configured for this repo
+
+# Function to log debug messages if debug mode is enabled
+debug_log() {
+    if [[ -f "commit-story.config.json" ]] && command -v node >/dev/null 2>&1; then
+        DEBUG_ENABLED=$(node -e "
+            try { 
+                const config = require('./commit-story.config.json'); 
+                console.log(config.debug || false); 
+            } catch(e) { 
+                console.log(false); 
+            }
+        " 2>/dev/null || echo "false")
+        
+        if [[ "$DEBUG_ENABLED" == "true" ]]; then
+            echo "[DEBUG] $1" >&2
+        fi
+    fi
+}
+
+# Check if Commit Story is configured for this repository
+is_commit_story_enabled() {
+    # Must have both config file and local installation
+    [[ -f "commit-story.config.json" ]] && [[ -f "node_modules/.bin/commit-story" ]]
+}
+
+# Function to check if debug mode is enabled
+is_debug_enabled() {
+    if [[ -f "commit-story.config.json" ]] && command -v node >/dev/null 2>&1; then
+        DEBUG_ENABLED=$(node -e "
+            try { 
+                const config = require('./commit-story.config.json'); 
+                console.log(config.debug || false); 
+            } catch(e) { 
+                console.log(false); 
+            }
+        " 2>/dev/null || echo "false")
+        
+        [[ "$DEBUG_ENABLED" == "true" ]]
+    else
+        return 1  # Debug disabled if no config or node
+    fi
+}
+
+# Main execution
+debug_log "Post-commit hook triggered"
+
+# Only run if Commit Story is configured for this repository
+if is_commit_story_enabled; then
+    debug_log "Commit Story enabled, starting journal generation"
+    debug_log "Starting journal generation for commit $(git rev-parse HEAD)"
+    
+    # Run in foreground if debug mode, background otherwise
+    if is_debug_enabled; then
+        debug_log "Debug mode enabled - running in foreground"
+        ./node_modules/.bin/commit-story HEAD
+    else
+        debug_log "Running in background"
+        (./node_modules/.bin/commit-story HEAD >/dev/null 2>&1 &)
+    fi
+    
+    debug_log "Journal generation completed"
+else
+    debug_log "Commit Story not configured for this repository, skipping"
+fi
+
+exit 0

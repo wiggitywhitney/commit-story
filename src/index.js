@@ -22,6 +22,15 @@ export default async function main(commitRef = 'HEAD') {
     // Gather all context for the specified commit
     const context = await gatherContextForCommit(commitRef);
     
+    // Validate repository-specific chat data availability (DD-068)
+    if (context.chatMetadata.data.totalMessages === 0) {
+      console.log(`⚠️  No chat data found for this repository and time window`);
+      console.log(`   Repository: ${process.cwd()}`);
+      console.log(`   Time window: ${context.commit.data.timestamp}`);
+      console.log(`   This may indicate the commit was made outside of Claude Code sessions.`);
+      process.exit(0); // Graceful exit, not an error
+    }
+    
     console.log('📊 Context Summary:');
     console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
     console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
