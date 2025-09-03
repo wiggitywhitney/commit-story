@@ -532,6 +532,37 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Need empirical data to identify systematic prompt issues rather than optimizing based on assumptions; primacy bias (overweighting session start) identified as potential concern requiring data validation; authentic usage generates better insights than synthetic testing  
 **Impact**: Defers prompt optimization to evidence-based approach; ensures improvements address real usage patterns; establishes quality validation methodology for ongoing system refinement
 
+### DD-077: Per-Project NPM Package Distribution Strategy
+**Decision**: Distribute Commit Story as per-project dev dependency via npm, not as global package  
+**Rationale**: Per-project isolation provides better control; each project manages its own journaling configuration; avoids global namespace pollution; standard pattern for development tools  
+**Implementation**: Package installed via `npm install --save-dev commit-story`; hook activation remains separate explicit step  
+**Impact**: Cleaner installation pattern; better project isolation; standard npm workflow familiar to developers
+
+### DD-078: No CLI Architecture Decision  
+**Decision**: Use npm scripts exclusively instead of building CLI tool for MVP  
+**Rationale**: CLI adds complexity without essential value for MVP; npm scripts are discoverable via `npm run`; most commands (test, debug) rarely used after setup; saves 2-4 hours of development time better spent on core features  
+**Impact**: Simpler codebase; faster MVP delivery; can add CLI in v2 if users request it
+
+### DD-079: Simplified npm Script Naming Convention
+**Decision**: Rename verbose script names to industry-standard patterns: `commit-story:init-hook`, `commit-story:remove-hook`, `commit-story:test`, `commit-story:run`  
+**Rationale**: Current names (`install-commit-journal-hook`) are unnecessarily verbose; industry standard is simple verb-based commands; explicit "hook" terminology helps developers understand what's being configured  
+**Impact**: Better developer experience; clearer command purpose; follows npm ecosystem conventions
+
+### DD-080: Human-Centered Documentation Philosophy  
+**Decision**: Rewrite documentation emphasizing human value ("why it mattered and how you solved it") over technical features  
+**Rationale**: Original MCP documentation resonated because it focused on developer journey and growth; research shows 20-25% performance improvement from reflective practice; emotional connection drives adoption  
+**Impact**: Documentation focuses on career growth, learning, and storytelling rather than technical implementation details
+
+### DD-081: Simplified Environment Configuration Documentation
+**Decision**: Document only .env file method for OpenAI API key configuration, not system environment variables  
+**Rationale**: Single method reduces documentation complexity (KISS principle); .env files provide project-specific configuration isolation; most developers prefer .env for project secrets  
+**Impact**: Simpler setup instructions; reduced user confusion; cleaner documentation
+
+### DD-082: MVP Documentation Minimalism  
+**Decision**: Create only README.md for MVP release, defer INSTALL.md and other documentation files  
+**Rationale**: Single source of truth reduces maintenance burden; comprehensive README can serve all documentation needs initially; faster iteration on single file  
+**Impact**: Faster MVP release; easier documentation updates; reduced file sprawl
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -618,13 +649,27 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 - [ ] **M3.1**: Add error handling and graceful degradation
 - [ ] **M3.2**: Implement concurrent commit handling
 - [ ] **M3.3**: Add configuration options and customization
-- [ ] **M3.4**: Documentation and installation guide
+- [ ] **M3.4**: NPM package preparation (per DD-077, DD-078, DD-079)
+  - [ ] Rename all scripts per DD-079: `install-commit-journal-hook` → `commit-story:init-hook`, `uninstall-commit-journal-hook` → `commit-story:remove-hook`, `journal-ai-connectivity` → `commit-story:test`, `start-commit-story` → `commit-story:run`
+  - [ ] Update hook script to reference renamed commands
+  - [ ] Update .env.example with clear comments about OpenAI API key and link to platform.openai.com/api-keys
+  - [ ] Add package.json `files` field to control what gets published: `["src/", "hooks/", "scripts/", ".env.example", "README.md"]`
+  - [ ] Update package.json scripts to be callable from node_modules (not just development mode)
+  - [ ] Remove any global installation references or support from scripts/hooks
+  - [ ] Test installation flow: `npm pack` → install tarball in test project → verify hook installation works
 
 ### Phase 4: Production Readiness (Week 4)
+- [ ] **M4.0**: Documentation completion with tested installation instructions (per DD-080, DD-081, DD-082)
+  - [ ] Complete README.md Quick Start section with verified npm installation flow
+  - [ ] Add two-step process documentation: package install vs hook activation
+  - [ ] Include troubleshooting section based on actual testing
+  - [ ] Document uninstall process clearly (both package and hook removal)
+  - [ ] Add "Why two steps?" explanation section
+  - [ ] Validate all README instructions work end-to-end
 - [ ] **M4.1**: Security review and sensitive data filtering
 - [ ] **M4.2**: Performance optimization
 - [ ] **M4.3**: Edge case handling and robustness improvements
-- [ ] **M4.4**: Release preparation and packaging
+- [ ] **M4.4**: npm package publishing and release (per DD-077, DD-078)
 
 ## Risk Assessment
 
@@ -1442,6 +1487,31 @@ Initial approach of jumping directly to parser implementation risked building wr
 **M2.2e Progress**: ✅ COMPLETE (6 of 6 items) - All quality refinement tasks completed with production validation
 
 **Next Session Priority**: Begin M2.3 implementation with first sub-task
+
+### 2025-09-03: Documentation Strategy and NPM Package Planning Complete
+**Duration**: ~1.5 hours  
+**Focus**: Strategic documentation planning and npm packaging architecture decisions for MVP release
+
+**Completed PRD Items**:
+- [x] **Documentation foundation**: README.md partial rewrite with human-centered approach - Evidence: 3 core sections completed (title, value proposition, why use it) focusing on developer journey and career growth
+- [x] **DD-077 through DD-082**: Six strategic design decisions for packaging and documentation - Evidence: Per-project npm distribution, no CLI architecture, simplified naming, human-centered docs, .env-only config, MVP minimalism
+- [x] **M3.4 milestone restructuring**: Focused package preparation without premature documentation - Evidence: Removed README completion tasks, added explicit npm packaging subtasks
+- [x] **M4.0 milestone creation**: Documentation completion with tested installation flow - Evidence: New milestone ensures documentation describes working installation process
+- [x] **Process enhancement**: Updated `/prd-update-decisions` with implementation tracking - Evidence: Added Steps 7-8 for DD status assessment and actionable task creation
+
+**Strategic Architecture Decisions**:
+- **Per-project installation**: Each project gets own commit-story installation for better isolation and control
+- **Two-step activation**: Package install (`npm install --save-dev`) separate from hook activation (`npm run commit-story:init-hook`)
+- **No CLI approach**: Use npm scripts exclusively to avoid over-engineering MVP
+- **Script naming clarity**: Industry-standard naming with explicit "hook" terminology for user comprehension
+- **Documentation sequencing**: Package preparation (M3.4) before documentation (M4.0) ensures instructions describe working process
+
+**Planning Quality Improvements**:
+- **Decision-to-implementation tracking**: Enhanced process ensures strategic decisions become actionable work items
+- **Milestone sequencing logic**: Documentation completion moved after package testing for accuracy
+- **User experience focus**: Addressed installation confusion and double-install clarity
+
+**Next Session Priority**: Execute M3.4 NPM package preparation tasks (script renaming, package.json updates, installation testing)
 
 ### 2025-09-02: M2.3 Git Hook Installation Planning Complete
 **Duration**: ~1.5 hours  
