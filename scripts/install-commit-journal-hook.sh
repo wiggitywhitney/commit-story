@@ -22,15 +22,90 @@ if [[ ! -f "node_modules/.bin/commit-story" ]] && [[ ! -f "src/index.js" ]]; the
     exit 1
 fi
 
-# Validate source hook file exists
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOK_SOURCE="$(dirname "$SCRIPT_DIR")/hooks/post-commit"
+# Create the post-commit hook content
+create_hook_content() {
+    cat << 'EOF'
+#!/bin/bash
 
-if [[ ! -f "$HOOK_SOURCE" ]]; then
-    echo "❌ Error: Hook source file not found at $HOOK_SOURCE"
-    echo "   This script must be run from a Commit Story installation"
-    exit 1
+# Universal Git Post-Commit Hook
+# Works in any repository where Commit Story is locally installed
+# Only triggers journal generation if Commit Story is configured for this repo
+
+# Function to log debug messages if debug mode is enabled
+debug_log() {
+    if [[ -f "commit-story.config.json" ]] && command -v node >/dev/null 2>&1; then
+        DEBUG_ENABLED=$(node -e "
+            try { 
+                const config = require('./commit-story.config.json'); 
+                console.log(config.debug || false); 
+            } catch(e) { 
+                console.log(false); 
+            }
+        " 2>/dev/null || echo "false")
+        
+        if [[ "$DEBUG_ENABLED" == "true" ]]; then
+            echo "[DEBUG] $1" >&2
+        fi
+    fi
+}
+
+# Check if Commit Story is configured for this repository
+is_commit_story_enabled() {
+    # Must have config file and either local installation or development mode
+    [[ -f "commit-story.config.json" ]] && ([[ -f "node_modules/.bin/commit-story" ]] || [[ -f "src/index.js" ]])
+}
+
+# Function to check if debug mode is enabled
+is_debug_enabled() {
+    if [[ -f "commit-story.config.json" ]] && command -v node >/dev/null 2>&1; then
+        DEBUG_ENABLED=$(node -e "
+            try { 
+                const config = require('./commit-story.config.json'); 
+                console.log(config.debug || false); 
+            } catch(e) { 
+                console.log(false); 
+            }
+        " 2>/dev/null || echo "false")
+        
+        [[ "$DEBUG_ENABLED" == "true" ]]
+    else
+        return 1  # Debug disabled if no config or node
+    fi
+}
+
+# Main execution
+debug_log "Post-commit hook triggered"
+
+# Only run if Commit Story is configured for this repository
+if is_commit_story_enabled; then
+    debug_log "Commit Story enabled, starting journal generation"
+    debug_log "Starting journal generation for commit $(git rev-parse HEAD)"
+    
+    # Run in foreground if debug mode, background otherwise
+    if is_debug_enabled; then
+        debug_log "Debug mode enabled - running in foreground"
+        if [[ -f "node_modules/.bin/commit-story" ]]; then
+            ./node_modules/.bin/commit-story HEAD
+        else
+            node src/index.js HEAD
+        fi
+    else
+        debug_log "Running in background"
+        if [[ -f "node_modules/.bin/commit-story" ]]; then
+            (./node_modules/.bin/commit-story HEAD >/dev/null 2>&1 &)
+        else
+            (node src/index.js HEAD >/dev/null 2>&1 &)
+        fi
+    fi
+    
+    debug_log "Journal generation completed"
+else
+    debug_log "Commit Story not configured for this repository, skipping"
 fi
+
+exit 0
+EOF
+}
 
 # Create commit-story.config.json if it doesn't exist
 if [[ ! -f "commit-story.config.json" ]]; then
@@ -74,7 +149,7 @@ fi
 
 # Install the hook
 echo "🔗 Installing post-commit hook..."
-cp "$HOOK_SOURCE" ".git/hooks/post-commit"
+create_hook_content > ".git/hooks/post-commit"
 chmod +x ".git/hooks/post-commit"
 
 echo "✅ Commit Story post-commit hook installed successfully!"
@@ -87,4 +162,4 @@ echo "🔧 Other available actions:"
 echo "   • Enable debug mode: Edit commit-story.config.json and set debug: true"
 echo "   • Disable journal generation: Edit commit-story.config.json and set enabled: false"
 echo "   • Make journals public: Remove journal/ from .gitignore"
-echo "   • Uninstall hook completely: npm run uninstall-commit-journal-hook"
+echo "   • Uninstall hook completely: npm run commit-story:remove-hook"

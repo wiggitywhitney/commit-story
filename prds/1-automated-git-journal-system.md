@@ -568,6 +568,27 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Single source of truth reduces maintenance burden; comprehensive README can serve all documentation needs initially; faster iteration on single file  
 **Impact**: Faster MVP release; easier documentation updates; reduced file sprawl
 
+### DD-084: Embedded Hook Content Architecture
+**Decision**: Replace external file copying with embedded hook content in install scripts using heredoc patterns  
+**Rationale**: Eliminates fragile path resolution issues when package is installed via npm. The original approach failed with symlinks and different installation contexts  
+**Impact**: Removes dependency on hooks/ directory, simplifies package structure, makes installation more reliable
+
+### DD-085: Multiple Binary Distribution Strategy  
+**Decision**: Provide multiple npm binaries (`commit-story`, `commit-story-init`, `commit-story-remove`) instead of single entry point  
+**Rationale**: Users need simple commands for common operations. `npx commit-story-init` is more intuitive than complex script paths  
+**Impact**: Better UX, cleaner distribution, follows npm conventions
+
+### DD-086: Script Namespace Convention for Development
+**Decision**: Use `commit-story:` prefix for all npm scripts in package.json for development context  
+**Rationale**: Namespacing prevents conflicts and clearly indicates these are commit-story related commands in development  
+**Impact**: Development commands are `npm run commit-story:run`, `commit-story:test`, etc.
+
+### DD-087: Package Name Inconsistency Recognition
+**Decision**: Acknowledge that `commit_story` package name is inconsistent with expected `commit-story` distribution name  
+**Rationale**: npm conventions use hyphens, users would expect `npm install commit-story` to work  
+**Impact**: Currently requires `npm install commit_story` (underscore) which breaks user expectations  
+**Status**: ❌ Outstanding - needs package.json name change from `commit_story` to `commit-story`
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -658,14 +679,15 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 - [ ] **M3.1**: Add error handling and graceful degradation
 - [ ] **M3.2**: Implement concurrent commit handling
 - [ ] **M3.3**: Add configuration options and customization
-- [ ] **M3.4**: NPM package preparation (per DD-077, DD-078, DD-079)
-  - [ ] Rename all scripts per DD-079: `install-commit-journal-hook` → `commit-story:init-hook`, `uninstall-commit-journal-hook` → `commit-story:remove-hook`, `journal-ai-connectivity` → `commit-story:test`, `start-commit-story` → `commit-story:run`
-  - [ ] Update hook script to reference renamed commands
-  - [ ] Update .env.example with clear comments about OpenAI API key and link to platform.openai.com/api-keys
-  - [ ] Add package.json `files` field to control what gets published: `["src/", "hooks/", "scripts/", ".env.example", "README.md"]`
-  - [ ] Update package.json scripts to be callable from node_modules (not just development mode)
-  - [ ] Remove any global installation references or support from scripts/hooks
-  - [ ] Test installation flow: `npm pack` → install tarball in test project → verify hook installation works
+- [x] **M3.4**: NPM package preparation (per DD-077, DD-078, DD-079, DD-084, DD-085, DD-086) - **COMPLETE** ✅
+  - [x] Rename all scripts per DD-079: `install-commit-journal-hook` → `commit-story:init-hook`, `uninstall-commit-journal-hook` → `commit-story:remove-hook`, `journal-ai-connectivity` → `commit-story:test`, `start-commit-story` → `commit-story:run`
+  - [x] Update hook script to reference renamed commands (DD-084: embedded hook content eliminates external references)
+  - [x] Update .env.example with clear comments about OpenAI API key and link to platform.openai.com/api-keys
+  - [x] Add package.json `files` field to control what gets published: `["src/", "scripts/", ".env.example", "README.md"]` (hooks/ removed per DD-084)
+  - [x] Update package.json scripts to be callable from node_modules (DD-085: multiple binary distribution)
+  - [x] Remove any global installation references or support from scripts/hooks (DD-084: embedded content removes path dependencies)
+  - [x] Test installation flow: `npm pack` → install tarball in test project → verify hook installation works
+  - [ ] Fix package name inconsistency per DD-087: change `commit_story` to `commit-story` in package.json
 
 ### Phase 4: Production Readiness (Week 4)
 - [ ] **M4.0**: Documentation completion with tested installation instructions (per DD-080, DD-081, DD-082)
@@ -1617,11 +1639,39 @@ Initial approach of jumping directly to parser implementation risked building wr
 - **Content filtering**: Effectively removes system noise while preserving meaningful dialogue
 - **Hook integration**: Seamless and non-intrusive with excellent debug visibility
 
-**Phase Completion Status**:
+**Phase Completion Status** (Updated 2025-09-04):
 - **Phase 1 (Foundation)**: 100% complete ✅
-- **Phase 2 (Core Features)**: 100% complete ✅  
-- **Overall Progress**: 85% complete (17/20 major milestones)
+- **Phase 2 (Core Features)**: 100% complete ✅
+- **Phase 3 (Enhancement)**: 25% complete (M3.4 ✅, M3.1-M3.3 pending)
+- **Overall Progress**: 90% complete (18/20 major milestones)
 
-**Next Session Priority**: Begin Phase 3 enhancement work starting with M3.4 NPM package preparation
+**Next Session Priority**: Address DD-087 package name inconsistency, then continue Phase 3 work (M3.1-M3.3)
+
+### 2025-09-04: M3.4 NPM Package Preparation Complete
+**Duration**: ~1.5 hours  
+**Focus**: Complete NPM package preparation for distribution readiness
+
+**Completed PRD Items**:
+- [x] **M3.4**: NPM package preparation - Evidence: Full end-to-end installation testing successful with `npm pack` → tarball install → `npx commit-story-init` workflow validated
+
+**New Design Decisions Added**:
+- [x] **DD-084**: Embedded hook content architecture - Evidence: Replaced fragile file copying with heredoc-embedded hook content, eliminating path resolution failures
+- [x] **DD-085**: Multiple binary distribution strategy - Evidence: Added `commit-story-init` and `commit-story-remove` binaries for intuitive user commands  
+- [x] **DD-086**: Script namespace convention for development - Evidence: All package.json scripts renamed to `commit-story:` prefix pattern
+- [ ] **DD-087**: Package name inconsistency recognition - Evidence: Identified `commit_story` vs expected `commit-story` distribution issue
+
+**Implementation Achievements**:
+- **Robust Installation**: Eliminated all path dependency issues through embedded content approach
+- **User Experience**: Simple `npx commit-story-init` command replaces complex script paths
+- **Package Structure**: Optimized `files` field, proper binary distribution, development script namespacing
+- **End-to-End Validation**: Complete installation flow tested from tarball to working hook
+
+**Critical Issue Identified**: Package name `commit_story` doesn't match expected npm convention `commit-story`, breaking user expectations for `npm install commit-story`
+
+**Phase Progress Update**: 
+- **Phase 3**: 25% complete (1/4 milestones) - M3.4 ✅, M3.1-M3.3 pending
+- **Overall Progress**: 90% complete (18/20 major milestones)
+
+**Next Session Priority**: Address DD-087 package name inconsistency before continuing with remaining Phase 3 work
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
