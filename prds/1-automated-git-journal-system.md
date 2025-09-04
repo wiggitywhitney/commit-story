@@ -532,6 +532,11 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Rationale**: Need empirical data to identify systematic prompt issues rather than optimizing based on assumptions; primacy bias (overweighting session start) identified as potential concern requiring data validation; authentic usage generates better insights than synthetic testing  
 **Impact**: Defers prompt optimization to evidence-based approach; ensures improvements address real usage patterns; establishes quality validation methodology for ongoing system refinement
 
+### DD-083: Dual-Track M2.4 Validation Strategy
+**Decision**: Combine MVP functional validation with quality assessment, ensuring quality issues don't block progress to Phase 3  
+**Rationale**: Need to confirm basic workflow works (required for NPM packaging) while gathering quality insights for future improvement; quality findings should inform but not gate advancement; separate "does it work?" from "is it good?"  
+**Impact**: Enables progression to Phase 3 based on functional success while collecting improvement data; prevents perfectionism from blocking iterative development approach
+
 ### DD-077: Per-Project NPM Package Distribution Strategy
 **Decision**: Distribute Commit Story as per-project dev dependency via npm, not as global package  
 **Rationale**: Per-project isolation provides better control; each project manages its own journaling configuration; avoids global namespace pollution; standard pattern for development tools  
@@ -644,6 +649,10 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
   - [x] Update .gitignore for hook-related files
   - [x] Test universal installation and debug mode functionality
 - [ ] **M2.4**: Validate commit → journal entry workflow
+  - [ ] MVP functional validation: Confirm hook triggers journal generation without crashes
+  - [ ] Edge case testing: Test minimal commits and scenarios without chat context
+  - [ ] Quality assessment for insights: Review existing 5+ journal entries for patterns/improvements (non-blocking)
+  - [ ] Document validation findings in `docs/m2.4-validation-notes.md` for future reference
 
 ### Phase 3: Enhancement & Polish (Week 3)
 - [ ] **M3.1**: Add error handling and graceful degradation
