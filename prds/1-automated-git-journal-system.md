@@ -1643,7 +1643,7 @@ Initial approach of jumping directly to parser implementation risked building wr
 - **Phase 1 (Foundation)**: 100% complete ✅
 - **Phase 2 (Core Features)**: 100% complete ✅
 - **Phase 3 (Enhancement)**: 25% complete (M3.4 ✅, M3.1-M3.3 pending)
-- **Overall Progress**: 90% complete (18/20 major milestones)
+- **Overall Progress**: 90% complete (19/21 major milestones)
 
 **Next Session Priority**: Address DD-087 package name inconsistency, then continue Phase 3 work (M3.1-M3.3)
 
@@ -1658,7 +1658,7 @@ Initial approach of jumping directly to parser implementation risked building wr
 - [x] **DD-084**: Embedded hook content architecture - Evidence: Replaced fragile file copying with heredoc-embedded hook content, eliminating path resolution failures
 - [x] **DD-085**: Multiple binary distribution strategy - Evidence: Added `commit-story-init` and `commit-story-remove` binaries for intuitive user commands  
 - [x] **DD-086**: Script namespace convention for development - Evidence: All package.json scripts renamed to `commit-story:` prefix pattern
-- [ ] **DD-087**: Package name inconsistency recognition - Evidence: Identified `commit_story` vs expected `commit-story` distribution issue
+- [x] **DD-087**: Package name inconsistency recognition - Evidence: Identified `commit_story` vs expected `commit-story` distribution issue
 
 **Implementation Achievements**:
 - **Robust Installation**: Eliminated all path dependency issues through embedded content approach
@@ -1670,7 +1670,7 @@ Initial approach of jumping directly to parser implementation risked building wr
 
 **Phase Progress Update**: 
 - **Phase 3**: 25% complete (1/4 milestones) - M3.4 ✅, M3.1-M3.3 pending
-- **Overall Progress**: 90% complete (18/20 major milestones)
+- **Overall Progress**: 90% complete (19/21 major milestones)
 
 **Next Session Priority**: Address DD-087 package name inconsistency before continuing with remaining Phase 3 work
 
@@ -1689,10 +1689,38 @@ Initial approach of jumping directly to parser implementation risked building wr
 
 **Phase Completion Status**:
 - **Phase 3 (Enhancement)**: 25% complete (M3.4 ✅ fully complete, M3.1-M3.3 pending)
-- **Overall Progress**: 90% complete (18/20 major milestones)
+- **Overall Progress**: 90% complete (19/21 major milestones)
 
 **Next Session Priorities**:
 - M4.0: Complete README.md with tested installation instructions
 - M4.0: Add troubleshooting and uninstall documentation
+
+### 2025-09-05: PRD #4 Step-Based Prompt Architecture Planning
+**Duration**: ~45 minutes  
+**Focus**: Strategic planning and PRD creation for generator prompt improvements
+
+**Planning Work Completed**:
+- **PRD Analysis**: Analyzed successful patterns in `/prd-create`, `/prd-next`, `/prd-update-decisions` commands
+- **Problem Identification**: Documented format-first antipatterns in Technical Decisions and Summary generator prompts  
+- **GitHub Issue**: Created [Issue #4](https://github.com/wiggitywhitney/commit-story/issues/4) with PRD label
+- **PRD Creation**: Complete PRD #4 documentation with implementation plan, testing strategy, and content preservation requirements
+
+**Key Analysis Findings**:
+- **Successful Pattern**: 5 identified patterns (sequential steps, progressive disclosure, decision branches, verification, format-last)
+- **Current Problems**: Technical Decisions shows format at line 13-20 before analysis; Summary has competing principles
+- **Solution Architecture**: Step-based restructuring with mandatory before/after testing and human approval
+
+**Strategic Documentation**:
+- **Implementation Plan**: 4 milestones with content preservation analysis and testing validation
+- **Risk Mitigation**: Mandatory human approval testing prevents quality regression
+- **Future Application**: Pattern documented for consistency across all future AI generator prompts
+
+**Phase Progress Update**: 
+- **Administrative**: PRD #4 created and documented for future implementation
+- **Overall Progress**: 90% complete (19/21 major milestones) - DD-087 marked complete
+
+**Next Session Priority**: Begin M4.0 documentation completion or continue Phase 3 enhancement work (M3.1-M3.3)
+
+---
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
