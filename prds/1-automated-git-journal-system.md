@@ -687,7 +687,7 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
   - [x] Update package.json scripts to be callable from node_modules (DD-085: multiple binary distribution)
   - [x] Remove any global installation references or support from scripts/hooks (DD-084: embedded content removes path dependencies)
   - [x] Test installation flow: `npm pack` → install tarball in test project → verify hook installation works
-  - [ ] Fix package name inconsistency per DD-087: change `commit_story` to `commit-story` in package.json
+  - [x] Fix package name inconsistency per DD-087: change `commit_story` to `commit-story` in package.json
 
 ### Phase 4: Production Readiness (Week 4)
 - [ ] **M4.0**: Documentation completion with tested installation instructions (per DD-080, DD-081, DD-082)
@@ -1673,5 +1673,26 @@ Initial approach of jumping directly to parser implementation risked building wr
 - **Overall Progress**: 90% complete (18/20 major milestones)
 
 **Next Session Priority**: Address DD-087 package name inconsistency before continuing with remaining Phase 3 work
+
+### 2025-09-05: M3.4 Package Name Consistency Fix
+**Duration**: ~15 minutes
+**Commits**: 1 commit pending
+**Primary Focus**: NPM package preparation completion
+
+**Completed PRD Items**:
+- [x] DD-087: Package name inconsistency fix - Evidence: package.json updated from "commit_story" to "commit-story", GitHub repo renamed, all URLs updated, npm pack tested successfully
+
+**Additional Work Done**:
+- GitHub repository renamed from commit_story to commit-story for consistency
+- All package.json URLs updated to match new repository name
+- Verified npm pack generates correct tarball name (commit-story-1.0.0.tgz)
+
+**Phase Completion Status**:
+- **Phase 3 (Enhancement)**: 25% complete (M3.4 ✅ fully complete, M3.1-M3.3 pending)
+- **Overall Progress**: 90% complete (18/20 major milestones)
+
+**Next Session Priorities**:
+- M4.0: Complete README.md with tested installation instructions
+- M4.0: Add troubleshooting and uninstall documentation
 
 - **2025-08-14**: PRD created, GitHub issue opened, initial planning complete
