@@ -42,7 +42,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "dotenv": "^17.2.1",
-    "openai": "^5.12.2"
+    "dotenv": "^17.2.2",
+    "openai": "^5.19.1"
   }
 }

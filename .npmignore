@@ -1,0 +1,44 @@
+# Development and documentation files
+prds/
+docs/
+research/
+journal/
+.claude/
+.git/
+.gitignore
+
+# Test and debug scripts (root level)
+debug-*.js
+test-*.js
+show-*.js
+project-spec.md
+test-validation.md
+
+# Test directory
+tests/
+
+# Configuration files
+commit-story.config.json
+.env
+.env.example
+
+# Build artifacts and packages
+commit_story-*.tgz
+node_modules/
+package-lock.json
+*.log
+.DS_Store
+
+# Hooks directory (generated during install)
+hooks/
+
+# GitHub specific
+.github/
+*.md
+!README.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
