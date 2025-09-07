@@ -72,7 +72,13 @@ ${dialoguePrompt}
 
 
   try {
-    const completion = await openai.chat.completions.create(requestPayload);
+    // Add timeout wrapper (30 seconds)
+    const completion = await Promise.race([
+      openai.chat.completions.create(requestPayload),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+      )
+    ]);
 
     const dialogue = completion.choices[0].message.content.trim();
     
@@ -84,7 +90,7 @@ ${dialoguePrompt}
     return cleanedDialogue;
 
   } catch (error) {
-    console.error('Error generating development dialogue:', error.message);
-    throw new Error(`Failed to generate development dialogue: ${error.message}`);
+    console.error(`⚠️ Development Dialogue generation failed: ${error.message}`);
+    return `[Development Dialogue generation failed: ${error.message}]`;
   }
 }

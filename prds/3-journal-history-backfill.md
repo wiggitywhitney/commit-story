@@ -67,6 +67,13 @@ Implement a historical journal backfill system that can retrospectively generate
 **Requirement**: Prevent partial journal entries when process is interrupted  
 **Acceptance Criteria**:
 - Complete entry generation before writing to file
+
+### TR-030: Error Marker Detection and Regeneration
+**Requirement**: Identify and regenerate entries containing error markers from failed generations  
+**Acceptance Criteria**:
+- Error markers use format: `[Section generation failed: reason]`
+- Backfill should consider regenerating entries containing error markers, not just missing entries
+- During backfill implementation, consider updating error messages to suggest using backfill
 - Graceful handling of SIGINT/SIGTERM
 - No incomplete or corrupted journal entries
 - Safe to restart after interruption

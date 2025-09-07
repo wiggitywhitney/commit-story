@@ -95,20 +95,26 @@ ${guidelines}
   };
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Here is the development session data:\n\n${JSON.stringify(contextForAI, null, 2)}` }
-      ],
-      temperature: 0.1, // Low temperature for consistent, factual extraction
-    });
+    // Add timeout wrapper (30 seconds)
+    const response = await Promise.race([
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Here is the development session data:\n\n${JSON.stringify(contextForAI, null, 2)}` }
+        ],
+        temperature: 0.1, // Low temperature for consistent, factual extraction
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+      )
+    ]);
 
     const technicalDecisions = response.choices[0].message.content.trim();
     return technicalDecisions;
 
   } catch (error) {
-    console.error('Technical decisions generation failed:', error);
-    return "Error generating technical decisions documentation";
+    console.error(`⚠️ Technical Decisions generation failed: ${error.message}`);
+    return `[Technical Decisions generation failed: ${error.message}]`;
   }
 }

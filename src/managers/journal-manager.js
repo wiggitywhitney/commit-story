@@ -28,15 +28,27 @@ export async function saveJournalEntry(commitHash, timestamp, sections) {
   const fileName = `${year}-${month}-${day}.md`;
   const filePath = join(process.cwd(), 'journal', 'entries', monthDir, fileName);
   
-  // Create directory structure if it doesn't exist
-  const dirPath = dirname(filePath);
-  await fs.mkdir(dirPath, { recursive: true });
-  
-  // Format entry and append to daily file
+  // Format entry for file or stdout
   const formattedEntry = formatJournalEntry(timestamp, commitHash, sections);
-  await fs.appendFile(filePath, formattedEntry, 'utf8');
   
-  return filePath;
+  try {
+    // Create directory structure if it doesn't exist
+    const dirPath = dirname(filePath);
+    await fs.mkdir(dirPath, { recursive: true });
+    
+    // Append to daily file
+    await fs.appendFile(filePath, formattedEntry, 'utf8');
+    
+    return filePath;
+  } catch (error) {
+    console.error(`⚠️ Cannot write journal file: ${error.message}`);
+    console.error('Journal entry content (save manually if needed):');
+    console.log('--- JOURNAL ENTRY START ---');
+    console.log(formattedEntry);
+    console.log('--- JOURNAL ENTRY END ---');
+    
+    return 'stdout (file write failed)';
+  }
 }
 
 /**

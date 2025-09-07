@@ -40,7 +40,7 @@ export function getLatestCommitData(commitRef = 'HEAD') {
     };
     
   } catch (error) {
-    console.error('Git collector error:', error.message);
+    console.error(`❌ Git data collection failed: ${error.message}`);
     return null;
   }
 }

@@ -102,7 +102,7 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
     // Get current commit data (returns Date object for timestamp)
     const currentCommit = await getLatestCommitData(commitRef);
     if (!currentCommit) {
-      throw new Error('Failed to get current commit data');
+      throw new Error('❌ Failed to get current commit data');
     }
 
     // Get previous commit data for time window

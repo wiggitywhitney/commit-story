@@ -73,12 +73,18 @@ ${guidelines}
 
 
   try {
-    const completion = await openai.chat.completions.create(requestPayload);
+    // Add timeout wrapper (30 seconds)
+    const completion = await Promise.race([
+      openai.chat.completions.create(requestPayload),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+      )
+    ]);
 
     return completion.choices[0].message.content.trim();
 
   } catch (error) {
-    console.error('Error generating summary:', error.message);
-    throw new Error(`Failed to generate summary: ${error.message}`);
+    console.error(`⚠️ Summary generation failed: ${error.message}`);
+    return `[Summary generation failed: ${error.message}]`;
   }
 }
