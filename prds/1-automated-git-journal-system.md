@@ -589,6 +589,12 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 **Impact**: Currently requires `npm install commit_story` (underscore) which breaks user expectations  
 **Status**: ❌ Outstanding - needs package.json name change from `commit_story` to `commit-story`
 
+### DD-088: Remove Speculative Milestones from Roadmap
+**Decision**: Strike through M3.2 (concurrent commit handling), M3.3 (configuration options), M4.2 (performance optimization), and M4.3 (edge case handling) rather than implement them.
+**Rationale**: These milestones violate the MVP philosophy (DD-004) by adding speculative features without evidence of real need. Concurrent commits already handled by atomic OS operations (DD-008). Configuration beyond debug/enabled is premature. Performance and edge cases should be addressed based on actual user feedback after shipping.
+**Impact**: Streamlined path to npm publication. Focus remains on shipping working software (M4.4) rather than imagining problems that may never exist. Preserves historical record of planning decisions.
+**Status**: ✅ Implemented - PRD updated with strike-through annotations
+
 ## Implementation Milestones
 
 ### Phase 1: Foundation (Week 1)
@@ -685,8 +691,8 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
   - [x] Updated backfill PRD (TR-030) documenting error markers and regeneration scope
   - [x] Tested error scenarios: missing/invalid API keys, invalid git commits
   - [x] Maintained MVP philosophy: fail-fast data collection, graceful AI degradation
-- [ ] **M3.2**: Implement concurrent commit handling
-- [ ] **M3.3**: Add configuration options and customization
+- ~~[ ] **M3.2**: Implement concurrent commit handling~~ - **REMOVED per DD-088**: OS-level atomic operations sufficient for single-developer tool
+- ~~[ ] **M3.3**: Add configuration options and customization~~ - **REMOVED per DD-088**: Current config (debug/enabled) adequate, avoid premature complexity
 - [x] **M3.4**: NPM package preparation (per DD-077, DD-078, DD-079, DD-084, DD-085, DD-086) - **COMPLETE** ✅
   - [x] Rename all scripts per DD-079: `install-commit-journal-hook` → `commit-story:init-hook`, `uninstall-commit-journal-hook` → `commit-story:remove-hook`, `journal-ai-connectivity` → `commit-story:test`, `start-commit-story` → `commit-story:run`
   - [x] Update hook script to reference renamed commands (DD-084: embedded hook content eliminates external references)
@@ -712,8 +718,8 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
   - [x] Integrate filtering into git-collector.js for commit messages and author emails
   - [x] Test filtering function with sample sensitive data patterns
   - [x] Verify security filtering works in real journal generation (verified: author email → [REDACTED_EMAIL], git diff patterns → [REDACTED_PASSWORD]/[REDACTED_KEY], all filtering integration points working correctly)
-- [ ] **M4.2**: Performance optimization
-- [ ] **M4.3**: Edge case handling and robustness improvements
+- ~~[ ] **M4.2**: Performance optimization~~ - **REMOVED per DD-088**: No performance issues identified, optimize based on real usage data
+- ~~[ ] **M4.3**: Edge case handling and robustness improvements~~ - **REMOVED per DD-088**: M3.1 error handling sufficient, address edge cases as discovered
 - [ ] **M4.4**: npm package publishing and release (per DD-077, DD-078)
 
 ## Risk Assessment
