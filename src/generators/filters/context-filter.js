@@ -7,6 +7,8 @@
  * Based on message structure from /docs/claude-chat-research.md
  */
 
+import { redactSensitiveData } from './sensitive-data-filter.js';
+
 const MAX_TOKENS = 120000; // Leave 8k buffer under gpt-4o-mini's 128k limit
 const AVG_CHARS_PER_TOKEN = 4; // Rough estimate for token counting
 
@@ -128,15 +130,18 @@ function filterChatMessages(messages) {
 function filterGitDiff(diff) {
   if (!diff) return diff;
   
-  const tokens = estimateTokens(diff);
+  // Filter sensitive data first
+  const filteredDiff = redactSensitiveData(diff);
+  
+  const tokens = estimateTokens(filteredDiff);
   
   // If diff is reasonable size, keep it as-is
   if (tokens <= 15000) {
-    return diff;
+    return filteredDiff;
   }
   
   // For large diffs, create a summary
-  const lines = diff.split('\n');
+  const lines = filteredDiff.split('\n');
   const fileChanges = [];
   let currentFile = null;
   let addedLines = 0;

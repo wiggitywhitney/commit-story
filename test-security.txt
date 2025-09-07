@@ -1,0 +1,3 @@
+Test file for security filtering
+This file contains: password = testSecret123
+And an API key: sk-test12345678901234567890123456789012345678

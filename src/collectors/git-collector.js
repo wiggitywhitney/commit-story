@@ -4,6 +4,7 @@
  */
 
 import { execSync } from 'child_process';
+import { redactSensitiveData } from '../generators/filters/sensitive-data-filter.js';
 
 /**
  * Get data for the specified commit (defaults to HEAD)
@@ -22,7 +23,7 @@ export function getLatestCommitData(commitRef = 'HEAD') {
     const authorName = parts[1];
     const authorEmail = parts[2];
     const timestamp = parts[3];
-    const message = parts.slice(4).join('|'); // Rejoin in case message contains pipes
+    const message = redactSensitiveData(parts.slice(4).join('|')); // Rejoin in case message contains pipes, then filter
     
     // Get full diff content for the specified commit
     const diff = execSync(`git diff-tree -p ${commitRef}`, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
@@ -32,7 +33,7 @@ export function getLatestCommitData(commitRef = 'HEAD') {
       message,
       author: {
         name: authorName,
-        email: authorEmail
+        email: '[REDACTED_EMAIL]'
       },
       timestamp: new Date(parseInt(timestamp) * 1000),
       diff

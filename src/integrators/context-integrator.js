@@ -9,6 +9,7 @@ import { getLatestCommitData } from '../collectors/git-collector.js';
 import { extractChatForCommit } from '../collectors/claude-collector.js';
 import { execSync } from 'child_process';
 import { filterContext } from '../generators/filters/context-filter.js';
+import { redactSensitiveData } from '../generators/filters/sensitive-data-filter.js';
 
 /**
  * Extracts clean text content from Claude messages, handling mixed content formats
@@ -35,6 +36,9 @@ export function extractTextFromMessages(messages) {
       // Fallback for unknown content types
       cleanContent = JSON.stringify(content);
     }
+    
+    // Filter sensitive data before AI processing
+    cleanContent = redactSensitiveData(cleanContent);
     
     // Return minimal message object for AI processing (eliminates Claude Code metadata bloat)
     return {
