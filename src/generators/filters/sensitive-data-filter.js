@@ -14,17 +14,24 @@ export function redactSensitiveData(text) {
   if (!text) return text;
   
   return text
-    // API Keys
-    .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED_KEY]')
-    .replace(/gh[ps]_[a-zA-Z0-9]{36}/g, '[REDACTED_TOKEN]')
-    .replace(/AKIA[A-Z0-9]{16}/g, '[REDACTED_AWS_KEY]')
+    // Known API key prefixes (comprehensive)
+    .replace(/\b(sk-|pk-|rk-|AIza|AKIA|gho_|ghp_|ghs_|ghu_|glpat-)[a-zA-Z0-9_-]{10,}/g, '[REDACTED_KEY]')
     
-    // Auth tokens
+    // Contextual key detection - hex keys near key-related words
+    .replace(/\b(api_?key|token|secret|password|credential)[\s:=]+[a-f0-9]{16,64}\b/gi, '[REDACTED_KEY]')
+    
+    // Contextual key detection - alphanumeric keys near key-related words  
+    .replace(/\b(api_?key|token|secret|password|credential)[\s:=]+[a-zA-Z0-9_-]{20,}\b/gi, '[REDACTED_KEY]')
+    
+    // Partial keys with truncation indicators
+    .replace(/\b[a-zA-Z0-9_-]{8,}(\*{3}|\.{3})\b/g, '[REDACTED_KEY]')
+    
+    // JWT tokens (base64 with dots)
+    .replace(/\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/g, '[REDACTED_JWT]')
+    
+    // Auth Bearer tokens
     .replace(/Bearer\s+[a-zA-Z0-9-._~+/]+/gi, '[REDACTED_TOKEN]')
     
-    // Personal info
-    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]')
-    
-    // Passwords in configs
-    .replace(/password[\s]*[:=][\s]*["']?[^"'\s]+/gi, '[REDACTED_PASSWORD]');
+    // Email addresses
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]');
 }
