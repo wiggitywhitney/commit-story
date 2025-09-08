@@ -1,5 +1,8 @@
 # Commit Story: Your Engineering Journey, Remembered
 
+[![npm version](https://badge.fury.io/js/commit-story.svg)](https://badge.fury.io/js/commit-story)
+[![npm downloads](https://img.shields.io/npm/dt/commit-story.svg)](https://www.npmjs.com/package/commit-story)
+
 Automatically capture not just what you built, but why it mattered and how you solved it.
 
 ## What is Commit Story?

@@ -4,9 +4,9 @@
   "description": "Automated Git Journal System with AI Assistant Context Integration",
   "main": "src/index.js",
   "bin": {
-    "commit-story": "./src/index.js",
-    "commit-story-init": "./scripts/install-commit-journal-hook.sh",
-    "commit-story-remove": "./scripts/uninstall-commit-journal-hook.sh"
+    "commit-story": "src/index.js",
+    "commit-story-init": "scripts/install-commit-journal-hook.sh",
+    "commit-story-remove": "scripts/uninstall-commit-journal-hook.sh"
   },
   "type": "module",
   "scripts": {
