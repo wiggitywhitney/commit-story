@@ -43,6 +43,11 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.63.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.204.0",
+    "@opentelemetry/sdk-node": "^0.204.0",
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
     "dotenv": "^17.2.2",
     "openai": "^5.19.1"
   }
