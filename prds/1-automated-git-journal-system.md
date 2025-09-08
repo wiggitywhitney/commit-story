@@ -756,7 +756,6 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 
 ## References
 
-- **Project Specification**: [project-spec.md](../project-spec.md)
 - **GitHub Issue**: [#1](https://github.com/wiggitywhitney/commit_story/issues/1)
 - **Claude Code Documentation**: Local chat storage format in `~/.claude/projects/`
 
