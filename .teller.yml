@@ -1,0 +1,10 @@
+project: demo-time
+providers:
+  google_secrets_manager:
+    kind: google_secretmanager
+    maps:
+      - id: secrets
+        path: projects/demoo-ooclock
+        keys:
+          datadog-commit-story-dev: DD_API_KEY
+          OpenAI-API-Key: OPENAI_API_KEY
