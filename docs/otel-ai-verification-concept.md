@@ -144,31 +144,29 @@ Instead of manual system archaeology:
 
 ## Implementation Strategy
 
-### Milestone Ordering (Revised)
-**Key Insight**: Start with the prompt, not the infrastructure.
+### Milestone Strategy
 
-#### Milestone 1: Smart Instrumentation Prompt (Week 1)
-- Create prompt that makes Claude add OTel to ALL new code
-- Claude starts instrumenting immediately
-- Use console/file output initially (no backend needed)
-- Accumulate trace patterns and refine prompt
+#### Milestone 1: Real-Time Intelligence Foundation (Week 1)
+- **Real OpenTelemetry spans**: Skip console stubs, implement actual Node SDK instrumentation immediately
+- **GenAI semantic conventions**: Use standard `gen_ai.*` attributes for AI interactions (`gen_ai.request.model`, `gen_ai.usage.input_tokens`, etc.)
+- **OTLP integration**: Connect to Datadog via OTLP from day one using Node SDK → OTLP → Datadog Agent
+- **Behavioral contracts**: Define function expectations that capture intent beyond type signatures
 
-#### Milestone 2: Backend Infrastructure (Week 2-3)
-- Set up Datadog/OTLP collector
-- Connect existing instrumented code
-- Transform console logs to real spans
-- "Suddenly all accumulated telemetry becomes visible"
+#### Milestone 2: Autonomous Discovery Integration (Week 2)
+- **Datadog MCP integration**: Connect trace querying to AI assistant workflows
+- **Discovery patterns**: Establish workflows where AI queries traces before writing code
+- **Reality-based system understanding**: Replace file-reading discovery with trace-based learning
 
-#### Milestone 3: Autonomous Validation (Week 4-5)
-- Add Datadog MCP integration
-- Claude learns to check its own work
-- Self-correction workflows based on trace evidence
+#### Milestone 3: Self-Correcting Development Loops (Week 3)
+- **Validation automation**: AI checks its own work against trace evidence
+- **Behavioral verification**: Confirm functions do what they claim, not just what types suggest
+- **Continuous refinement**: Improve instrumentation and contracts based on validation results
 
-### Why This Order Works
-1. **Immediate Value**: Better-instrumented code from day 1
-2. **Learning**: Refine prompts based on what Claude produces
-3. **No Waste**: Instrumentation accumulates before backend exists
-4. **Natural Flow**: Habit → Infrastructure → Automation
+### Why This Approach Works
+1. **Immediate Reality**: AI learns actual system behavior from day 1
+2. **No Throwaway Work**: Real instrumentation and standard conventions from the start
+3. **Industry Alignment**: Uses OpenTelemetry standards while pioneering AI integration patterns
+4. **Paradigm Reinforcement**: Each milestone deepens AI reliance on traces over assumptions
 
 ## Code Examples & Patterns
 
