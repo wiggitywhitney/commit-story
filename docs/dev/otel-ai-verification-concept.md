@@ -1,44 +1,45 @@
-# OpenTelemetry AI Verification Concept
+# OpenTelemetry AI System Intelligence
 
 ## Executive Summary
 
-This document captures a comprehensive analysis of using OpenTelemetry to verify AI assistant code behavior and improve development workflows. The concept evolved from initial ideas about detecting AI hallucinations to a practical framework for validating that AI-generated code performs as specified.
+This document outlines a practical framework for using OpenTelemetry traces to enhance AI assistant capabilities in software development. Rather than having AI assistants guess about system behavior from source code, this approach provides AI with real trace data to understand how systems actually work and validate new code against reality.
 
 ## Context & Motivation
 
-### Presentation Context
-- **Talk Title**: "This Lying Has To Stop: Keeping AI Honest with OpenTelemetry"
-- **Venue**: Cloud Native Denmark 2025
+### Conference Context
+- **Speaking Circuit**: Fall 2025 conference presentations on AI + observability
+- **Target Venues**: OSS and CNCF community events (KubeCon, Observability Day)
 - **Speaker**: Whitney Lee
-- **Goal**: Demonstrate using OpenTelemetry to catch AI lies and build trust in AI-assisted development
+- **Core Message**: Using OpenTelemetry to teach AI systems what your code actually does, not what it should do
 
 ### Project Context
 - **System**: Commit Story - automated Git journal system using AI
-- **Current Challenge**: AI assistants confidently write incorrect code that looks right but behaves wrong
-- **Existing Anti-Hallucination Work**: `src/generators/prompts/guidelines/anti-hallucination.js` shows the problem is recognized
+- **Foundation**: PRD-6 complete - dual OpenTelemetry exporters (console + Datadog) working
+- **Next Phase**: Enable AI assistants to query and analyze trace data for system intelligence
 
-## Original Vision & Evolution
+## Core Value Propositions
 
-### Initial Concept (Flawed)
-Three-deliverable system:
-1. **Prompt System**: Consistently add OpenTelemetry instrumentation to new functionality
-2. **Datadog Integration**: Collect and visualize trace data in browser UI
-3. **Validation Loop**: Pull data back via Datadog MCP server to validate function I/O
+This framework enables two critical AI assistant capabilities:
 
-### Key Problem Recognition
-The initial concept confused two separate problems:
-1. **AI Journal Hallucinations**: Journal generator inventing facts about development work
-2. **AI Assistant Code Errors**: Claude/other assistants writing functionally incorrect code
+### A) AI System Discovery
+**Problem**: AI assistants learn about systems by reading source code, leading to wrong assumptions about data volumes, call patterns, performance characteristics, and error frequencies.
 
-The user clarified they wanted to solve problem #2: verifying that AI-written code actually does what it claims to do.
+**Solution**: AI queries recent traces to understand actual system behavior - what data looks like, how functions are called, typical execution times, and real error patterns.
+
+### B) New Code Verification  
+**Problem**: AI assistants write code that passes type checks but behaves incorrectly with real data, requiring manual debugging to discover the issues.
+
+**Solution**: AI executes new code with real data, analyzes the resulting traces, and self-validates that the code works as intended before declaring it complete.
 
 ## Technical Research Findings
 
 ### Datadog MCP Server
-- **Status**: Multiple implementations exist (official and community)
-- **Capabilities**: Query metrics, logs, monitors; retrieve trace data
-- **Limitations**: Focused on reading data, not validation workflows
-- **Integration**: Works with Claude Code via configuration file
+- **Status**: Official Datadog Bits AI MCP server available in Preview (2025)
+- **Documentation**: https://docs.datadoghq.com/bits_ai/mcp_server/
+- **Capabilities**: Query metrics, logs, monitors; retrieve trace data via `list_spans` and `get_trace` tools
+- **Trace Access**: `get_trace(trace_id)` retrieves all spans from a specific trace with full detail
+- **Integration**: Compatible with Claude Code and other MCP-supported AI agents
+- **Key Insight**: Advanced trace filtering not required - individual trace analysis provides sufficient system intelligence
 
 ### OpenTelemetry + Datadog
 - **Protocol**: Full OTLP support via Datadog Agent
@@ -46,291 +47,223 @@ The user clarified they wanted to solve problem #2: verifying that AI-written co
 - **Trace Context**: W3C compatible, supports distributed tracing
 - **Custom Instrumentation**: Supported for application-specific spans
 
-### Validation Tools
-- **Tracetest**: Purpose-built for trace-based testing and validation
-- **Datadog Synthetics**: End-to-end monitoring (different use case)
-- **Contract Testing**: Schema validation at boundaries (complementary approach)
+### Related Technologies
+- **Tracetest**: Traditional trace-based testing with predefined assertions - complementary to AI-driven analysis
+  - Repository: https://github.com/kubeshop/tracetest
+- **Other MCP Observability Servers**: Honeycomb, Dynatrace, Arize Phoenix, AgentOps (mostly for monitoring AI agents, not AI querying application traces)
+- **OpenTelemetry MCP Integration**: Proposed but not yet implemented
+  - Discussion: https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/269
 
-## Critical Concerns Analysis
+## Technical Feasibility Analysis
 
-### Initial Concerns (Mostly Overblown for Development Use)
-1. **Performance Impact**: Use sampling (1-10%) during development
-2. **Data Volume Costs**: Minimal for development traces; production can differ
-3. **Security Risk**: Add PII filters; development data less sensitive
-4. **Timing Issues**: 1-2 second delay acceptable for development validation
+### Confirmed Capabilities (PRD-6 Complete)
+- ✅ **OpenTelemetry Instrumentation**: Dual exporters (console + Datadog OTLP) working
+- ✅ **Trace Generation**: Real spans with custom attributes and timing data
+- ✅ **Datadog Integration**: Traces visible in Datadog dashboard within seconds
+- ✅ **MCP Server Access**: Official Datadog Bits AI server provides `get_trace()` functionality
 
-### Real Limitations
-1. **Trace Data Scope**: Shows timing/relationships, not full I/O payloads without custom attributes
-2. **Hallucination Detection**: OTel cannot directly detect when AI "lies" - it can only provide ground truth
-3. **Round-trip Latency**: Code → OTel → Datadog → MCP → Claude has inherent delays
+### Practical Considerations
+- **Development Focus**: Rich instrumentation acceptable in development environments
+- **Trace ID Coordination**: AI assistants can parse trace IDs from console output automatically
+- **Individual Trace Analysis**: Single trace provides sufficient data for system understanding and validation
+- **Latency**: 1-2 second feedback loop acceptable for development workflows
 
-## Concept Evolution: From Error Detection to System Intelligence
+## Why Traces Over Traditional Approaches
 
-### Critical Analysis: Traditional Approaches vs OTel
+### The Gap in AI System Understanding
 
-#### Type Validation vs Runtime Behavior
-**Type validation catches structural problems:**
-```typescript
-// TypeScript catches this immediately
-function filterByDate(entries: JournalEntry[], startDate: Date): JournalEntry[] {
-  return entries.filter(e => e.date > startDate); // ✅ Types match
-}
+**Traditional AI Discovery Process:**
+AI assistant reads source files → makes assumptions about data volumes, call patterns, performance → writes code based on assumptions → often wrong
 
-filterByDate(entries, "2024-01-01"); // ❌ Compile error: string not Date
-```
+**Trace-Based Discovery Process:**
+AI queries recent traces → learns actual data shapes, call sequences, timing → writes code based on reality → higher success rate
 
-**But AI assistants often write structurally correct but behaviorally wrong code:**
-```typescript
-// This passes all type checks but is functionally broken
-function filterByDate(entries: JournalEntry[], startDate: Date): JournalEntry[] {
-  return entries.filter(e => e.date < startDate); // ❌ Wrong operator!
-  // Or: return entries.slice(0, 10); // ❌ Ignores filter entirely!
-}
-```
+### Comparison with Testing Approaches
 
-#### Where OTel Adds Unique Value
+**Traditional Testing (Tracetest, Unit Tests):**
+- Predefined assertions and expected outcomes
+- Requires maintaining test cases and mock data
+- Catches regressions when behavior changes
+- Manual test writing overhead
 
-**Traditional testing hierarchy:**
-```
-1. TypeScript + strict config → Catches 70% of AI errors
-2. Contract tests (input/output assertions) → Catches 90% of AI errors  
-3. Unit tests → Catches 95% of AI errors
-4. OTel runtime validation → Catches remaining 5% + provides observability
-```
+**AI Trace Analysis:**
+- Dynamic analysis of actual execution behavior
+- Uses real data during development
+- AI learns system patterns automatically
+- No test maintenance overhead
+- Complements traditional testing rather than replacing it
 
-**OTel's unique advantages:**
-1. **No test maintenance overhead** - validation happens with real data during development
-2. **Immediate feedback** - Write code → Run with real data → Instant trace feedback
-3. **System understanding** - Traces reveal actual behavior patterns, not assumptions
+## The Vision: Traces as AI System Intelligence
 
-### The Real Problem: AI System Discovery
+### From Code Assumptions to Runtime Reality
 
-#### Current Approach (Error-Prone)
-Whenever AI assistant revisits a part of the system it doesn't have current context about, it reads source files to understand behavior patterns, data flows, and integration points. This leads to wrong assumptions about:
-- Data volumes and shapes
-- Call sequences and dependencies  
-- Performance characteristics
-- Error handling patterns
-- Business logic branching
+**Current AI Workflow:**
+1. AI reads source code files
+2. Makes assumptions about system behavior
+3. Writes code based on assumptions
+4. User discovers issues during testing
 
-#### Trace-Based Discovery (Reality-Based)
-```
-Claude: *queries recent traces*
-"I can see processJournalEntries() actually receives arrays of length 10-50, 
-returns arrays 80% smaller, and is always called after validateEntries(). 
-The typical execution time is 50ms, and it fails 15% of the time when 
-input contains malformed dates..."
-*Understands actual system behavior*
-```
+**Trace-Enhanced AI Workflow:**
+1. AI queries recent traces for context
+2. Learns actual data volumes, call patterns, performance characteristics
+3. Writes code informed by real system behavior
+4. Validates new code by analyzing its trace output
+5. Self-corrects if trace analysis reveals issues
 
-### OTel as Living Documentation Layer
+### Traces as Living Documentation
 
-**Source code tells you what SHOULD happen. Traces tell you what ACTUALLY happens:**
+Unlike source code (which shows intent) or static documentation (which becomes outdated), traces show:
+- Real data shapes and volumes currently flowing through the system
+- Actual function call sequences and dependencies
+- Current performance characteristics and bottlenecks
+- Frequency and types of errors occurring
+- Integration patterns between system components
 
-- **Real data shapes and volumes** - "Functions typically process 10-50 items, not 1000s"
-- **Actual call patterns** - "Function A is always called before Function B"
-- **Performance characteristics** - "This transformation takes 100ms on average"
-- **Error frequencies** - "This validation fails 20% of the time with prod data"
-- **Integration patterns** - "These three services call each other in this sequence"
+## Implementation Roadmap
 
-### The Autonomous Understanding Dream
+### Foundation Complete ✅
+**PRD-6: Dual OpenTelemetry Exporters**
+- OpenTelemetry Node.js SDK with console + OTLP exporters
+- Datadog Agent OTLP ingestion configured
+- Test traces successfully reaching both console and Datadog dashboard
+- Service identification working (`commit-story-dev`)
 
-Instead of manual system archaeology:
-1. **Claude writes code with instrumentation** (learned habit)
-2. **Code runs and generates traces** (automatic)
-3. **Claude queries traces for system understanding** (before writing more code)
-4. **Claude discovers reality**: "I see this function actually handles async operations and retries failed calls"
-5. **Claude writes better code** based on actual system behavior
+### Next Phase: MCP Integration
+**Goal**: Connect AI assistant to trace querying capability
+- Set up Datadog Bits AI MCP server integration
+- Establish AI workflow patterns for trace analysis
+- Validate `get_trace(trace_id)` returns sufficient data for system intelligence
+- Test end-to-end: AI writes code → generates trace → queries trace → provides analysis
 
-## Implementation Strategy
+### Advanced Capabilities
+**System Discovery Patterns**: AI queries traces before writing code in unfamiliar system areas
+**Self-Validation Workflows**: AI analyzes trace output from newly written code
+**Instrumentation Standards**: Establish patterns for trace-friendly AI development
 
-### Milestone Strategy
+## Key Technical Insights
 
-#### Milestone 1: Real-Time Intelligence Foundation (Week 1)
-- **Real OpenTelemetry spans**: Skip console stubs, implement actual Node SDK instrumentation immediately
-- **GenAI semantic conventions**: Use standard `gen_ai.*` attributes for AI interactions (`gen_ai.request.model`, `gen_ai.usage.input_tokens`, etc.)
-- **OTLP integration**: Connect to Datadog via OTLP from day one using Node SDK → OTLP → Datadog Agent
-- **Behavioral contracts**: Define function expectations that capture intent beyond type signatures
+### Trace ID Coordination
+**Discovery**: Modern AI assistants handle trace ID parsing automatically
+- AI executes instrumented code
+- Parses trace IDs from console output
+- Calls MCP `get_trace(trace_id)` seamlessly
+- No manual handoff required
 
-#### Milestone 2: Autonomous Discovery Integration (Week 2)
-- **Datadog MCP integration**: Connect trace querying to AI assistant workflows
-- **Discovery patterns**: Establish workflows where AI queries traces before writing code
-- **Reality-based system understanding**: Replace file-reading discovery with trace-based learning
+### Individual vs Bulk Trace Analysis
+**Discovery**: Complex trace querying unnecessary for core use cases
+- Single trace analysis provides sufficient system intelligence
+- AI can learn system patterns from individual execution examples
+- Bulk historical analysis valuable but not essential for initial implementation
 
-#### Milestone 3: Self-Correcting Development Loops (Week 3)
-- **Validation automation**: AI checks its own work against trace evidence
-- **Behavioral verification**: Confirm functions do what they claim, not just what types suggest
-- **Continuous refinement**: Improve instrumentation and contracts based on validation results
+### Development vs Production Instrumentation
+**Approach**: Rich development instrumentation, sampled production instrumentation
+- Development: Capture detailed input/output data for AI analysis
+- Production: Focus on performance metrics and error tracking
+- Security: Implement PII filtering and data truncation
 
-### Why This Approach Works
-1. **Immediate Reality**: AI learns actual system behavior from day 1
-2. **No Throwaway Work**: Real instrumentation and standard conventions from the start
-3. **Industry Alignment**: Uses OpenTelemetry standards while pioneering AI integration patterns
-4. **Paradigm Reinforcement**: Each milestone deepens AI reliance on traces over assumptions
+## Workflow Examples
 
-## Code Examples & Patterns
+### System Discovery Workflow
+**Scenario**: AI needs to understand how journal processing works
+1. **User**: "Claude, optimize the journal processing performance"
+2. **Claude**: "Let me first understand the current behavior" 
+3. **Claude**: Executes existing journal processing with sample data
+4. **Claude**: Analyzes resulting trace via MCP `get_trace()`
+5. **Claude**: "I can see journal processing typically handles 15-30 entries, takes 120ms average, and calls validateEntries → processEntries → generateSummary. The bottleneck appears to be in generateSummary which takes 80% of the execution time."
+6. **Claude**: Writes optimization based on actual system behavior
 
-### Development-First Instrumentation
-```javascript
-// Day 1: Console-based tracing
-function processEntries(entries, filter) {
-  console.log('[OTEL-STUB] processEntries.start', {
-    'input.entries.count': entries.length,
-    'input.filter': filter
-  });
-  
-  const result = entries.filter(/* logic */);
-  
-  console.log('[OTEL-STUB] processEntries.end', {
-    'output.result.count': result.length,
-    'validation.passed': result.length > 0
-  });
-  
-  return result;
-}
-```
+### Code Verification Workflow  
+**Scenario**: AI validates newly written code
+1. **User**: "Claude, add date filtering to journal entries"
+2. **Claude**: Writes date filtering function with instrumentation
+3. **Claude**: Tests function with real data and analyzes trace
+4. **Claude**: "The trace shows my function returned 0 results when it should return 3. I used string comparison instead of Date comparison. Let me fix that."
+5. **Claude**: Self-corrects and re-validates via trace analysis
 
-### Production Instrumentation Wrapper
-```javascript
-function traced(fn, contract) {
-  return async (...args) => {
-    const span = tracer.startSpan(fn.name);
-    
-    // Only capture in development, sample in production
-    if (process.env.NODE_ENV === 'development') {
-      span.setAttributes({
-        'input.args': JSON.stringify(args).substring(0, 1000), // Truncate
-        'contract.expects': contract?.input,
-        'contract.returns': contract?.output
-      });
-    }
-    
-    try {
-      const result = await fn(...args);
-      
-      if (process.env.NODE_ENV === 'development') {
-        span.setAttributes({
-          'output.result': JSON.stringify(result).substring(0, 1000),
-          'validation.passed': contract?.validate(result) ?? true
-        });
-      }
-      
-      return result;
-    } catch (error) {
-      span.recordException(error);
-      throw error;
-    } finally {
-      span.end();
-    }
-  };
-}
-```
+## Security and Privacy Considerations
 
-### Contract Validation Pattern
-```javascript
-const journalProcessorContract = {
-  input: 'Array<JournalEntry>',
-  output: 'Array<ProcessedEntry>',
-  validate: (result) => Array.isArray(result) && result.length >= 0
-};
+### Data Sensitivity Guidelines
+- **Development Environment**: Acceptable to capture detailed trace data for AI analysis
+- **Production Environment**: Use sampling and avoid capturing sensitive payloads
+- **PII Protection**: Implement automatic filtering for sensitive data patterns
+- **Data Truncation**: Limit trace attribute sizes to prevent excessive data capture
 
-const processJournal = traced(
-  (entries) => entries.map(transformEntry),
-  journalProcessorContract
-);
-```
+## Conference Presentation Themes
 
-## Real-World Workflow Example
+### Core Message
+**"Stop Teaching AI from Assumptions, Start Teaching from Reality"**
 
-1. **User**: "Claude, add a function to filter journal entries by date range"
-2. **Claude**: Writes function with OTel instrumentation (using learned prompt)
-3. **User**: Tests function with real data
-4. **System**: Traces show unexpected behavior (wrong I/O)
-5. **Claude** (proactively): "Let me check traces... I see the function returned 0 results when it should return 3. The date comparison is using string comparison instead of Date objects. Let me fix that."
-6. **Claude**: Self-corrects without user debugging
+### Key Problems Addressed
+1. **AI System Discovery Gap**: AI assistants guess about system behavior from source code instead of learning from actual execution
+2. **Code Verification Gap**: AI writes code that looks correct but fails with real data
+3. **Documentation Drift**: Static documentation becomes outdated, but traces reflect current reality
+4. **Context Loss**: Every time AI context clears, it rediscovers systems inefficiently
 
-## Security & Privacy Considerations
+### Value Proposition for OSS/CNCF Audiences
+- **Standards-Based**: Uses OpenTelemetry, not vendor-specific solutions
+- **Cloud Native Ready**: Supports distributed tracing and microservices architectures  
+- **AI-Enhanced Development**: Shows practical AI + observability integration
+- **Developer Experience**: Reduces debugging time and improves code quality
 
-### Data Sensitivity
-- **Development Environment**: Less sensitive data, more instrumentation acceptable
-- **Production Environment**: Use sampling, avoid PII in spans
-- **PII Detection**: Implement filters for sensitive data in traces
+## Use Case Validation
 
-### Implementation Safeguards
-```javascript
-// Safe I/O capture
-function sanitizeForTracing(data) {
-  if (typeof data === 'string') {
-    // Mask potential secrets
-    return data.replace(/\b[A-Za-z0-9+/]{20,}\b/g, '[REDACTED]');
-  }
-  // Truncate large objects
-  return JSON.stringify(data).substring(0, 1000);
-}
-```
+### AI System Discovery ✅
+**Business Value**: Reduces time AI spends making incorrect assumptions about system behavior
+**Technical Validation**: Individual trace analysis provides sufficient data for system understanding
+**Implementation Status**: Ready for development with existing foundation
 
-## Presentation Integration
+### AI Code Verification ✅  
+**Business Value**: Catches behavioral errors before user testing, reduces debugging cycles
+**Technical Validation**: Trace analysis can identify when code behavior doesn't match intent
+**Implementation Status**: Ready for development with existing foundation
 
-### Core Presentation Messages
-**New Title**: "This Lying Has To Stop: Using OpenTelemetry to Teach AI What Your System Actually Does"
+### Comparison with Alternatives
+**vs Traditional Testing**: Complements rather than replaces - provides immediate feedback without test maintenance
+**vs Static Analysis**: Catches runtime behavioral issues that static analysis misses
+**vs Manual Code Review**: Provides objective data about actual code behavior
 
-**Key Problems:**
-1. **AI assistants learn from code, not reality** - they make dangerous assumptions about system behavior
-2. **Source code tells you what SHOULD happen, but systems evolve** - traces tell you what ACTUALLY happens
-3. **Every time AI context clears, it rediscovers the system by reading files** - this is error-prone and inefficient
-4. **AI needs validation with real data immediately every time new code is written** - not after the fact in tests
+## Future Opportunities
 
-**Core Messages:**
-- Stop teaching AI from assumptions, start teaching from reality
-- OTel isn't just monitoring - it's system intelligence for AI
-- Traces are living documentation that stays current automatically
-- AI should understand actual data flows, volumes, and patterns - not guess from parameter names
+### Industry Impact
+- **Development Practice Evolution**: Establish trace-driven AI development as standard practice
+- **OpenTelemetry Enhancement**: Contribute AI-specific semantic conventions and tooling
+- **Community Building**: Share patterns for AI + observability integration
 
-## Critical Use Cases Analysis
+### Technical Extensions
+- **GenAI Semantic Conventions**: Standardize trace attributes for AI operations
+- **Multi-Backend Support**: Extend beyond Datadog to support multiple observability platforms
+- **IDE Integration**: Embed trace analysis directly into development environments
+- **Automated Instrumentation**: AI-generated instrumentation based on code analysis
 
-### Use Case 1: Continuous Real-Data Validation
-**Problem**: Traditional testing requires writing test cases, mocking data, maintaining test suites
-**OTel Solution**: Write code → Run with real data → Immediate trace feedback
-**Value**: No test maintenance overhead, validation during development
-**Status**: ✅ Strong use case
+## Implementation References
 
-### Use Case 2: System Discovery for Fresh AI Context
-**Problem**: Whenever AI assistant revisits a part of the system it doesn't have current context about, it reads source files to understand behavior patterns, data flows, and integration points. This leads to wrong assumptions.
-**OTel Solution**: Query recent traces to understand actual data flows, volumes, patterns
-**Value**: AI learns from reality, not assumptions
-**Status**: ✅ Killer use case
+### Current Commit Story Implementation
+- **PRD-6**: `/prds/6-otel-mvp-setup.md` - Completed dual OpenTelemetry exporter setup
+- **Tracing Module**: `/src/tracing-simple.js` - Working OpenTelemetry configuration
+- **Test Script**: `/scripts/test-traces.js` - Trace generation and validation
+- **Existing AI Integration**: `/src/generators/journal-generator.js` - AI orchestration patterns
 
-### Use Case 3: Evolution-Resistant Documentation
-**Problem**: Types and documentation get out of sync as I/Os evolve
-**OTel Solution**: Traces automatically reflect current system behavior
-**Value**: Self-updating system intelligence
-**Status**: ✅ Strong use case
+## Research and Resources
 
-## Long-term Vision
-1. **Make instrumentation habitual in AI-assisted development**
-2. **Build feedback loops between traces and AI system understanding**
-3. **Create industry patterns for "reality-based AI coding"**
-4. **Establish OTel as standard AI onboarding tool** - new AI context gets system reality from traces
-5. **Develop trace-based system documentation standards** for AI consumption
+### Official Documentation
+- **Datadog MCP Server**: https://docs.datadoghq.com/bits_ai/mcp_server/
+- **OpenTelemetry Node.js SDK**: https://opentelemetry.io/docs/languages/js/getting-started/nodejs/
+- **Model Context Protocol Specification**: https://modelcontextprotocol.io/specification/2025-06-18
 
-## Related Files in Commit Story
+### Community Resources
+- **MCP Servers Repository**: https://github.com/modelcontextprotocol/servers
+- **OpenTelemetry MCP Discussion**: https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/269
+- **Tracetest**: https://github.com/kubeshop/tracetest
 
-- `src/generators/prompts/guidelines/anti-hallucination.js` - Existing anti-hallucination work
-- `src/generators/journal-generator.js` - Main AI generation orchestration
-- `src/config/openai.js` - AI client configuration
-- `package.json` - Dependencies and project structure
-
-## Research Sources
-
-- Datadog OpenTelemetry documentation
-- Model Context Protocol specifications
-- Multiple Datadog MCP server implementations on GitHub
-- OpenTelemetry trace data validation patterns
-- Tracetest integration examples
+### Related Tools and Platforms
+- **Honeycomb MCP Server**: AI agent integration for telemetry analysis
+- **Arize Phoenix**: Open-source AI/LLM observability with trace inspection
+- **AgentOps**: AI agent observability and debugging platform
 
 ---
 
-**Document Version**: 1.0  
+**Document Version**: 2.0  
 **Created**: September 7, 2025  
-**Purpose**: Context transfer for future development work on AI verification systems  
-**Status**: Concept ready for implementation
+**Updated**: September 8, 2025  
+**Purpose**: Technical specification and roadmap for AI + OpenTelemetry integration  
+**Status**: Foundation complete (PRD-6), ready for MCP integration phase

@@ -1,13 +1,13 @@
-# PRD-6: MVP OpenTelemetry Development Environment Setup
+# PRD-6: OpenTelemetry AI System Intelligence Setup
 
 **GitHub Issue**: [#6](https://github.com/wiggitywhitney/commit-story/issues/6)  
 **Status**: In Development  
 **Priority**: High  
-**Timeline**: 2 days  
+**Timeline**: 3-4 days  
 
 ## Executive Summary
 
-This PRD establishes the minimal development environment setup to support OpenTelemetry-based tracing for the Commit Story project. The setup focuses on pure OpenTelemetry instrumentation (not vendor-specific SDKs) with dual exporters: console for immediate development feedback and Datadog OTLP for demo visualizations.
+This PRD establishes OpenTelemetry-based tracing for AI system intelligence in the Commit Story project. The setup provides dual exporters (console + Datadog OTLP) as foundation, then enables AI assistants to query and analyze trace data for system discovery and code verification.
 
 ## Context & Motivation
 
@@ -34,7 +34,8 @@ This PRD establishes the minimal development environment setup to support OpenTe
 2. **Dual OpenTelemetry Exporters**: Console + Datadog OTLP working simultaneously
 3. **Development Feedback**: Traces visible in terminal within milliseconds
 4. **Demo Readiness**: Traces visible in Datadog UI within 10ms
-5. **Standards Compliance**: Pure OpenTelemetry SDK, no vendor lock-in
+5. **AI Integration**: AI assistants can query trace data via Datadog MCP server
+6. **Standards Compliance**: Pure OpenTelemetry SDK, no vendor lock-in
 
 ## Implementation Milestones
 
@@ -64,11 +65,11 @@ This PRD establishes the minimal development environment setup to support OpenTe
 **Owner**: Whitney Lee
 
 #### Deliverables
-- [ ] OpenTelemetry SDK with console exporter (immediate feedback)
-- [ ] OpenTelemetry SDK with OTLP exporter → Datadog (demo visuals)
-- [ ] Datadog Agent OTLP receiver configuration
-- [ ] Test trace generation and dual verification
-- [ ] Documentation: OpenTelemetry dual-exporter setup in `docs/dev/`
+- [x] OpenTelemetry SDK with console exporter (immediate feedback)
+- [x] OpenTelemetry SDK with OTLP exporter → Datadog (demo visuals)
+- [x] Datadog Agent OTLP receiver configuration
+- [x] Test trace generation and dual verification
+- [x] Documentation: OpenTelemetry dual-exporter setup in `src/tracing-simple.js`
 
 #### Technical Requirements
 - Setup OpenTelemetry Node.js SDK with MultiSpanProcessor
@@ -150,20 +151,21 @@ const sdk = new NodeSDK({
 
 ## Future Considerations
 
-### Next Phase: Code Instrumentation
+### Next Phase: Production Integration
 This PRD establishes the foundation for:
-- Custom span generation for AI operations
-- GenAI semantic conventions implementation
+- AI-driven instrumentation of existing Commit Story codebase
+- GenAI semantic conventions for AI operations
 - Behavioral contract validation via traces
-- AI system discovery through trace analysis
+- Production-ready AI system intelligence workflows
 
 ## References
 
-- [OpenTelemetry AI Verification Concept](../docs/dev/otel-ai-verification-concept.md)
+- [OpenTelemetry AI Verification Concept](../docs/dev/otel-ai-verification-concept.md) - **REQUIRED READING for future AI assistants working on this PRD**
 - [Teller Documentation](https://tlr.dev/)
 - [OpenTelemetry Node.js SDK](https://opentelemetry.io/docs/languages/js/getting-started/nodejs/)
 - [OpenTelemetry Multi-Exporter Pattern](https://opentelemetry.io/docs/languages/js/exporters/)
 - [Datadog OTLP Documentation](https://docs.datadoghq.com/opentelemetry/)
+- [Datadog MCP Server](https://docs.datadoghq.com/bits_ai/mcp_server/)
 
 ---
 
@@ -223,10 +225,43 @@ This PRD establishes the foundation for:
 - ✅ OTLP → Datadog Agent provides professional demo visuals
 - ✅ Standards-compliant OpenTelemetry semantic conventions throughout
 
-**Overall Progress**: 100% complete (M1 ✅, M2 ✅) - **PRD-6 COMPLETE**
+### M3: AI System Intelligence Integration
+**Timeline**: Day 3-4
+**Owner**: Whitney Lee
+
+#### Deliverables
+- [ ] Datadog Bits AI MCP server setup and configuration
+- [ ] Simple instrumented utility function for real trace validation
+- [ ] AI workflow validation: real code → trace generation → MCP query → analysis
+- [ ] Document trace data format and AI analysis capabilities
+- [ ] Cleanup: Remove validation artifacts after successful integration
+
+#### Technical Requirements
+- Configure Datadog MCP server integration with Claude Code
+- Create `src/utils/journal-stats.js` with OTel instrumentation
+- Implement `getJournalEntriesByDateRange(startDate, endDate)` function
+- Test with real journal data from existing project files
+- Validate AI can analyze traces to verify function behavior
+- Document MCP `get_trace()` data format and limitations
+
+#### Acceptance Criteria
+- AI can successfully call `get_trace(trace_id)` via Datadog MCP server
+- Returned trace data includes custom attributes, timing, and span relationships
+- AI can validate function behavior: "Did this function work as intended?"
+- AI can extract system intelligence: input patterns, execution time, error cases
+- End-to-end workflow demonstrated: code → trace → AI analysis → validation
+- Validation artifacts cleaned up (test utility function removed or archived)
+
+#### Cleanup Requirements
+- Remove or move `src/utils/journal-stats.js` to `examples/` after validation
+- Archive any temporary test data or configurations
+- Update documentation to reflect final implementation patterns
+- Ensure no development artifacts remain in main codebase
+
+**Overall Progress**: 67% complete (M1 ✅, M2 ✅, M3 ⏳)
 
 ---
 
 **PRD Created**: September 8, 2025  
 **Last Updated**: September 8, 2025  
-**Document Version**: 1.1
+**Document Version**: 1.2
