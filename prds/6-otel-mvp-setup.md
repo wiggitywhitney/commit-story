@@ -225,40 +225,102 @@ This PRD establishes the foundation for:
 - ✅ OTLP → Datadog Agent provides professional demo visuals
 - ✅ Standards-compliant OpenTelemetry semantic conventions throughout
 
-### M3: AI System Intelligence Integration
-**Timeline**: Day 3-4
+### September 10, 2025: M3/M4 Milestone Planning and PRD Enhancement
+**Duration**: ~30 minutes
+**Focus**: Strategic planning and documentation enhancement
+
+**PRD Structure Improvements**:
+- Split original M3 into focused M3 (Research) and M4 (Validation) milestones
+- Enhanced M4 requirements with specific I/O data capture testing strategies
+- Added documentation deliverables in real files (`docs/dev/mcp-research-findings.md`, `docs/dev/otel-instrumentation-patterns.md`)
+- Clarified learning objectives around optimal I/O instrumentation for AI workflows
+
+**Strategic Decisions Made**:
+- Separated MCP server discovery from validation to reduce risk
+- Emphasized full I/O data capture testing at key data flow points
+- Added requirement to test performance impact of rich instrumentation
+- Established pattern documentation for project-wide application
+
+**Ready for M3 Execution**: Clear deliverables and acceptance criteria defined for MCP server research phase
+
+### M3: MCP Server Research & Discovery
+**Timeline**: Day 3 (2-3 hours)
 **Owner**: Whitney Lee
+**Focus**: Understanding what's actually available from Datadog MCP server
 
 #### Deliverables
-- [ ] Datadog Bits AI MCP server setup and configuration
-- [ ] Simple instrumented utility function for real trace validation
-- [ ] AI workflow validation: real code → trace generation → MCP query → analysis
-- [ ] Document trace data format and AI analysis capabilities
-- [ ] Cleanup: Remove validation artifacts after successful integration
+- [ ] Datadog MCP server connection and authentication setup
+- [ ] Complete tool inventory and capability documentation
+- [ ] Test trace retrieval with existing M2 test traces
+- [ ] Document findings in `docs/dev/mcp-research-findings.md`
+- [ ] Decision matrix: MCP capabilities vs AI intelligence requirements
 
 #### Technical Requirements
 - Configure Datadog MCP server integration with Claude Code
-- Create `src/utils/journal-stats.js` with OTel instrumentation
+- Test OAuth authentication flow and connection stability
+- Enumerate all available MCP tools (not just `get_trace` and `list_spans`)
+- Test with existing `scripts/test-traces.js` output from M2
+- Document response formats, data completeness, and structure
+- Identify any gaps, limitations, or unexpected capabilities
+- Create/update documentation file with all research findings
+
+#### Acceptance Criteria
+- Successfully connected to Datadog MCP server with stable authentication
+- Complete list of available MCP tools documented with parameter details
+- Trace data structure from `get_trace()` fully documented with examples
+- Research findings documented in `docs/dev/mcp-research-findings.md`
+- Limitations and capabilities clearly understood and documented
+- Ready to make informed design decisions for M4 validation phase
+
+### M4: AI System Intelligence Validation
+**Timeline**: Day 4 (3-4 hours)
+**Owner**: Whitney Lee
+**Focus**: Proving AI can use traces for discovery and verification
+
+#### Deliverables
+- [ ] Instrumented utility function with comprehensive trace data
+- [ ] AI workflow validation: code → trace → MCP query → analysis
+- [ ] Full I/O data capture testing at key data flow points
+- [ ] Document optimal instrumentation patterns in `docs/dev/otel-instrumentation-patterns.md`
+- [ ] Cleanup: Archive validation artifacts to `examples/otel-poc/`
+
+#### Technical Requirements
+- Create `src/utils/journal-stats.js` with rich OTel instrumentation
 - Implement `getJournalEntriesByDateRange(startDate, endDate)` function
+- **Test full I/O data capture strategies:**
+  - Capture complete inputs before generator functions
+  - Capture full outputs after processing steps
+  - Test performance impact of rich I/O instrumentation
+  - Experiment with data serialization for complex objects
 - Test with real journal data from existing project files
-- Validate AI can analyze traces to verify function behavior
-- Document MCP `get_trace()` data format and limitations
+- Validate AI can analyze traces for both discovery and verification use cases
+- Document patterns and best practices for project-wide instrumentation
 
 #### Acceptance Criteria
 - AI can successfully call `get_trace(trace_id)` via Datadog MCP server
-- Returned trace data includes custom attributes, timing, and span relationships
+- Returned trace data includes custom attributes, timing, span relationships, and full I/O data
+- **Full I/O data captured and retrievable in traces for AI analysis**
 - AI can validate function behavior: "Did this function work as intended?"
-- AI can extract system intelligence: input patterns, execution time, error cases
+- AI can extract system intelligence: input patterns, execution time, error cases, data flows
+- **AI can discover system behavior from I/O patterns in traces**
 - End-to-end workflow demonstrated: code → trace → AI analysis → validation
-- Validation artifacts cleaned up (test utility function removed or archived)
+- Validation artifacts cleaned up (moved to `examples/otel-poc/` with documentation)
+
+#### Key Learning Objectives
+- **What level of I/O data capture is optimal for AI discovery vs verification?**
+- What trace attributes are most valuable for AI system understanding?
+- How to balance instrumentation richness (especially I/O data) vs performance impact?
+- Where in the data flow should we capture full I/O for maximum AI benefit?
+- What patterns should be applied to instrument the full Commit Story project?
 
 #### Cleanup Requirements
-- Remove or move `src/utils/journal-stats.js` to `examples/` after validation
-- Archive any temporary test data or configurations
-- Update documentation to reflect final implementation patterns
+- Move `src/utils/journal-stats.js` to `examples/otel-poc/` with README
+- Archive test data and configurations with explanations
+- Create `docs/dev/otel-instrumentation-patterns.md` with validated patterns
+- Update `docs/dev/otel-ai-verification-concept.md` with references to new documentation
 - Ensure no development artifacts remain in main codebase
 
-**Overall Progress**: 67% complete (M1 ✅, M2 ✅, M3 ⏳)
+**Overall Progress**: 67% complete (M1 ✅, M2 ✅, M3 ⏳, M4 ⏳)
 
 ---
 
