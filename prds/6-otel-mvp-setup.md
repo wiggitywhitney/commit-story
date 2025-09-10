@@ -243,34 +243,39 @@ This PRD establishes the foundation for:
 
 **Ready for M3 Execution**: Clear deliverables and acceptance criteria defined for MCP server research phase
 
-### September 10, 2025: M3 MCP Server Setup - PARTIAL COMPLETE ⏳
-**Duration**: ~2 hours  
-**Focus**: MCP server configuration and initial research
+### September 10, 2025: M3 Preparation and Cleanup - BLOCKED 🚧
+**Duration**: ~45 minutes  
+**Focus**: Cleanup community MCP work, prepare for official Datadog MCP server
+
+**Cleanup Work Completed**:
+- [x] Removed community MCP server configuration (`.mcp.json`)
+- [x] Removed community research documentation (`docs/dev/mcp-research-findings.md`) 
+- [x] Updated PRD to reference official Datadog MCP server
+- [x] Preserved test traces and validation process
+
+**Current Blocker**: Waiting for official Datadog MCP server access
+
+**M3 Status**: NOT STARTED - blocked waiting for server access
 
 **Completed M3 Setup Work**:
 - [x] Datadog Application Key created and stored in Google Secret Manager
 - [x] Updated Teller configuration to pull DD_APP_KEY alongside existing DD_API_KEY
-- [x] Created `.mcp.json` configuration file with proper environment variable mapping
 - [x] Generated fresh test traces with known IDs for MCP validation:
   - Simple span: `875cd40bded9f3b96ca2206a032ac162`
   - Parent-child spans: `fb5e4de9d91fca89120b826014478fbe` + `01ca6006b62f84fcbac9ba1a669b2ad4`
   - Error span: `f80dd589b73678674ccc400722e91db2`
-- [x] Created `docs/dev/mcp-research-findings.md` with configuration status and test data
 
-**Remaining M3 Validation Work** (REQUIRES CLAUDE CODE RESTART FIRST):
+**Remaining M3 Validation Work**:
+- [ ] **Configure official Datadog MCP server** with Claude Code
 - [ ] **MCP server connection validation**: Use `/mcp` command to verify server loaded
-- [ ] **Actual tool enumeration**: Test what tools are really available (not just documented)
-- [ ] **Trace retrieval testing**: Use real MCP tools with known trace IDs:
-  - Simple span: `875cd40bded9f3b96ca2206a032ac162`
-  - Parent-child spans: `fb5e4de9d91fca89120b826014478fbe` + `01ca6006b62f84fcbac9ba1a669b2ad4`
-  - Error span: `f80dd589b73678674ccc400722e91db2`
+- [ ] **Actual tool enumeration**: Test what tools are really available
+- [ ] **Trace retrieval testing**: Use real MCP tools with known trace IDs
 - [ ] **Document response data shapes**: Capture actual JSON/data formats returned by MCP tools
 - [ ] **Decision matrix**: Based on real capabilities vs AI intelligence requirements
-
-**CRITICAL**: Configuration is complete but MCP server must be validated with actual tool testing.
+- [ ] **Create documentation**: `docs/dev/mcp-research-findings.md` with all findings
 
 **Next Session Priority**: 
-1. Restart Claude Code to load `.mcp.json` 
+1. Research and configure official Datadog MCP server
 2. Validate MCP connection with `/mcp` command
 3. Test actual trace retrieval and document data shapes
 
@@ -280,15 +285,15 @@ This PRD establishes the foundation for:
 **Focus**: Understanding what's actually available from Datadog MCP server
 
 #### Deliverables
-- [x] Datadog MCP server connection and authentication setup
+- [ ] Official Datadog MCP server connection and authentication setup
 - [ ] Complete tool inventory and capability documentation
 - [ ] Test trace retrieval with existing M2 test traces
-- [x] Document findings in `docs/dev/mcp-research-findings.md`
+- [ ] Document findings in `docs/dev/mcp-research-findings.md`
 - [ ] Decision matrix: MCP capabilities vs AI intelligence requirements
 
 #### Technical Requirements
-- Configure Datadog MCP server integration with Claude Code
-- Test OAuth authentication flow and connection stability
+- Configure official Datadog MCP server integration with Claude Code
+- Test authentication flow and connection stability
 - Enumerate all available MCP tools (not just `get_trace` and `list_spans`)
 - Test with existing `scripts/test-traces.js` output from M2
 - Document response formats, data completeness, and structure
@@ -351,7 +356,7 @@ This PRD establishes the foundation for:
 - Update `docs/dev/otel-ai-verification-concept.md` with references to new documentation
 - Ensure no development artifacts remain in main codebase
 
-**Overall Progress**: 75% complete (M1 ✅, M2 ✅, M3 🔄 Setup Complete/Validation Pending, M4 ⏳)
+**Overall Progress**: 50% complete (M1 ✅, M2 ✅, M3 🚧 Blocked - Awaiting Official Server Access, M4 ⏳ Pending M3)
 
 ---
 
