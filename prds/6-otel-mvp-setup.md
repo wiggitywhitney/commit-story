@@ -243,16 +243,47 @@ This PRD establishes the foundation for:
 
 **Ready for M3 Execution**: Clear deliverables and acceptance criteria defined for MCP server research phase
 
+### September 10, 2025: M3 MCP Server Setup - PARTIAL COMPLETE ⏳
+**Duration**: ~2 hours  
+**Focus**: MCP server configuration and initial research
+
+**Completed M3 Setup Work**:
+- [x] Datadog Application Key created and stored in Google Secret Manager
+- [x] Updated Teller configuration to pull DD_APP_KEY alongside existing DD_API_KEY
+- [x] Created `.mcp.json` configuration file with proper environment variable mapping
+- [x] Generated fresh test traces with known IDs for MCP validation:
+  - Simple span: `875cd40bded9f3b96ca2206a032ac162`
+  - Parent-child spans: `fb5e4de9d91fca89120b826014478fbe` + `01ca6006b62f84fcbac9ba1a669b2ad4`
+  - Error span: `f80dd589b73678674ccc400722e91db2`
+- [x] Created `docs/dev/mcp-research-findings.md` with configuration status and test data
+
+**Remaining M3 Validation Work** (REQUIRES CLAUDE CODE RESTART FIRST):
+- [ ] **MCP server connection validation**: Use `/mcp` command to verify server loaded
+- [ ] **Actual tool enumeration**: Test what tools are really available (not just documented)
+- [ ] **Trace retrieval testing**: Use real MCP tools with known trace IDs:
+  - Simple span: `875cd40bded9f3b96ca2206a032ac162`
+  - Parent-child spans: `fb5e4de9d91fca89120b826014478fbe` + `01ca6006b62f84fcbac9ba1a669b2ad4`
+  - Error span: `f80dd589b73678674ccc400722e91db2`
+- [ ] **Document response data shapes**: Capture actual JSON/data formats returned by MCP tools
+- [ ] **Decision matrix**: Based on real capabilities vs AI intelligence requirements
+
+**CRITICAL**: Configuration is complete but MCP server must be validated with actual tool testing.
+
+**Next Session Priority**: 
+1. Restart Claude Code to load `.mcp.json` 
+2. Validate MCP connection with `/mcp` command
+3. Test actual trace retrieval and document data shapes
+
 ### M3: MCP Server Research & Discovery
 **Timeline**: Day 3 (2-3 hours)
 **Owner**: Whitney Lee
 **Focus**: Understanding what's actually available from Datadog MCP server
 
 #### Deliverables
-- [ ] Datadog MCP server connection and authentication setup
+- [x] Datadog MCP server connection and authentication setup
 - [ ] Complete tool inventory and capability documentation
 - [ ] Test trace retrieval with existing M2 test traces
-- [ ] Document findings in `docs/dev/mcp-research-findings.md`
+- [x] Document findings in `docs/dev/mcp-research-findings.md`
 - [ ] Decision matrix: MCP capabilities vs AI intelligence requirements
 
 #### Technical Requirements
@@ -320,7 +351,7 @@ This PRD establishes the foundation for:
 - Update `docs/dev/otel-ai-verification-concept.md` with references to new documentation
 - Ensure no development artifacts remain in main codebase
 
-**Overall Progress**: 67% complete (M1 ✅, M2 ✅, M3 ⏳, M4 ⏳)
+**Overall Progress**: 75% complete (M1 ✅, M2 ✅, M3 🔄 Setup Complete/Validation Pending, M4 ⏳)
 
 ---
 

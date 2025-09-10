@@ -6,5 +6,6 @@ providers:
       - id: secrets
         path: projects/demoo-ooclock
         keys:
+          datadog-commit-story-app: DD_APP_KEY
           datadog-commit-story-dev: DD_API_KEY
           OpenAI-API-Key: OPENAI_API_KEY
