@@ -170,6 +170,48 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: More maintenance but greater control and customization  
 **Status**: ✅ Implemented - continuing with current approach
 
+### DD-005: JSON-Structured Log-Trace Correlation  
+**Decision**: Implement structured JSON logging with automatic trace context injection  
+**Rationale**:
+- Current console.log string format makes correlation difficult in Datadog UI
+- JSON structure enables structured queries and machine-readable parsing
+- Automatic trace_id/span_id injection ensures every log correlates to traces
+- Supports both OpenTelemetry standards and Datadog-specific formats
+
+**Critical Technical Considerations**:
+- **ID Format Decision**: Choose between OpenTelemetry hex format vs Datadog decimal format
+- **Collection Path**: Evaluate current OTLP→Datadog Agent vs direct OTLP to Datadog
+- **Log Volume**: Structured logging increases payload size but improves queryability
+- **Performance**: JSON serialization vs string concatenation trade-offs
+
+**ID Format Options Analysis**:
+```javascript
+// Option A: Pure OpenTelemetry (Recommended)
+{ "trace_id": "74fdaeff1e1ee4a17d48c82f146b96ee", "span_id": "313d27de3a7b8658" }
+
+// Option B: Datadog-optimized  
+{ "dd.trace_id": "8425453548476893918", "dd.span_id": "3551737831793339238" }
+
+// Option C: Hybrid (Maximum Compatibility)
+{ "trace_id": "74fdaeff1e1ee4a17d48c82f146b96ee", "dd.trace_id": "8425453548476893918" }
+```
+
+**Recommended Approach**: Pure OpenTelemetry format (Option A) with simplified JSON structure:
+```javascript
+{
+  "timestamp": "2025-01-16T18:35:43.000Z",
+  "level": "info", 
+  "trace_id": "74fdaeff1e1ee4a17d48c82f146b96ee",
+  "span_id": "313d27de3a7b8658",
+  "service": "commit-story",
+  "message": "Operation completed",
+  "context": { /* additional fields */ }
+}
+```
+
+**Impact**: Better observability correlation, increased log parsing capabilities  
+**Status**: ⏳ Outstanding - requires implementation
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -256,6 +298,18 @@ return await tracer.startActiveSpan('operation.name', {
 
 - [ ] Update test script to validate GenAI conventions
 - [ ] Update documentation with new attribute names
+
+- [ ] Implement JSON-structured log-trace correlation (DD-005):
+  - [ ] Create `src/utils/trace-logger.js` with JSON output format
+  - [ ] Evaluate and decide on ID format strategy (OTel hex vs Datadog decimal)
+  - [ ] Replace console.log calls in key instrumented files:
+    - [ ] src/index.js - Main application logging
+    - [ ] src/generators/journal-generator.js - Generation phase logging  
+    - [ ] src/generators/summary-generator.js - AI operation logging
+    - [ ] src/integrators/context-integrator.js - Context gathering logging
+  - [ ] Add environment variable control for log level/format
+  - [ ] Test correlation in Datadog UI with trace_id filtering
+  - [ ] Evaluate collection path: current OTLP→Agent vs direct OTLP
 
 ### Phase 3: Advanced Observability
 **Timeline**: 2-3 hours  
@@ -368,8 +422,46 @@ return await tracer.startActiveSpan('operation.name', {
 - Test GenAI convention compliance
 - Validate event recording with privacy controls
 
+### January 16, 2025 (Later): Log-Trace Correlation Strategy
+**Duration**: ~30 minutes  
+**Focus**: Design decision for structured logging with trace correlation
+
+**Problem Identified**:
+- Current console.log string format makes correlation difficult in Datadog UI
+- Datadog recommendation: "To correlate logs with traces, inject trace_id and span_id"
+- Need structured approach for log-trace correlation
+
+**Critical Analysis Performed**:
+- Evaluated JSON vs string logging approaches
+- Analyzed ID format options: OpenTelemetry hex vs Datadog decimal vs hybrid
+- Considered collection path implications: OTLP→Agent vs direct OTLP
+- Assessed performance trade-offs and log volume impact
+
+**Strategic Decision Made**:
+- **DD-005**: ⏳ Implement JSON-structured log-trace correlation
+- Recommended pure OpenTelemetry format (hex IDs) for vendor neutrality
+- Chose structured JSON with minimal fields for performance
+- Decided to evaluate collection path as part of implementation
+
+**Architecture Decision Rationale**:
+- Don't overcomplicate: Use standard OpenTelemetry hex format
+- JSON enables structured queries and better parsing
+- Keep log volume low by being selective about what to log
+- Let traces handle detailed flow, logs handle key events/errors
+
+**Implementation Plan**:
+- Create trace-aware JSON logger utility
+- Replace strategic console.log calls (not all)
+- Test correlation in Datadog UI
+- Evaluate direct OTLP vs Agent-based collection
+
+**Next Session Priority**:
+- Implement trace-logger utility with JSON output
+- Test trace_id correlation in Datadog
+- Decide on final ID format strategy
+
 ---
 
 **PRD Created**: January 16, 2025  
 **Last Updated**: January 16, 2025  
-**Document Version**: 1.1
+**Document Version**: 1.2
