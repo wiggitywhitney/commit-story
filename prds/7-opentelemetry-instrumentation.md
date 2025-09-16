@@ -120,6 +120,56 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 - **Descriptive**: Clear indication of what operation is being performed
 - **Consistent**: Same pattern across all instrumented code
 
+## Design Decisions (Post-Implementation)
+
+### DD-001: Adopt OpenTelemetry GenAI Semantic Conventions
+**Decision**: Update attribute naming to align with emerging OpenTelemetry GenAI semantic conventions  
+**Rationale**: 
+- OpenTelemetry released official GenAI semantic conventions in 2024-2025
+- Standardizes attribute naming across AI operations (`gen_ai.*` prefix)
+- Ensures future compatibility as conventions stabilize
+- Improves interoperability with other OTel-compliant tools
+
+**Current State**: `ai.model` → Should be `gen_ai.request.model`  
+**Impact**: Minor breaking change in attribute names, improved standardization  
+**Status**: ⏳ Outstanding - requires implementation
+
+### DD-002: Add Event Recording for Prompts/Completions
+**Decision**: Implement OpenTelemetry events to capture prompt and completion content  
+**Rationale**:
+- Events provide structured way to capture AI conversation flow
+- Enables debugging of AI operations beyond just metrics
+- Follows OpenTelemetry event conventions for GenAI
+- Can be controlled via environment variable for privacy/volume concerns
+
+**Implementation**: Record `gen_ai.content.prompt` and `gen_ai.content.completion` events  
+**Impact**: Increased telemetry data, better AI operation visibility  
+**Status**: ⏳ Outstanding - requires implementation
+
+### DD-003: Implement Conversation ID Tracking
+**Decision**: Track conversation context across related AI operations  
+**Rationale**:
+- Links multiple AI calls that are part of same journal generation
+- Enables tracing complete "conversations" rather than individual API calls
+- Aligns with GenAI semantic conventions for conversation tracking
+- Improves analysis of multi-turn AI interactions
+
+**Implementation**: Generate unique ID per journal session, pass through context  
+**Impact**: Better traceability of related operations  
+**Status**: ⏳ Outstanding - requires implementation
+
+### DD-004: Manual Instrumentation Over Third-Party Libraries
+**Decision**: Continue with manual instrumentation rather than adopting Elastic's `@opentelemetry/instrumentation-openai`  
+**Rationale**:
+- Existing manual implementation already comprehensive and working
+- Full control over what gets instrumented and how
+- Avoids dependency on third-party instrumentation library
+- Can implement GenAI conventions precisely as needed
+- Reduces complexity and potential version conflicts
+
+**Impact**: More maintenance but greater control and customization  
+**Status**: ✅ Implemented - continuing with current approach
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -179,13 +229,51 @@ return await tracer.startActiveSpan('operation.name', {
 
 ## Future Enhancements
 
-### Phase 2: Advanced Instrumentation
+### Phase 2: GenAI Semantic Convention Alignment
+**Timeline**: 1-2 hours  
+**Priority**: Medium  
+**Dependencies**: DD-001, DD-002, DD-003
+
+#### Implementation Tasks
+- [ ] Update attribute names to GenAI conventions (DD-001):
+  - [ ] Rename `ai.model` → `gen_ai.request.model` in summary-generator.js
+  - [ ] Rename `ai.operation` → `gen_ai.operation.name` in all generators
+  - [ ] Add `gen_ai.provider.name: "openai"` to all AI operations
+  - [ ] Update `ai.usage.*` → `gen_ai.usage.*` attributes
+  - [ ] Update `ai.request.*` → `gen_ai.request.*` attributes
+  - [ ] Update `ai.response.*` → `gen_ai.response.*` attributes
+
+- [ ] Add event recording for prompts/completions (DD-002):
+  - [ ] Add environment variable `OTEL_GENAI_CAPTURE_CONTENT=true` control
+  - [ ] Record `gen_ai.content.prompt` event before API calls
+  - [ ] Record `gen_ai.content.completion` event after API calls
+  - [ ] Include token counts and model parameters in events
+
+- [ ] Implement conversation ID tracking (DD-003):
+  - [ ] Generate unique conversation ID in main function
+  - [ ] Pass conversation ID through context to all AI operations
+  - [ ] Add `gen_ai.conversation.id` attribute to all AI spans
+
+- [ ] Update test script to validate GenAI conventions
+- [ ] Update documentation with new attribute names
+
+### Phase 3: Advanced Observability
+**Timeline**: 2-3 hours  
+**Priority**: Low  
+**Dependencies**: Phase 2 complete
+
+#### Advanced Features
 - [ ] Add sampling for high-volume scenarios
 - [ ] Implement baggage for cross-service context
-- [ ] Add metrics alongside traces
-- [ ] Create custom span processors
+- [ ] Add metrics alongside traces for AI operations
+- [ ] Create custom span processors for AI-specific data
 
-### Phase 3: AI Intelligence Integration
+### Phase 4: AI Intelligence Integration
+**Timeline**: Future consideration  
+**Priority**: Low  
+**Dependencies**: MCP server availability
+
+#### AI Self-Analysis Features
 - [ ] Connect to MCP server for trace querying
 - [ ] Enable AI to analyze its own performance
 - [ ] Self-optimization based on trace data
@@ -252,8 +340,36 @@ return await tracer.startActiveSpan('operation.name', {
 - Set up Datadog dashboards for monitoring
 - Implement sampling for production
 
+### January 16, 2025 (Later): GenAI Research and Design Decisions
+**Duration**: ~1 hour  
+**Focus**: Research latest OpenTelemetry GenAI developments and strategic decisions
+
+**Research Findings**:
+- OpenTelemetry GenAI semantic conventions released in 2024-2025 (Development status)
+- Standardized `gen_ai.*` attribute naming conventions
+- Event recording patterns for prompt/completion content
+- Conversation ID tracking for multi-turn interactions
+- Available third-party libraries (Elastic's `@opentelemetry/instrumentation-openai`)
+
+**Strategic Decisions Made**:
+- **DD-001**: ⏳ Adopt GenAI semantic conventions for attribute standardization
+- **DD-002**: ⏳ Add event recording for better AI operation debugging
+- **DD-003**: ⏳ Implement conversation ID tracking for session correlation
+- **DD-004**: ✅ Continue manual instrumentation for full control
+
+**Implementation Plan**:
+- Defined Phase 2: GenAI Semantic Convention Alignment (1-2 hours)
+- Specific checklist items for each design decision
+- Environment variable controls for privacy/volume management
+- Clear migration path from current `ai.*` to `gen_ai.*` attributes
+
+**Next Session Priority**:
+- Begin Phase 2 implementation with attribute naming updates
+- Test GenAI convention compliance
+- Validate event recording with privacy controls
+
 ---
 
 **PRD Created**: January 16, 2025  
 **Last Updated**: January 16, 2025  
-**Document Version**: 1.0
+**Document Version**: 1.1
