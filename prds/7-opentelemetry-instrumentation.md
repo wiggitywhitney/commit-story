@@ -132,7 +132,7 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 
 **Current State**: `ai.model` → Should be `gen_ai.request.model`  
 **Impact**: Minor breaking change in attribute names, improved standardization  
-**Status**: ⏳ Outstanding - requires implementation
+**Status**: ✅ Implemented - DD-001 completed with provider-agnostic design
 
 ### DD-002: Add Event Recording for Prompts/Completions
 **Decision**: Implement OpenTelemetry events to capture prompt and completion content  
@@ -212,6 +212,73 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: Better observability correlation, increased log parsing capabilities  
 **Status**: ⏳ Outstanding - requires implementation
 
+### DD-006: Comprehensive Instrumentation Coverage for All Generators
+**Decision**: Instrument ALL AI generator functions with OpenTelemetry spans and GenAI conventions  
+**Rationale**:
+- Current implementation only covers summary-generator.js
+- dialogue-generator.js and technical-decisions-generator.js have NO instrumentation
+- Missing spans make it impossible to identify performance bottlenecks
+- Datadog traces show HTTP calls without corresponding business logic spans
+
+**Current Gaps Identified**:
+- `dialogue-generator.js`: No tracing at all, hardcoded model instead of DEFAULT_MODEL
+- `technical-decisions-generator.js`: No tracing at all, hardcoded model
+- `context-filter.js`: No instrumentation for chat filtering operations
+
+**Implementation Requirements**:
+- Add `dialogue.generate` span with full GenAI attributes
+- Add `technical-decisions.generate` span with full GenAI attributes  
+- Add `context.filter-messages` span with filtering metrics
+- Use DEFAULT_MODEL constant consistently across all generators
+- Copy provider detection function to all generator files
+
+**Impact**: Complete observability of all AI operations, consistent provider support  
+**Status**: ⏳ Outstanding - critical for full observability
+
+### DD-007: Context Retrieval and Processing Visibility
+**Decision**: Instrument all context gathering, filtering, and transformation operations  
+**Rationale**:
+- User specifically requested "all context retrieval. Everything really"
+- Need visibility into chat message filtering performance
+- Token reduction metrics are critical for cost optimization
+- Processing bottlenecks may exist in non-AI operations
+
+**Operations to Instrument**:
+- Chat message collection from claude-collector
+- Message filtering and token reduction in context-filter.js
+- Git diff processing and summarization
+- Metadata calculation (user/assistant message counts)
+- Context selection and transformation
+
+**Key Metrics to Track**:
+- Original vs filtered message counts
+- Token reduction achieved
+- Processing duration for each stage
+- Memory usage for large contexts
+
+**Impact**: Full visibility into data pipeline, optimization opportunities identified  
+**Status**: ⏳ Outstanding - requires implementation
+
+### DD-008: Provider-Agnostic Model Configuration
+**Decision**: Replace all hardcoded model references with centralized DEFAULT_MODEL constant  
+**Rationale**:
+- User requirement: "I want to leave room for other models later. I don't want to hardcode anything about openai"
+- Current generators hardcode 'gpt-4o-mini' directly
+- Future support for Claude, Gemini, Llama models requires flexibility
+- Provider detection should be automatic based on model name
+
+**Implementation Completed**:
+- ✅ Created `getProviderFromModel()` function in summary-generator.js
+- ✅ Provider detection supports: OpenAI, Anthropic, Google, Meta
+
+**Still Required**:
+- Apply same pattern to dialogue-generator.js
+- Apply same pattern to technical-decisions-generator.js
+- Document provider detection logic in technical specs
+
+**Impact**: Easy migration to alternative AI providers without code changes  
+**Status**: ⏳ Partially implemented - needs completion in other generators
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -277,13 +344,25 @@ return await tracer.startActiveSpan('operation.name', {
 **Dependencies**: DD-001, DD-002, DD-003
 
 #### Implementation Tasks
-- [x] Update attribute names to GenAI conventions (DD-001):
+- [x] Update attribute names to GenAI conventions (DD-001) in summary-generator.js:
   - [x] Rename `ai.model` → `gen_ai.request.model` in summary-generator.js
-  - [x] Rename `ai.operation` → `gen_ai.operation.name` in all generators
-  - [x] Add `gen_ai.provider.name` to all AI operations (with automatic provider detection)
-  - [x] Update `ai.usage.*` → `gen_ai.usage.*` attributes
-  - [x] Update `ai.request.*` → `gen_ai.request.*` attributes
-  - [x] Update `ai.response.*` → `gen_ai.response.*` attributes
+  - [x] Rename `ai.operation` → `gen_ai.operation.name` in summary-generator.js
+  - [x] Add `gen_ai.provider.name` to summary-generator.js (with automatic provider detection)
+  - [x] Update `ai.usage.*` → `gen_ai.usage.*` attributes in summary-generator.js
+  - [x] Update `ai.request.*` → `gen_ai.request.*` attributes in summary-generator.js
+  - [x] Update `ai.response.*` → `gen_ai.response.*` attributes in summary-generator.js
+
+- [ ] Apply GenAI conventions to remaining generators (DD-006):
+  - [ ] Add full instrumentation to dialogue-generator.js
+  - [ ] Add full instrumentation to technical-decisions-generator.js
+  - [ ] Replace hardcoded models with DEFAULT_MODEL constant
+  - [ ] Copy provider detection function to all generators
+
+- [ ] Implement comprehensive context instrumentation (DD-007):
+  - [ ] Add `context.filter-messages` span in context-filter.js
+  - [ ] Track original vs filtered message counts
+  - [ ] Record token reduction metrics
+  - [ ] Instrument git diff processing
 
 - [ ] Add event recording for prompts/completions (DD-002):
   - [ ] Add environment variable `OTEL_GENAI_CAPTURE_CONTENT=true` control
@@ -406,7 +485,7 @@ return await tracer.startActiveSpan('operation.name', {
 - Available third-party libraries (Elastic's `@opentelemetry/instrumentation-openai`)
 
 **Strategic Decisions Made**:
-- **DD-001**: ✅ Adopted GenAI semantic conventions with provider-agnostic design
+- **DD-001**: ✅ Adopted GenAI semantic conventions with provider-agnostic design (summary-generator.js only)
 - **DD-002**: ⏳ Add event recording for better AI operation debugging
 - **DD-003**: ⏳ Implement conversation ID tracking for session correlation
 - **DD-004**: ✅ Continue manual instrumentation for full control
@@ -500,8 +579,41 @@ return await tracer.startActiveSpan('operation.name', {
 - DD-003: Add conversation ID tracking across AI operations
 - DD-005: Begin JSON-structured logging implementation
 
+### January 16, 2025 (Evening): Instrumentation Gap Analysis
+**Duration**: ~30 minutes  
+**Focus**: Discovered missing instrumentation in multiple generators
+
+**Problem Discovered**:
+- Datadog trace showed only 1 business logic span (`summary.generate`) but 4 HTTP calls
+- dialogue-generator.js has NO instrumentation
+- technical-decisions-generator.js has NO instrumentation
+- Context filtering operations are not instrumented
+
+**User Requirements Captured**:
+- "I want to leave room for other models later. I don't want to hardcode anything about openai"
+- "I also want to see all context retrieval. Everything really"
+- Need complete observability of ALL operations, not just summary generation
+
+**Design Decisions Created**:
+- **DD-006**: Comprehensive instrumentation coverage for all generators
+- **DD-007**: Context retrieval and processing visibility
+- **DD-008**: Provider-agnostic model configuration
+
+**Implementation Plan**:
+1. Add full OpenTelemetry instrumentation to dialogue-generator.js
+2. Add full OpenTelemetry instrumentation to technical-decisions-generator.js
+3. Instrument context filtering in context-filter.js
+4. Replace all hardcoded model references with DEFAULT_MODEL
+5. Ensure provider detection works across all generators
+
+**Success Criteria**:
+- All 4 AI operations visible in Datadog traces
+- Context filtering performance metrics available
+- Zero hardcoded provider references
+- Complete parent-child span relationships
+
 ---
 
 **PRD Created**: January 16, 2025  
 **Last Updated**: January 16, 2025  
-**Document Version**: 1.3
+**Document Version**: 1.4
