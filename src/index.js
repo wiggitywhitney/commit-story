@@ -5,75 +5,139 @@
  * Main entry point for CLI usage and git hook integration
  */
 
+// Initialize tracing BEFORE any other imports to ensure auto-instrumentation works
+import './tracing-simple.js';
+
 import { config } from 'dotenv';
 import OpenAI from 'openai';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
 
 config();
 
+// Get tracer instance for manual instrumentation
+const tracer = trace.getTracer('commit-story', '1.0.0');
+
 /**
  * Main entry point - orchestrates the complete journal generation flow
  */
 export default async function main(commitRef = 'HEAD') {
-  try {
-    console.log(`🚀 Commit Story - Generating journal entry for ${commitRef}...`);
-    
-    // Gather all context for the specified commit
-    const context = await gatherContextForCommit(commitRef);
-    
-    // Validate repository-specific chat data availability (DD-068)
-    if (context.chatMetadata.data.totalMessages === 0) {
-      console.log(`⚠️  No chat data found for this repository and time window`);
-      console.log(`   Repository: ${process.cwd()}`);
-      console.log(`   Time window: ${context.commit.data.timestamp}`);
-      console.log(`   This may indicate the commit was made outside of Claude Code sessions.`);
-      process.exit(0); // Graceful exit, not an error
+  return await tracer.startActiveSpan('commit-story.main', {
+    attributes: {
+      'commit.ref': commitRef,
+      'repo.path': process.cwd(),
     }
-    
-    console.log('📊 Context Summary:');
-    console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
-    console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
-    
-    // Validate OpenAI connectivity before expensive processing
-    console.log('🔑 Validating OpenAI connectivity...');
-    if (!process.env.OPENAI_API_KEY) {
-      console.log(`⚠️  OPENAI_API_KEY not found in environment`);
-      console.log(`   Set your API key in .env file or run: npm run journal-ai-connectivity`);
-      process.exit(1);
-    }
-    
+  }, async (span) => {
     try {
-      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      await client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: 'test' }],
-        max_tokens: 1
+      console.log(`🚀 Commit Story - Generating journal entry for ${commitRef}...`);
+    
+      // Gather all context for the specified commit
+      const context = await gatherContextForCommit(commitRef);
+      
+      // Add context attributes to the span
+      span.setAttributes({
+        'context.commit.hash': context.commit.data.hash,
+        'context.commit.message': context.commit.data.message.split('\n')[0], // First line only
+        'context.chat.messages.total': context.chatMessages.data.length,
+        'context.chat.metadata.totalMessages': context.chatMetadata.data.totalMessages,
       });
-      console.log('   ✅ OpenAI connectivity confirmed');
+      
+      // Validate repository-specific chat data availability (DD-068)
+      if (context.chatMetadata.data.totalMessages === 0) {
+        span.addEvent('no-chat-data-found', {
+          'repo.path': process.cwd(),
+          'commit.timestamp': context.commit.data.timestamp,
+        });
+        console.log(`⚠️  No chat data found for this repository and time window`);
+        console.log(`   Repository: ${process.cwd()}`);
+        console.log(`   Time window: ${context.commit.data.timestamp}`);
+        console.log(`   This may indicate the commit was made outside of Claude Code sessions.`);
+        span.setStatus({ code: SpanStatusCode.OK, message: 'No chat data found - graceful exit' });
+        span.end();
+        process.exit(0); // Graceful exit, not an error
+      }
+    
+      console.log('📊 Context Summary:');
+      console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
+      console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
+      
+      // Validate OpenAI connectivity before expensive processing
+      console.log('🔑 Validating OpenAI connectivity...');
+      if (!process.env.OPENAI_API_KEY) {
+        span.recordException(new Error('OPENAI_API_KEY not found in environment'));
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Missing OpenAI API key' });
+        console.log(`⚠️  OPENAI_API_KEY not found in environment`);
+        console.log(`   Set your API key in .env file or run: npm run journal-ai-connectivity`);
+        span.end();
+        process.exit(1);
+      }
+    
+      try {
+        const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        await tracer.startActiveSpan('openai.connectivity-test', async (connectivitySpan) => {
+          try {
+            await client.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: 'test' }],
+              max_tokens: 1
+            });
+            connectivitySpan.setStatus({ code: SpanStatusCode.OK, message: 'OpenAI connectivity confirmed' });
+            console.log('   ✅ OpenAI connectivity confirmed');
+          } catch (error) {
+            connectivitySpan.recordException(error);
+            connectivitySpan.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
+            throw error;
+          } finally {
+            connectivitySpan.end();
+          }
+        });
+      } catch (error) {
+        span.recordException(error);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
+        console.log(`⚠️  OpenAI connectivity failed: ${error.message}`);
+        console.log(`   Run: npm run journal-ai-connectivity for detailed diagnostics`);
+        span.end();
+        process.exit(1);
+      }
+    
+      // Generate all journal sections using AI and programmatic content
+      const sections = await generateJournalEntry(context);
+      
+      // Add sections metadata to span
+      span.setAttributes({
+        'sections.summary.length': sections.summary?.length || 0,
+        'sections.dialogue.length': sections.dialogue?.length || 0,
+        'sections.technicalDecisions.length': sections.technicalDecisions?.length || 0,
+        'sections.commitDetails.length': sections.commitDetails?.length || 0,
+      });
+      
+      // Save the complete journal entry to daily file
+      const filePath = await saveJournalEntry(
+        context.commit.data.hash,
+        context.commit.data.timestamp,
+        sections
+      );
+      
+      // Add final attributes
+      span.setAttributes({
+        'journal.filePath': filePath,
+        'journal.completed': true,
+      });
+      
+      console.log(`✅ Journal entry saved to: ${filePath}`);
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });
+      
     } catch (error) {
-      console.log(`⚠️  OpenAI connectivity failed: ${error.message}`);
-      console.log(`   Run: npm run journal-ai-connectivity for detailed diagnostics`);
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error('❌ Error generating journal entry:', error.message);
       process.exit(1);
+    } finally {
+      span.end();
     }
-    
-    // Generate all journal sections using AI and programmatic content
-    const sections = await generateJournalEntry(context);
-    
-    // Save the complete journal entry to daily file
-    const filePath = await saveJournalEntry(
-      context.commit.data.hash,
-      context.commit.data.timestamp,
-      sections
-    );
-    
-    console.log(`✅ Journal entry saved to: ${filePath}`);
-    
-  } catch (error) {
-    console.error('❌ Error generating journal entry:', error.message);
-    process.exit(1);
-  }
+  });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

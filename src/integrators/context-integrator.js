@@ -10,6 +10,7 @@ import { extractChatForCommit } from '../collectors/claude-collector.js';
 import { execSync } from 'child_process';
 import { filterContext } from '../generators/filters/context-filter.js';
 import { redactSensitiveData } from '../generators/filters/sensitive-data-filter.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 
 /**
  * Extracts clean text content from Claude messages, handling mixed content formats
@@ -88,6 +89,9 @@ function calculateChatMetadata(messages) {
 }
 
 
+// Get tracer instance for context integration instrumentation
+const tracer = trace.getTracer('commit-story-context', '1.0.0');
+
 /**
  * Gathers all context for a commit: git data and time-correlated chat messages
  * 
@@ -98,57 +102,101 @@ function calculateChatMetadata(messages) {
  * @returns {Object|null} context.previousCommit - Previous commit basic data or null
  */
 export async function gatherContextForCommit(commitRef = 'HEAD') {
-  try {
-    // Get current commit data (returns Date object for timestamp)
-    const currentCommit = await getLatestCommitData(commitRef);
-    if (!currentCommit) {
-      throw new Error('❌ Failed to get current commit data');
+  return await tracer.startActiveSpan('context.gather-for-commit', {
+    attributes: {
+      'commit.ref': commitRef,
+      'repo.path': process.cwd(),
     }
-
-    // Get previous commit data for time window
-    const previousCommit = await getPreviousCommitData(commitRef);
-    
-    // Extract chat messages using existing claude-collector API
-    // Signature: extractChatForCommit(commitTime, previousCommitTime, repoPath)
-    const rawChatMessages = await extractChatForCommit(
-      currentCommit.timestamp,           // Date object - current commit time
-      previousCommit?.timestamp || null, // Date object or null - previous commit time  
-      process.cwd()                      // string - repo path for cwd filtering
-    );
-    
-    // Extract clean text content from messages
-    const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
-    
-    // Apply complete context preparation (consolidate all filtering and token management)
-    const rawContext = {
-      commit: currentCommit,
-      chatMessages: cleanChatMessages
-    };
-    const filteredContext = filterContext(rawContext);
-    
-    // Calculate metadata from cleaned messages (before filtering for richer data)
-    const metadata = calculateChatMetadata(cleanChatMessages);
-    
-    // Return self-documenting context object for journal generation
-    return {
-      commit: {
-        data: filteredContext.commit,     // Filtered git data (hash, message, author, timestamp, diff)
-        description: "Git commit: code changes (unified diff), commit message, and technical details of what files were modified"
-      },
-      chatMessages: {
-        data: filteredContext.chatMessages, // Filtered chat messages with token optimization
-        description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"
-      },
-      chatMetadata: {
-        data: metadata,
-        description: "Chat statistics: Message counts, lengths, and quality metrics for decision-making"
+  }, async (span) => {
+    try {
+      // Get current commit data (returns Date object for timestamp)
+      const currentCommit = await getLatestCommitData(commitRef);
+      if (!currentCommit) {
+        throw new Error('❌ Failed to get current commit data');
       }
-    };
+      
+      // Add commit data to span
+      span.setAttributes({
+        'commit.hash': currentCommit.hash,
+        'commit.message': currentCommit.message.split('\n')[0],
+        'commit.timestamp': currentCommit.timestamp.toISOString(),
+        'commit.author': currentCommit.author,
+      });
+
+      // Get previous commit data for time window
+      const previousCommit = await getPreviousCommitData(commitRef);
+      
+      if (previousCommit) {
+        span.setAttributes({
+          'previous.commit.hash': previousCommit.hash,
+          'previous.commit.timestamp': previousCommit.timestamp.toISOString(),
+        });
+      }
+      
+      // Extract chat messages using existing claude-collector API
+      // Signature: extractChatForCommit(commitTime, previousCommitTime, repoPath)
+      const rawChatMessages = await extractChatForCommit(
+        currentCommit.timestamp,           // Date object - current commit time
+        previousCommit?.timestamp || null, // Date object or null - previous commit time  
+        process.cwd()                      // string - repo path for cwd filtering
+      );
     
-  } catch (error) {
-    console.error('Error gathering context for commit:', error.message);
-    throw error;
-  }
+      // Extract clean text content from messages
+      const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
+      
+      // Add raw message data to span
+      span.setAttributes({
+        'chat.raw.messages.count': rawChatMessages?.length || 0,
+        'chat.clean.messages.count': cleanChatMessages.length,
+      });
+      
+      // Apply complete context preparation (consolidate all filtering and token management)
+      const rawContext = {
+        commit: currentCommit,
+        chatMessages: cleanChatMessages
+      };
+      const filteredContext = filterContext(rawContext);
+      
+      // Calculate metadata from cleaned messages (before filtering for richer data)
+      const metadata = calculateChatMetadata(cleanChatMessages);
+      
+      // Add final metadata to span
+      span.setAttributes({
+        'context.chat.totalMessages': metadata.totalMessages,
+        'context.chat.userMessages': metadata.userMessageCount,
+        'context.chat.assistantMessages': metadata.assistantMessageCount,
+        'context.chat.userMessages.overTwenty': metadata.userMessages.overTwentyCharacters,
+        'context.filtered.messages.count': filteredContext.chatMessages.length,
+      });
+      
+      // Return self-documenting context object for journal generation
+      const result = {
+        commit: {
+          data: filteredContext.commit,     // Filtered git data (hash, message, author, timestamp, diff)
+          description: "Git commit: code changes (unified diff), commit message, and technical details of what files were modified"
+        },
+        chatMessages: {
+          data: filteredContext.chatMessages, // Filtered chat messages with token optimization
+          description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"
+        },
+        chatMetadata: {
+          data: metadata,
+          description: "Chat statistics: Message counts, lengths, and quality metrics for decision-making"
+        }
+      };
+      
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Context gathered successfully' });
+      return result;
+      
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error('Error gathering context for commit:', error.message);
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 /**

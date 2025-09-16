@@ -13,6 +13,10 @@
 import { generateSummary } from './summary-generator.js';
 import { generateDevelopmentDialogue } from './dialogue-generator.js';
 import { generateTechnicalDecisions } from './technical-decisions-generator.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+
+// Get tracer instance for journal generation instrumentation
+const tracer = trace.getTracer('commit-story-generator', '1.0.0');
 
 /**
  * Generates a complete journal entry for a development session
@@ -25,49 +29,81 @@ import { generateTechnicalDecisions } from './technical-decisions-generator.js';
  * @returns {Promise<Object>} Object containing all journal sections
  */
 export async function generateJournalEntry(context) {
-  try {
-    console.log('🎯 Generating journal sections...');
+  return await tracer.startActiveSpan('journal.generate-entry', {
+    attributes: {
+      'commit.hash': context.commit.data.hash,
+      'commit.message': context.commit.data.message.split('\n')[0],
+      'chat.messages.count': context.chatMessages.data.length,
+      'chat.metadata.totalMessages': context.chatMetadata.data.totalMessages,
+    }
+  }, async (span) => {
+    try {
+      console.log('🎯 Generating journal sections...');
+      
+      // Phase 1: Run independent generators in parallel + generate commit details immediately
+      console.log('  📝 Starting summary and technical decisions in parallel...');
+      span.addEvent('phase1.start', { phase: 'parallel-generation' });
+      
+      const [summaryPromise, technicalDecisionsPromise] = [
+        generateSummary(context),
+        generateTechnicalDecisions(context)
+      ];
+      
+      console.log('  📊 Generating commit details...');
+      const commitDetails = generateCommitDetailsSection(context);
+      
+      // Phase 2: Wait for summary (needed for dialogue), let technical decisions continue
+      console.log('  ⏳ Waiting for summary completion...');
+      span.addEvent('phase2.start', { phase: 'waiting-for-summary' });
+      const summary = await summaryPromise;
+      
+      span.setAttributes({
+        'sections.summary.length': summary.length,
+        'sections.commitDetails.length': commitDetails.length,
+      });
+      
+      // Phase 3: Start dialogue with summary result
+      console.log('  💬 Generating development dialogue...');
+      span.addEvent('phase3.start', { phase: 'dialogue-generation' });
+      const dialoguePromise = generateDevelopmentDialogue(context, summary);
+      
+      // Phase 4: Wait for all remaining generators to complete
+      console.log('  ⏳ Waiting for remaining sections...');
+      span.addEvent('phase4.start', { phase: 'waiting-for-completion' });
+      const [dialogue, technicalDecisions] = await Promise.all([
+        dialoguePromise,
+        technicalDecisionsPromise
+      ]);
+      
+      // Add final section lengths to span
+      span.setAttributes({
+        'sections.dialogue.length': dialogue.length,
+        'sections.technicalDecisions.length': technicalDecisions.length,
+        'sections.total.count': 4,
+        'generation.completed': true,
+      });
+      
+      // Return sections object for journal-manager to format
+      const sections = {
+        summary,
+        dialogue,
+        technicalDecisions,
+        commitDetails
+      };
+      
+      console.log('✅ Journal sections generated successfully');
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Journal sections generated successfully' });
+      return sections;
     
-    // Phase 1: Run independent generators in parallel + generate commit details immediately
-    console.log('  📝 Starting summary and technical decisions in parallel...');
-    const [summaryPromise, technicalDecisionsPromise] = [
-      generateSummary(context),
-      generateTechnicalDecisions(context)
-    ];
-    
-    console.log('  📊 Generating commit details...');
-    const commitDetails = generateCommitDetailsSection(context);
-    
-    // Phase 2: Wait for summary (needed for dialogue), let technical decisions continue
-    console.log('  ⏳ Waiting for summary completion...');
-    const summary = await summaryPromise;
-    
-    // Phase 3: Start dialogue with summary result
-    console.log('  💬 Generating development dialogue...');
-    const dialoguePromise = generateDevelopmentDialogue(context, summary);
-    
-    // Phase 4: Wait for all remaining generators to complete
-    console.log('  ⏳ Waiting for remaining sections...');
-    const [dialogue, technicalDecisions] = await Promise.all([
-      dialoguePromise,
-      technicalDecisionsPromise
-    ]);
-    
-    // Return sections object for journal-manager to format
-    const sections = {
-      summary,
-      dialogue,
-      technicalDecisions,
-      commitDetails
-    };
-    
-    console.log('✅ Journal sections generated successfully');
-    return sections;
-    
-  } catch (error) {
-    console.error('❌ Error generating journal entry:', error.message);
-    throw error;
-  }
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error('❌ Error generating journal entry:', error.message);
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 /**

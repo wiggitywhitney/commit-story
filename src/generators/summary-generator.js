@@ -9,6 +9,11 @@ import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { summaryPrompt } from './prompts/sections/summary-prompt.js';
 import { selectContext } from './utils/context-selector.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { DEFAULT_MODEL } from '../config/openai.js';
+
+// Get tracer instance for summary generation instrumentation
+const tracer = trace.getTracer('commit-story-summary', '1.0.0');
 
 /**
  * Generates a summary narrative for a development session
@@ -20,6 +25,15 @@ import { selectContext } from './utils/context-selector.js';
  * @returns {Promise<string>} Generated summary paragraph
  */
 export async function generateSummary(context) {
+  return await tracer.startActiveSpan('summary.generate', {
+    attributes: {
+      'commit.hash': context.commit.data.hash,
+      'ai.model': DEFAULT_MODEL,
+      'ai.operation': 'summary-generation',
+      'chat.messages.count': context.chatMessages.data.length,
+    }
+  }, async (span) => {
+    try {
   // Select both commit and chat data for summary generation
   const selected = selectContext(context, ['commit', 'chatMessages']);
   
@@ -57,7 +71,7 @@ ${guidelines}
 
 
   const requestPayload = {
-    model: 'gpt-4o-mini',
+    model: DEFAULT_MODEL,
     messages: [
       {
         role: 'system',
@@ -72,19 +86,42 @@ ${guidelines}
   };
 
 
-  try {
-    // Add timeout wrapper (30 seconds)
-    const completion = await Promise.race([
-      openai.chat.completions.create(requestPayload),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
-      )
-    ]);
+      // Add request payload attributes to span
+      span.setAttributes({
+        'ai.request.model': requestPayload.model,
+        'ai.request.temperature': requestPayload.temperature,
+        'ai.request.messages.count': requestPayload.messages.length,
+      });
 
-    return completion.choices[0].message.content.trim();
+      // Add timeout wrapper (30 seconds)
+      const completion = await Promise.race([
+        openai.chat.completions.create(requestPayload),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+        )
+      ]);
 
-  } catch (error) {
-    console.error(`⚠️ Summary generation failed: ${error.message}`);
-    return `[Summary generation failed: ${error.message}]`;
-  }
+      const result = completion.choices[0].message.content.trim();
+      
+      // Add response attributes to span
+      span.setAttributes({
+        'ai.response.length': result.length,
+        'ai.response.model': completion.model,
+        'ai.usage.prompt_tokens': completion.usage?.prompt_tokens || 0,
+        'ai.usage.completion_tokens': completion.usage?.completion_tokens || 0,
+        'ai.usage.total_tokens': completion.usage?.total_tokens || 0,
+      });
+      
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Summary generated successfully' });
+      return result;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error(`⚠️ Summary generation failed: ${error.message}`);
+      return `[Summary generation failed: ${error.message}]`;
+    } finally {
+      span.end();
+    }
+  });
 }
