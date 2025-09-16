@@ -76,7 +76,7 @@ export default async function main(commitRef = 'HEAD') {
     
       try {
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        await tracer.startActiveSpan('openai.connectivity-test', async (connectivitySpan) => {
+        await tracer.startActiveSpan('gen_ai.connectivity-test', async (connectivitySpan) => {
           try {
             await client.chat.completions.create({
               model: 'gpt-4o-mini',

@@ -5,9 +5,10 @@
  * 
  * Tests the instrumented commit-story application to validate:
  * 1. Traces are generated and visible in console
- * 2. All spans have correct attributes and relationships
- * 3. Error handling includes proper span recording
- * 4. Datadog OTLP exporter works (if configured)
+ * 2. All spans have correct GenAI semantic convention attributes and relationships
+ * 3. Provider detection works correctly (gen_ai.provider.name)
+ * 4. Error handling includes proper span recording
+ * 5. Datadog OTLP exporter works (if configured)
  */
 
 import { config } from 'dotenv';

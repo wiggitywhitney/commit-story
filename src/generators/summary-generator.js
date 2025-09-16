@@ -16,6 +16,20 @@ import { DEFAULT_MODEL } from '../config/openai.js';
 const tracer = trace.getTracer('commit-story-summary', '1.0.0');
 
 /**
+ * Detects AI provider from model name for telemetry
+ * @param {string} modelName - The model name (e.g., 'gpt-4o-mini', 'claude-3')
+ * @returns {string} Provider name ('openai', 'anthropic', 'google', 'meta', 'unknown')
+ */
+function getProviderFromModel(modelName) {
+  const model = modelName.toLowerCase();
+  if (model.startsWith('gpt')) return 'openai';
+  if (model.includes('claude')) return 'anthropic';
+  if (model.includes('gemini')) return 'google';
+  if (model.includes('llama')) return 'meta';
+  return 'unknown';
+}
+
+/**
  * Generates a summary narrative for a development session
  * 
  * @param {Object} context - The context object from context integrator
@@ -28,8 +42,9 @@ export async function generateSummary(context) {
   return await tracer.startActiveSpan('summary.generate', {
     attributes: {
       'commit.hash': context.commit.data.hash,
-      'ai.model': DEFAULT_MODEL,
-      'ai.operation': 'summary-generation',
+      'gen_ai.request.model': DEFAULT_MODEL,
+      'gen_ai.operation.name': 'chat',
+      'gen_ai.provider.name': getProviderFromModel(DEFAULT_MODEL),
       'chat.messages.count': context.chatMessages.data.length,
     }
   }, async (span) => {
@@ -88,9 +103,9 @@ ${guidelines}
 
       // Add request payload attributes to span
       span.setAttributes({
-        'ai.request.model': requestPayload.model,
-        'ai.request.temperature': requestPayload.temperature,
-        'ai.request.messages.count': requestPayload.messages.length,
+        'gen_ai.request.model': requestPayload.model,
+        'gen_ai.request.temperature': requestPayload.temperature,
+        'ai.request.messages.count': requestPayload.messages.length, // Keep custom metric
       });
 
       // Add timeout wrapper (30 seconds)
@@ -105,11 +120,10 @@ ${guidelines}
       
       // Add response attributes to span
       span.setAttributes({
-        'ai.response.length': result.length,
-        'ai.response.model': completion.model,
-        'ai.usage.prompt_tokens': completion.usage?.prompt_tokens || 0,
-        'ai.usage.completion_tokens': completion.usage?.completion_tokens || 0,
-        'ai.usage.total_tokens': completion.usage?.total_tokens || 0,
+        'ai.response.length': result.length, // Keep custom metric
+        'gen_ai.response.model': completion.model,
+        'gen_ai.usage.input_tokens': completion.usage?.prompt_tokens || 0,
+        'gen_ai.usage.output_tokens': completion.usage?.completion_tokens || 0,
       });
       
       span.setStatus({ code: SpanStatusCode.OK, message: 'Summary generated successfully' });
