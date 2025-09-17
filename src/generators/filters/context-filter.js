@@ -8,6 +8,10 @@
  */
 
 import { redactSensitiveData } from './sensitive-data-filter.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+
+// Get tracer instance for context filtering instrumentation
+const tracer = trace.getTracer('commit-story-context-filter', '1.0.0');
 
 const MAX_TOKENS = 120000; // Leave 8k buffer under gpt-4o-mini's 128k limit
 const AVG_CHARS_PER_TOKEN = 4; // Rough estimate for token counting
@@ -178,24 +182,53 @@ function filterGitDiff(diff) {
  * @returns {Object} Filtered context object
  */
 export function filterContext(context) {
+  return tracer.startActiveSpan('context.filter-messages', {
+    attributes: {
+      'commit.hash': context.commit?.data?.hash || context.commit?.hash || 'unknown',
+    }
+  }, (span) => {
+    try {
   // Handle both old structure (context.chatMessages) and new structure (context.chatMessages.data)
   const chatMessages = context.chatMessages?.data || context.chatMessages || [];
   const commit = context.commit?.data || context.commit;
+
+  // Add initial metrics to span
+  span.setAttributes({
+    'context.messages.original': chatMessages.length,
+  });
   
-  // Filter chat messages  
+  // Filter chat messages
   const filteredChatMessages = filterChatMessages(chatMessages);
+
+  // Add filtering metrics to span
+  span.setAttributes({
+    'context.messages.filtered': filteredChatMessages.length,
+    'context.messages.removed': chatMessages.length - filteredChatMessages.length,
+  });
   
   // Filter git diff if needed
   const filteredDiff = filterGitDiff(commit?.diff);
   
   // Calculate token usage after initial filtering
+  const originalChatTokens = chatMessages.reduce((sum, msg) => {
+    return sum + estimateTokens(getMessageContentString(msg));
+  }, 0);
+
   const chatTokens = filteredChatMessages.reduce((sum, msg) => {
     return sum + estimateTokens(getMessageContentString(msg));
   }, 0);
-  
+
   const diffTokens = estimateTokens(filteredDiff || '');
   const systemPromptTokens = 2000; // Estimate for system prompt overhead
   const totalTokens = chatTokens + diffTokens + systemPromptTokens;
+
+  // Add token metrics to span
+  span.setAttributes({
+    'context.tokens.original_chat': originalChatTokens,
+    'context.tokens.filtered_chat': chatTokens,
+    'context.tokens.diff': diffTokens,
+    'context.tokens.total_estimated': totalTokens,
+  });
   
   // If still too large, apply more aggressive filtering (keep most recent)
   let finalChatMessages = filteredChatMessages;
@@ -219,8 +252,30 @@ export function filterContext(context) {
     }
     
     finalChatMessages = recentMessages;
+
+    // Add aggressive filtering metrics
+    span.setAttributes({
+      'context.messages.final': finalChatMessages.length,
+      'context.aggressive_filtering': true,
+    });
+  } else {
+    span.setAttributes({
+      'context.aggressive_filtering': false,
+    });
   }
-  
+
+  // Final metrics
+  const finalChatTokens = finalChatMessages.reduce((sum, msg) => {
+    return sum + estimateTokens(getMessageContentString(msg));
+  }, 0);
+
+  span.setAttributes({
+    'context.tokens.final_chat': finalChatTokens,
+    'context.tokens.reduction': originalChatTokens - finalChatTokens,
+  });
+
+  span.setStatus({ code: SpanStatusCode.OK, message: 'Context filtered successfully' });
+
   // Return filtered context maintaining original structure
   return {
     ...context,
@@ -230,4 +285,13 @@ export function filterContext(context) {
       diff: filteredDiff
     }
   };
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
