@@ -222,6 +222,65 @@ Unlike source code (which shows intent) or static documentation (which becomes o
 **vs Static Analysis**: Catches runtime behavioral issues that static analysis misses
 **vs Manual Code Review**: Provides objective data about actual code behavior
 
+## Demo Ideas for Conference Presentation
+
+### Demo Idea #1: AI Model Quality vs Cost Optimization via Traces
+
+**Concept**: Use OpenTelemetry traces to evaluate ongoing quality vs cost comparison of different AI models during development. Switch between different models for different commits to get sampling data stored in Datadog over time. MCP server provides historical data to coding assistant for project decisions.
+
+**Implementation Approach**:
+- Write code to randomly switch between different AI models for commits
+- Store quality metrics and cost data in trace attributes
+- Use MCP server to query historical performance data
+- Generate cost analysis reports in README or documentation
+
+**Critical Analysis**:
+- ❌ **Quality measurement is subjective** - No objective way to measure if GPT-4's summary is "better" than Claude's
+- ❌ **Cost calculation feels trivial** - Token counting × pricing is straightforward math, not observability insight
+- ❌ **Random model switching breaks consistency** - Journal entries would have varying quality/style
+- ❌ **Doesn't align with "Trust a Liar" theme** - This is about optimization, not catching AI deception
+- ❌ **Audience will be skeptical** - Quality measurement problem invites immediate criticism
+
+**Verdict**: Not recommended for conference demo due to subjective quality metrics and weak alignment with talk theme.
+
+### Demo Idea #2: Performance Insights in Journal Entries
+
+**Concept**: Add observability data section to journal entries triggered by git commits. Use Datadog MCP server to supply performance data about the application being developed (not Commit Story itself) to the journal generator.
+
+**Implementation Approach**:
+- Journal queries recent traces from the app being developed during commit hook
+- Adds "Performance Impact" section when relevant data exists
+- Auto-disables feature if Datadog/OpenTelemetry not detected
+- Documents performance changes alongside code changes
+
+**Value Proposition**:
+- **Context Preservation**: Links code changes to performance impact automatically
+- **Historical Record**: "When did X break?" → searchable in journal entries
+- **Decision Documentation**: Preserves the "why" behind performance-related changes
+- **Team Knowledge**: New developers can understand performance evolution through journal
+
+**Key Differentiator from Datadog UI**:
+- Datadog shows "latency increased at 2:47pm"
+- Journal shows "latency increased when we added Redis caching in commit abc123"
+- Creates permanent, contextual record linking code changes to performance outcomes
+- Searchable narrative: "What did we try to fix the memory leak?"
+
+**Critical Considerations**:
+- ✅ **Solves real problem**: Automatic performance regression documentation
+- ✅ **Natural workflow**: Developers test before committing, traces are available
+- ✅ **Historical value**: Patterns only visible over time become documented
+- ⚠️ **Must be clearly differentiated**: Not replacing monitoring, but creating historical context
+- ⚠️ **Requires instrumented demo app**: Need example app with OpenTelemetry setup
+- ⚠️ **Signal/noise ratio**: Not every commit has meaningful performance impact
+
+**Demo Flow**:
+1. Tell AI disaster stories (establishes the lying problem)
+2. Show how traces provide ground truth verification
+3. Demonstrate performance regression automatically caught in journal
+4. Show historical value: journal tells performance story over time
+
+**Verdict**: Has strong potential if value proposition is clearly articulated. Success depends on showing compelling examples of questions the journal can answer that Datadog cannot (historical context + decision documentation).
+
 ## Future Opportunities
 
 ### Industry Impact
@@ -262,8 +321,9 @@ Unlike source code (which shows intent) or static documentation (which becomes o
 
 ---
 
-**Document Version**: 2.0  
-**Created**: September 7, 2025  
-**Updated**: September 8, 2025  
-**Purpose**: Technical specification and roadmap for AI + OpenTelemetry integration  
+**Document Version**: 3.0
+**Created**: September 7, 2025
+**Updated**: September 17, 2025
+**Purpose**: Technical specification and roadmap for AI + OpenTelemetry integration
 **Status**: Foundation complete (PRD-6), ready for MCP integration phase
+**Latest Update**: Added conference demo ideas with critical analysis

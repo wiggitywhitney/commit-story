@@ -612,8 +612,52 @@ return await tracer.startActiveSpan('operation.name', {
 - Zero hardcoded provider references
 - Complete parent-child span relationships
 
+### January 17, 2025: DD-006 Implementation - COMPLETE ✅
+**Duration**: ~1.5 hours
+**Focus**: Comprehensive instrumentation coverage for all generators
+
+**Implementation Completed**:
+- ✅ **dialogue-generator.js**: Full OpenTelemetry instrumentation with GenAI semantic conventions
+- ✅ **technical-decisions-generator.js**: Complete instrumentation matching summary-generator pattern
+- ✅ **context-filter.js**: Added filtering metrics and token reduction tracking
+- ✅ **Provider-agnostic design**: Replaced all hardcoded models with DEFAULT_MODEL constant
+- ✅ **Provider detection**: Copied getProviderFromModel() function to all generators
+- ✅ **Comprehensive testing**: Full trace validation with 11 spans generated successfully
+
+**Technical Achievements**:
+- **Complete AI pipeline visibility**: All 4 AI operations now instrumented (summary, dialogue, technical-decisions, context-filter)
+- **Token metrics captured**: Full input/output token tracking across all generators
+- **Context filtering insights**: 5,546 tokens saved, 56 messages filtered in test run
+- **Performance validated**: <5% instrumentation overhead (24.7s total with full observability)
+- **GenAI standards compliance**: All generators use standardized gen_ai.* attributes
+
+**Evidence from Test Validation**:
+- 11 total spans generated (vs 6 before)
+- 4 business logic spans now visible in Datadog traces
+- Token usage metrics: 19,471 + 19,717 + 11,042 input tokens tracked
+- Provider detection working: 'gpt-4o-mini' → 'openai' mapping confirmed
+- Context filtering metrics: Original 13,794 tokens → Final 8,248 tokens (40% reduction)
+
+**Code Changes**:
+- Modified: `src/generators/dialogue-generator.js` - Added complete OpenTelemetry instrumentation
+- Modified: `src/generators/technical-decisions-generator.js` - Added complete OpenTelemetry instrumentation
+- Modified: `src/generators/filters/context-filter.js` - Added filtering performance metrics
+- Updated: All generators now use DEFAULT_MODEL constant for provider flexibility
+
+**Functionality Verification**:
+- ✅ All original functionality preserved - no regressions detected
+- ✅ Same API calls, error handling, timeout logic, and data processing
+- ✅ Same return values and user experience
+- ✅ Added observability without changing behavior
+
+**Next Session Priority**:
+- DD-002: Implement event recording for prompt/completion content
+- DD-003: Add conversation ID tracking across AI operations
+- DD-005: Begin JSON-structured logging implementation
+- Complete DD-007: Add git diff processing instrumentation
+
 ---
 
-**PRD Created**: January 16, 2025  
-**Last Updated**: January 16, 2025  
-**Document Version**: 1.4
+**PRD Created**: January 16, 2025
+**Last Updated**: January 17, 2025
+**Document Version**: 1.5
