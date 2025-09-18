@@ -260,7 +260,7 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Status**: ⏳ Outstanding - requires implementation
 
 ### DD-008: Provider-Agnostic Model Configuration
-**Decision**: Replace all hardcoded model references with centralized DEFAULT_MODEL constant  
+**Decision**: Replace all hardcoded model references with centralized DEFAULT_MODEL constant
 **Rationale**:
 - User requirement: "I want to leave room for other models later. I don't want to hardcode anything about openai"
 - Current generators hardcode 'gpt-4o-mini' directly
@@ -276,8 +276,113 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 - Apply same pattern to technical-decisions-generator.js
 - Document provider detection logic in technical specs
 
-**Impact**: Easy migration to alternative AI providers without code changes  
+**Impact**: Easy migration to alternative AI providers without code changes
 **Status**: ⏳ Partially implemented - needs completion in other generators
+
+### DD-009: Semantic Convention Consistency Audit
+**Decision**: Audit and fix all instrumentation to consistently use OpenTelemetry semantic conventions
+**Rationale**:
+- Analysis found MIXED conventions in instrumented files (both `ai.*` and `gen_ai.*`)
+- Inconsistency makes telemetry data harder to query and analyze
+- OpenTelemetry best practice is consistent attribute naming
+- Future compatibility requires adherence to standards
+
+**Issues Found**:
+- All generators use `ai.request.messages.count` alongside `gen_ai.*` attributes
+- All generators use `ai.response.length` alongside `gen_ai.*` attributes
+- Mixed patterns reduce observability tool compatibility
+
+**Required Changes**:
+- Replace ALL `ai.*` attributes with `gen_ai.*` equivalents
+- Ensure consistent naming across entire codebase
+- Update test validation scripts to check for consistency
+
+**Impact**: Improved telemetry consistency, better tool compatibility
+**Status**: ⏳ Outstanding - requires implementation
+
+### DD-010: Comprehensive Collector Instrumentation
+**Decision**: Add full OpenTelemetry instrumentation to all data collection components
+**Rationale**:
+- Data collectors are critical path operations with no visibility
+- Claude collector processes thousands of JSONL lines per commit
+- Git collector executes system commands that could fail/timeout
+- Need metrics on data collection performance for optimization
+
+**Implementation Plan**:
+1. **claude-collector.js**:
+   - Span for `claude.collect-messages` with file discovery metrics
+   - Child spans for JSONL parsing with line counts
+   - Attributes for messages found, filtered, time window stats
+
+2. **git-collector.js**:
+   - Span for `git.collect-data` with command details
+   - Attributes for command execution time, output size
+   - Error handling with proper status codes
+
+3. **journal-manager.js**:
+   - Span for `journal.save-entry` with file I/O metrics
+   - Attributes for file size, directory creation
+   - Success/failure tracking
+
+4. **openai.js** (config):
+   - Span for `openai.client-init` with configuration details
+   - API key validation status
+   - Model availability checks
+
+5. **sensitive-data-filter.js**:
+   - Span for `filter.redact-sensitive` with pattern metrics
+   - Attributes for redaction counts, patterns matched
+   - Performance timing for large text processing
+
+**Impact**: Complete end-to-end observability, performance bottleneck identification
+**Status**: ⏳ Outstanding - requires implementation
+
+### DD-011: Full OpenTelemetry Semantic Convention Compliance
+**Decision**: Adopt complete OpenTelemetry semantic conventions for ALL telemetry data, not just GenAI
+**Rationale**:
+- Currently using custom attribute names that don't follow OTel standards
+- Non-standard attributes reduce compatibility with observability tools
+- OTel semantic conventions exist for VCS, code, HTTP, and more - not just GenAI
+- Proper conventions enable better tool integration and future-proofing
+- Standards compliance ensures telemetry data is portable across platforms
+
+**Research Stage Required** (Must be completed first):
+1. **Comprehensive Code Audit**:
+   - Review EVERY file with telemetry to catalog all attribute names
+   - Document all span names, attribute keys, and metric names currently in use
+   - Create mapping table of current vs. standard conventions
+
+2. **OpenTelemetry Documentation Research**:
+   - Review latest OTel semantic conventions (check version and date)
+   - Study VCS conventions for git operations
+   - Study code conventions for file/function operations
+   - Study general conventions for custom attributes
+   - Study span naming conventions
+   - Research proper namespacing for custom business metrics
+   - Document any EXPERIMENTAL vs STABLE convention status
+
+3. **Gap Analysis**:
+   - Compare current implementation against OTel standards
+   - Identify all non-compliant attributes
+   - Determine which conventions apply to our use cases
+   - Assess breaking changes and migration impact
+
+**Examples of Required Changes** (preliminary - subject to research):
+- `commit.hash` → `vcs.repository.change_id`
+- `commit.message` → Custom namespaced: `commit_story.commit.message`
+- `chat.messages.count` → `commit_story.chat.message_count`
+- `journal.generate-entry` → `journal.generate_entry` (underscores)
+- `context.filter-messages` → `context.filter_messages`
+
+**Implementation Approach**:
+1. Complete thorough research phase first
+2. Create detailed migration plan with exact mappings
+3. Update all instrumented code to use proper conventions
+4. Update test validation scripts
+5. Document custom attributes that don't have standard equivalents
+
+**Impact**: Full standards compliance, improved tool compatibility, future-proof telemetry
+**Status**: ⏳ Outstanding - requires research phase first
 
 ## Technical Implementation
 
@@ -338,31 +443,96 @@ return await tracer.startActiveSpan('operation.name', {
 
 ## Future Enhancements
 
-### Phase 2: GenAI Semantic Convention Alignment
-**Timeline**: 1-2 hours  
-**Priority**: Medium  
-**Dependencies**: DD-001, DD-002, DD-003
+### Phase 2: Full Semantic Convention Compliance and Comprehensive Instrumentation
+**Timeline**: 5-6 hours (including research)
+**Priority**: High
+**Dependencies**: DD-001 through DD-011
 
 #### Implementation Tasks
-- [x] Update attribute names to GenAI conventions (DD-001) in summary-generator.js:
-  - [x] Rename `ai.model` → `gen_ai.request.model` in summary-generator.js
-  - [x] Rename `ai.operation` → `gen_ai.operation.name` in summary-generator.js
-  - [x] Add `gen_ai.provider.name` to summary-generator.js (with automatic provider detection)
-  - [x] Update `ai.usage.*` → `gen_ai.usage.*` attributes in summary-generator.js
-  - [x] Update `ai.request.*` → `gen_ai.request.*` attributes in summary-generator.js
-  - [x] Update `ai.response.*` → `gen_ai.response.*` attributes in summary-generator.js
 
-- [ ] Apply GenAI conventions to remaining generators (DD-006):
-  - [ ] Add full instrumentation to dialogue-generator.js
-  - [ ] Add full instrumentation to technical-decisions-generator.js
-  - [ ] Replace hardcoded models with DEFAULT_MODEL constant
-  - [ ] Copy provider detection function to all generators
+##### Task 0: OpenTelemetry Standards Research (DD-011) - HIGHEST PRIORITY
+**Must be completed before any other changes**
+- [ ] Comprehensive code audit:
+  - [ ] Catalog ALL span names across entire codebase
+  - [ ] Document ALL attribute names currently in use
+  - [ ] List ALL metric names and types
+  - [ ] Create spreadsheet mapping current → proposed standard names
 
-- [ ] Implement comprehensive context instrumentation (DD-007):
-  - [ ] Add `context.filter-messages` span in context-filter.js
-  - [ ] Track original vs filtered message counts
-  - [ ] Record token reduction metrics
-  - [ ] Instrument git diff processing
+- [ ] OpenTelemetry documentation research:
+  - [ ] Review latest semantic conventions (record version/date)
+  - [ ] Study VCS conventions for git/repository operations
+  - [ ] Study code conventions for file/function operations
+  - [ ] Study HTTP conventions for API calls
+  - [ ] Study general attribute naming conventions
+  - [ ] Research proper custom attribute namespacing
+  - [ ] Note EXPERIMENTAL vs STABLE status of conventions
+
+- [ ] Create migration plan:
+  - [ ] Map each current attribute to OTel standard equivalent
+  - [ ] Define namespace for custom business metrics (e.g., `commit_story.*`)
+  - [ ] Document attributes that have no standard equivalent
+  - [ ] Assess breaking changes and downstream impact
+
+##### Task 1: Semantic Convention Consistency (DD-009, DD-011)
+- [ ] Fix GenAI convention inconsistencies:
+  - [ ] Replace `ai.*` attributes with `gen_ai.*` in all files
+- [ ] Fix ALL non-GenAI conventions based on research:
+  - [ ] Update VCS-related attributes (commit, git operations)
+  - [ ] Update code-related attributes (file operations, functions)
+  - [ ] Update custom business attributes with proper namespacing
+  - [ ] Fix span naming conventions (use underscores, not hyphens)
+
+  - [ ] Replace `ai.request.messages.count` → Based on research findings in:
+    - [ ] src/generators/summary-generator.js
+    - [ ] src/generators/dialogue-generator.js
+    - [ ] src/generators/technical-decisions-generator.js
+  - [ ] Replace `ai.response.length` → Based on research findings in:
+    - [ ] src/generators/summary-generator.js
+    - [ ] src/generators/dialogue-generator.js
+    - [ ] src/generators/technical-decisions-generator.js
+  - [ ] Replace all custom attributes based on research findings
+
+##### Task 2: Comprehensive Collector Instrumentation (DD-010)
+- [ ] Instrument src/collectors/claude-collector.js:
+  - [ ] Import @opentelemetry/api and create tracer
+  - [ ] Add `claude.collect-messages` root span
+  - [ ] Add `claude.discover-files` child span for file discovery
+  - [ ] Add `claude.parse-jsonl` child span for JSONL processing
+  - [ ] Add `claude.filter-messages` child span for time window filtering
+  - [ ] Track metrics: files found, lines parsed, messages collected, time window stats
+
+- [ ] Instrument src/collectors/git-collector.js:
+  - [ ] Import @opentelemetry/api and create tracer
+  - [ ] Add `git.collect-data` root span
+  - [ ] Add `git.execute-command` child span for each git command
+  - [ ] Track metrics: command duration, output size, error status
+
+- [ ] Instrument src/managers/journal-manager.js:
+  - [ ] Import @opentelemetry/api and create tracer
+  - [ ] Add `journal.save-entry` span
+  - [ ] Track metrics: file size, directory operations, write duration
+
+- [ ] Instrument src/config/openai.js:
+  - [ ] Import @opentelemetry/api and create tracer
+  - [ ] Add `openai.client-init` span
+  - [ ] Track: API key validation, model availability
+
+- [ ] Instrument src/generators/filters/sensitive-data-filter.js:
+  - [ ] Import @opentelemetry/api and create tracer
+  - [ ] Add `filter.redact-sensitive` span
+  - [ ] Track metrics: redaction counts, pattern matches, processing time
+
+##### Task 3: Complete Provider-Agnostic Implementation (DD-008)
+- [x] Provider detection function in summary-generator.js
+- [x] Provider detection function in dialogue-generator.js
+- [x] Provider detection function in technical-decisions-generator.js
+- [ ] Document provider detection logic in technical documentation
+
+##### Task 4: Context Processing Visibility (DD-007)
+- [x] Add `context.filter-messages` span in context-filter.js
+- [x] Track original vs filtered message counts
+- [x] Record token reduction metrics
+- [ ] Instrument git diff processing in git-collector.js
 
 - [ ] Add event recording for prompts/completions (DD-002):
   - [ ] Add environment variable `OTEL_GENAI_CAPTURE_CONTENT=true` control
@@ -656,8 +826,104 @@ return await tracer.startActiveSpan('operation.name', {
 - DD-005: Begin JSON-structured logging implementation
 - Complete DD-007: Add git diff processing instrumentation
 
+### January 18, 2025: Instrumentation Gap Analysis
+**Duration**: ~30 minutes
+**Focus**: Comprehensive analysis of OpenTelemetry instrumentation coverage
+
+**Analysis Performed**:
+- Analyzed all 33 JavaScript files in the codebase
+- Identified files with OpenTelemetry instrumentation
+- Categorized files by instrumentation needs
+- Found mixed semantic convention usage
+
+**Key Findings**:
+
+**Files Missing Instrumentation (Business Logic)**:
+1. **src/collectors/claude-collector.js** - Core data collection logic needs spans for:
+   - File discovery operations
+   - JSONL parsing with line counts
+   - Message filtering with match statistics
+   - Time window processing
+
+2. **src/collectors/git-collector.js** - Git operations need spans for:
+   - Git command execution with command details
+   - Output parsing with metrics
+   - Error handling with proper status codes
+
+3. **src/managers/journal-manager.js** - File persistence needs spans for:
+   - Directory creation operations
+   - File write operations with size metrics
+   - Journal formatting process
+
+4. **src/config/openai.js** - API configuration needs spans for:
+   - Client initialization
+   - API key validation
+   - Configuration setup
+
+5. **src/generators/filters/sensitive-data-filter.js** - Security filtering needs spans for:
+   - Pattern matching operations
+   - Redaction process with counts
+   - Filter performance metrics
+
+**Semantic Convention Issues Found**:
+- **MIXED CONVENTIONS**: Files use both `gen_ai.*` AND `ai.*` attributes inconsistently
+- Examples found in all generators:
+  - `ai.request.messages.count` (should be `gen_ai.request.messages.count`)
+  - `ai.response.length` (should be `gen_ai.response.length`)
+  - `ai.usage.*` still present in some files (should be `gen_ai.usage.*`)
+
+**Coverage Statistics**:
+- **Total files**: 33
+- **Fully instrumented**: 10 files (30%)
+- **Need instrumentation**: 5 files (15%)
+- **Test/debug files**: 11 files (33%)
+- **Static exports**: 7 files (21%)
+
+### September 18, 2025: Instrumentation Strategy and Planning
+**Duration**: ~45 minutes
+**Focus**: Comprehensive planning for OpenTelemetry instrumentation gaps
+
+**Analysis Completed**:
+- ✅ Analyzed all 33 JavaScript files for instrumentation coverage
+- ✅ Identified 5 critical business logic files lacking instrumentation
+- ✅ Discovered semantic convention inconsistencies (mixed `ai.*` and `gen_ai.*`)
+- ✅ Created comprehensive instrumentation plan with specific spans and metrics
+
+**Design Decisions Created**:
+- **DD-009**: Semantic Convention Consistency Audit - Fix all mixed conventions
+- **DD-010**: Comprehensive Collector Instrumentation - Add telemetry to all collectors
+
+**PRD Updates**:
+- Added detailed instrumentation requirements for each uninstrumented file
+- Created Phase 2 implementation plan with 4 main tasks:
+  1. Semantic convention consistency fixes (Priority 1)
+  2. Comprehensive collector instrumentation
+  3. Complete provider-agnostic implementation
+  4. Context processing visibility
+- Specified exact spans, attributes, and metrics for each component
+- Ensured all patterns follow existing codebase conventions
+
+**Key Recommendations**:
+1. **First Priority**: Fix semantic convention inconsistencies in existing instrumentation
+2. **Use Consistent Patterns**: Follow the established pattern from summary-generator.js
+3. **Comprehensive Coverage**: Instrument all 5 identified business logic files
+4. **Maintain Standards**: Use OpenTelemetry GenAI semantic conventions throughout
+
+**Implementation Estimates**:
+- Task 1 (Semantic fixes): ~30 minutes
+- Task 2 (Collector instrumentation): ~2 hours
+- Task 3 (Provider-agnostic completion): Already mostly done
+- Task 4 (Context visibility): ~30 minutes
+- **Total**: 3-4 hours for complete implementation
+
+**Next Steps**:
+1. Begin with semantic convention consistency fixes
+2. Add instrumentation to collectors following established patterns
+3. Validate all spans with test scripts
+4. Update documentation with new telemetry details
+
 ---
 
 **PRD Created**: January 16, 2025
-**Last Updated**: January 17, 2025
-**Document Version**: 1.5
+**Last Updated**: September 18, 2025
+**Document Version**: 1.6
