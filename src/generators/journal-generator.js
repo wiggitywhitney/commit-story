@@ -33,8 +33,8 @@ export async function generateJournalEntry(context) {
     attributes: {
       'commit_story.commit.hash': context.commit.data.hash,
       'commit_story.commit.message': context.commit.data.message.split('\n')[0],
-      'chat.messages.count': context.chatMessages.data.length,
-      'chat.metadata.totalMessages': context.chatMetadata.data.totalMessages,
+      'commit_story.chat.messages_count': context.chatMessages.data.length,
+      'commit_story.chat.total_messages': context.chatMetadata.data.totalMessages,
     }
   }, async (span) => {
     try {
@@ -58,8 +58,8 @@ export async function generateJournalEntry(context) {
       const summary = await summaryPromise;
       
       span.setAttributes({
-        'sections.summary.length': summary.length,
-        'sections.commitDetails.length': commitDetails.length,
+        'commit_story.sections.summary_length': summary.length,
+        'commit_story.sections.commit_details_length': commitDetails.length,
       });
       
       // Phase 3: Start dialogue with summary result
@@ -77,8 +77,8 @@ export async function generateJournalEntry(context) {
       
       // Add final section lengths to span
       span.setAttributes({
-        'sections.dialogue.length': dialogue.length,
-        'sections.technicalDecisions.length': technicalDecisions.length,
+        'commit_story.sections.dialogue_length': dialogue.length,
+        'commit_story.sections.technical_decisions_length': technicalDecisions.length,
         'sections.total.count': 4,
         'generation.completed': true,
       });

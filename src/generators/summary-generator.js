@@ -45,7 +45,7 @@ export async function generateSummary(context) {
       'gen_ai.request.model': DEFAULT_MODEL,
       'gen_ai.operation.name': 'chat',
       'gen_ai.provider.name': getProviderFromModel(DEFAULT_MODEL),
-      'chat.messages.count': context.chatMessages.data.length,
+      'commit_story.chat.messages_count': context.chatMessages.data.length,
     }
   }, async (span) => {
     try {

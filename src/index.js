@@ -38,10 +38,10 @@ export default async function main(commitRef = 'HEAD') {
       
       // Add context attributes to the span
       span.setAttributes({
-        'context.commit.hash': context.commit.data.hash,
-        'context.commit.message': context.commit.data.message.split('\n')[0], // First line only
-        'context.chat.messages.total': context.chatMessages.data.length,
-        'context.chat.metadata.totalMessages': context.chatMetadata.data.totalMessages,
+        'commit_story.context.commit_hash': context.commit.data.hash,
+        'commit_story.context.commit_message': context.commit.data.message.split('\n')[0], // First line only
+        'commit_story.context.chat_messages_total': context.chatMessages.data.length,
+        'commit_story.context.chat_total_messages': context.chatMetadata.data.totalMessages,
       });
       
       // Validate repository-specific chat data availability (DD-068)
@@ -107,10 +107,10 @@ export default async function main(commitRef = 'HEAD') {
       
       // Add sections metadata to span
       span.setAttributes({
-        'sections.summary.length': sections.summary?.length || 0,
-        'sections.dialogue.length': sections.dialogue?.length || 0,
-        'sections.technicalDecisions.length': sections.technicalDecisions?.length || 0,
-        'sections.commitDetails.length': sections.commitDetails?.length || 0,
+        'commit_story.sections.summary_length': sections.summary?.length || 0,
+        'commit_story.sections.dialogue_length': sections.dialogue?.length || 0,
+        'commit_story.sections.technical_decisions_length': sections.technicalDecisions?.length || 0,
+        'commit_story.sections.commit_details_length': sections.commitDetails?.length || 0,
       });
       
       // Save the complete journal entry to daily file
@@ -122,8 +122,8 @@ export default async function main(commitRef = 'HEAD') {
       
       // Add final attributes
       span.setAttributes({
-        'journal.filePath': filePath,
-        'journal.completed': true,
+        'commit_story.journal.file_path': filePath,
+        'commit_story.journal.completed': true,
       });
       
       console.log(`✅ Journal entry saved to: ${filePath}`);

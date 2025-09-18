@@ -194,7 +194,7 @@ export function filterContext(context) {
 
   // Add initial metrics to span
   span.setAttributes({
-    'context.messages.original': chatMessages.length,
+    'commit_story.context.original_messages': chatMessages.length,
   });
   
   // Filter chat messages
@@ -202,8 +202,8 @@ export function filterContext(context) {
 
   // Add filtering metrics to span
   span.setAttributes({
-    'context.messages.filtered': filteredChatMessages.length,
-    'context.messages.removed': chatMessages.length - filteredChatMessages.length,
+    'commit_story.context.filtered_messages': filteredChatMessages.length,
+    'commit_story.context.removed_messages': chatMessages.length - filteredChatMessages.length,
   });
   
   // Filter git diff if needed
@@ -224,10 +224,10 @@ export function filterContext(context) {
 
   // Add token metrics to span
   span.setAttributes({
-    'context.tokens.original_chat': originalChatTokens,
-    'context.tokens.filtered_chat': chatTokens,
-    'context.tokens.diff': diffTokens,
-    'context.tokens.total_estimated': totalTokens,
+    'commit_story.context.original_chat_tokens': originalChatTokens,
+    'commit_story.context.filtered_chat_tokens': chatTokens,
+    'commit_story.context.diff_tokens': diffTokens,
+    'commit_story.context.total_estimated_tokens': totalTokens,
   });
   
   // If still too large, apply more aggressive filtering (keep most recent)
@@ -255,12 +255,12 @@ export function filterContext(context) {
 
     // Add aggressive filtering metrics
     span.setAttributes({
-      'context.messages.final': finalChatMessages.length,
-      'context.aggressive_filtering': true,
+      'commit_story.context.final_messages': finalChatMessages.length,
+      'commit_story.context.aggressive_filtering': true,
     });
   } else {
     span.setAttributes({
-      'context.aggressive_filtering': false,
+      'commit_story.context.aggressive_filtering': false,
     });
   }
 
@@ -270,8 +270,8 @@ export function filterContext(context) {
   }, 0);
 
   span.setAttributes({
-    'context.tokens.final_chat': finalChatTokens,
-    'context.tokens.reduction': originalChatTokens - finalChatTokens,
+    'commit_story.context.final_chat_tokens': finalChatTokens,
+    'commit_story.context.token_reduction': originalChatTokens - finalChatTokens,
   });
 
   span.setStatus({ code: SpanStatusCode.OK, message: 'Context filtered successfully' });

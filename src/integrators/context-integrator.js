@@ -146,8 +146,8 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       
       // Add raw message data to span
       span.setAttributes({
-        'chat.raw.messages.count': rawChatMessages?.length || 0,
-        'chat.clean.messages.count': cleanChatMessages.length,
+        'commit_story.chat.raw_messages_count': rawChatMessages?.length || 0,
+        'commit_story.chat.clean_messages_count': cleanChatMessages.length,
       });
       
       // Apply complete context preparation (consolidate all filtering and token management)
@@ -162,11 +162,11 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       
       // Add final metadata to span
       span.setAttributes({
-        'context.chat.totalMessages': metadata.totalMessages,
-        'context.chat.userMessages': metadata.userMessageCount,
-        'context.chat.assistantMessages': metadata.assistantMessageCount,
-        'context.chat.userMessages.overTwenty': metadata.userMessages.overTwentyCharacters,
-        'context.filtered.messages.count': filteredContext.chatMessages.length,
+        'commit_story.context.chat_total_messages': metadata.totalMessages,
+        'commit_story.context.chat_user_messages': metadata.userMessageCount,
+        'commit_story.context.chat_assistant_messages': metadata.assistantMessageCount,
+        'commit_story.context.chat_user_messages_over_twenty': metadata.userMessages.overTwentyCharacters,
+        'commit_story.context.filtered_messages_count': filteredContext.chatMessages.length,
       });
       
       // Return self-documenting context object for journal generation
