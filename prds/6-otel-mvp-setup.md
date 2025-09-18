@@ -244,18 +244,37 @@ This PRD establishes the foundation for:
 **Ready for M3 Execution**: Clear deliverables and acceptance criteria defined for MCP server research phase
 
 ### September 10, 2025: M3 Preparation and Cleanup - BLOCKED 🚧
-**Duration**: ~45 minutes  
+**Duration**: ~45 minutes
 **Focus**: Cleanup community MCP work, prepare for official Datadog MCP server
 
 **Cleanup Work Completed**:
 - [x] Removed community MCP server configuration (`.mcp.json`)
-- [x] Removed community research documentation (`docs/dev/mcp-research-findings.md`) 
+- [x] Removed community research documentation (`docs/dev/mcp-research-findings.md`)
 - [x] Updated PRD to reference official Datadog MCP server
 - [x] Preserved test traces and validation process
 
 **Current Blocker**: Waiting for official Datadog MCP server access
 
 **M3 Status**: NOT STARTED - blocked waiting for server access
+
+### September 18, 2025: MCP Access Request and Authentication Setup - STILL BLOCKED 🚧
+**Duration**: ~45 minutes
+**Focus**: MCP authentication troubleshooting and access request submission
+
+**Authentication Troubleshooting Completed**:
+- [x] Datadog org ID identified via browser console (`DD_RUM.getGlobalContext().org_id`)
+- [x] MCP CLI installation verified: `~/.local/bin/datadog_mcp_cli` v0.2.5 working
+- [x] OTLP connectivity confirmed: `localhost:4318` endpoint accepting traces successfully
+- [x] Environment configuration: Created `.env` with `DD_ORG_ID` for local reference (not committed)
+- [x] MCP access request submitted: Posted in #mcp-dogfooders Slack channel with org ID
+
+**Current Status**:
+- **MCP Server**: ❌ NOT WORKING - No access granted yet
+- **Error**: "Failed to reconnect to datadog" from MCP CLI
+- **Root Cause**: Datadog MCP server requires explicit access approval for user's organization
+- **Access Request**: Submitted to #mcp-dogfooders team, awaiting response
+
+**M3 Status**: STILL BLOCKED - MCP server completely non-functional until access granted
 
 **Completed M3 Setup Work**:
 - [x] Datadog Application Key created and stored in Google Secret Manager
@@ -356,10 +375,10 @@ This PRD establishes the foundation for:
 - Update `docs/dev/otel-ai-verification-concept.md` with references to new documentation
 - Ensure no development artifacts remain in main codebase
 
-**Overall Progress**: 50% complete (M1 ✅, M2 ✅, M3 🚧 Blocked - Awaiting Official Server Access, M4 ⏳ Pending M3)
+**Overall Progress**: 50% complete (M1 ✅, M2 ✅, M3 🚧 Still Blocked - MCP Server Non-Functional, M4 ⏳ Pending M3)
 
 ---
 
-**PRD Created**: September 8, 2025  
-**Last Updated**: September 8, 2025  
-**Document Version**: 1.2
+**PRD Created**: September 8, 2025
+**Last Updated**: September 18, 2025
+**Document Version**: 1.3
