@@ -8,11 +8,11 @@ All summaries were generated using the `--no-prd` flag to test prompt robustness
 
 **Test Commands Used:**
 ```bash
-node test-prompt.js HEAD summary --no-prd
-node test-prompt.js HEAD~1 summary --no-prd
-node test-prompt.js HEAD~2 summary --no-prd
-node test-prompt.js HEAD~3 summary --no-prd
-node test-prompt.js HEAD~4 summary --no-prd
+node tests/dev-scripts/test-prompt.js HEAD summary --no-prd
+node tests/dev-scripts/test-prompt.js HEAD~1 summary --no-prd
+node tests/dev-scripts/test-prompt.js HEAD~2 summary --no-prd
+node tests/dev-scripts/test-prompt.js HEAD~3 summary --no-prd
+node tests/dev-scripts/test-prompt.js HEAD~4 summary --no-prd
 ```
 
 ## Example 1: Infrastructure Enhancement Session (HEAD)
@@ -20,13 +20,13 @@ node test-prompt.js HEAD~4 summary --no-prd
 **Context**: 154 chat messages, PRD filtering improvements
 
 ### Generated Summary:
-In this development session, the developer focused on refining the process of summarizing development work while addressing the handling of PRD (Product Requirement Document) references in commit messages and chat discussions. The primary files modified were `summary-prompt.js`, `summary-generator.js`, and `test-prompt.js`.
+In this development session, the developer focused on refining the process of summarizing development work while addressing the handling of PRD (Product Requirement Document) references in commit messages and chat discussions. The primary files modified were `summary-prompt.js`, `summary-generator.js`, and `tests/dev-scripts/test-prompt.js`.
 
 In `summary-prompt.js`, the developer enhanced the summary prompt to provide clearer guidance on how the AI should analyze a development session. This included steps to first examine the code changes, then review related chat discussions to understand the reasoning behind those changes. 
 
 The `summary-generator.js` file saw a modification where the commit message would be set to null when the `--no-prd` flag is used. This decision stemmed from a conversation about simplifying the code by avoiding complex masking logic or regex patterns. Instead of passing an empty string or trying to filter out PRD references, the developer opted to omit the commit message entirely when necessary, allowing the AI to function without potentially misleading information.
 
-The developer also added a new function in `test-prompt.js` to filter out chat messages that reference PRD codes, acknowledging the earlier concern that PRD-related information was leaking into the AI's context. However, they recognized the challenge of completely masking the context due to the nature of ongoing discussions during development sessions.
+The developer also added a new function in `tests/dev-scripts/test-prompt.js` to filter out chat messages that reference PRD codes, acknowledging the earlier concern that PRD-related information was leaking into the AI's context. However, they recognized the challenge of completely masking the context due to the nature of ongoing discussions during development sessions.
 
 Throughout the session, there were discussions about ensuring the summaries accurately reflected the work done versus the contextual discussions that occurred. The developer emphasized the importance of guiding the AI to extract the reasoning behind code changes and the trade-offs considered during development. They also noted the need to filter out unrelated discussions from the summary output while maintaining a clear narrative of the session's activities.
 
@@ -39,7 +39,7 @@ Overall, the developer made significant strides in streamlining how development 
 ### Generated Summary:
 During this development session, the developer made significant changes to several files, primarily focusing on enhancing the functionality of a system that generates summaries and extracts context from coding conversations. 
 
-In the file `git-collector.js`, the developer modified the `getLatestCommitData` function to accept a `commitRef` parameter, allowing it to retrieve data for any specified commit instead of just the latest one (HEAD). This change was essential for testing purposes, as it enables the system to gather context from multiple commits rather than just the most recent one. Similar updates were made in `context-integrator.js`, where methods were adjusted to use the new `commitRef` parameter, ensuring that all relevant functions could operate on any commit reference. The file `test-prompt.js` was also updated accordingly to call these modified functions.
+In the file `git-collector.js`, the developer modified the `getLatestCommitData` function to accept a `commitRef` parameter, allowing it to retrieve data for any specified commit instead of just the latest one (HEAD). This change was essential for testing purposes, as it enables the system to gather context from multiple commits rather than just the most recent one. Similar updates were made in `context-integrator.js`, where methods were adjusted to use the new `commitRef` parameter, ensuring that all relevant functions could operate on any commit reference. The file `tests/dev-scripts/test-prompt.js` was also updated accordingly to call these modified functions.
 
 The motivations for these changes stemmed from a series of tests the developer conducted, which revealed issues with the previous implementation. The AI was having difficulty consistently extracting meaningful quotes and summarizing discussions from different commits. The developer identified that the testing infrastructure was inadequate for validating the system's performance across multiple commits, particularly when developers use casual commit messages. This realization led to the necessity of implementing changes that would allow for a more robust validation process.
 

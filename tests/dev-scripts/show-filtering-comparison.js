@@ -8,8 +8,8 @@
  */
 
 import { config } from 'dotenv';
-import { gatherContextForCommit } from './src/integrators/context-integrator.js';
-import { filterContext } from './src/generators/filters/context-filter.js';
+import { gatherContextForCommit } from '../../src/integrators/context-integrator.js';
+import { filterContext } from '../../src/generators/filters/context-filter.js';
 
 config();
 

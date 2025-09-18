@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { gatherContextForCommit } from './src/integrators/context-integrator.js';
-import { filterContext } from './src/generators/filters/context-filter.js';
+import { gatherContextForCommit } from '../../src/integrators/context-integrator.js';
+import { filterContext } from '../../src/generators/filters/context-filter.js';
 
 async function main() {
   console.log('🔍 Debugging context structure...\n');

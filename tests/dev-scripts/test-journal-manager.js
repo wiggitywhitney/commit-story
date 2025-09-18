@@ -2,10 +2,10 @@
 
 /**
  * Simple test script to validate journal manager functionality
- * Run with: node test-journal-manager.js
+ * Run with: node tests/dev-scripts/test-journal-manager.js
  */
 
-import { saveJournalEntry, getJournalFilePath } from './src/managers/journal-manager.js';
+import { saveJournalEntry, getJournalFilePath } from '../../src/managers/journal-manager.js';
 import { promises as fs } from 'fs';
 
 async function testJournalManager() {

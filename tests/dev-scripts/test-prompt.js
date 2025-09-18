@@ -4,20 +4,20 @@
  * Test Harness for Prompt Validation
  * 
  * Enables rapid iteration on journal section prompts before system integration.
- * Usage: node test-prompt.js <commit> <section>
- * 
+ * Usage: node tests/dev-scripts/test-prompt.js <commit> <section>
+ *
  * Examples:
- *   node test-prompt.js HEAD summary
- *   node test-prompt.js HEAD dialogue
- *   node test-prompt.js HEAD technical-decisions
- *   node test-prompt.js HEAD~1 summary
- *   node test-prompt.js abc1234 summary
+ *   node tests/dev-scripts/test-prompt.js HEAD summary
+ *   node tests/dev-scripts/test-prompt.js HEAD dialogue
+ *   node tests/dev-scripts/test-prompt.js HEAD technical-decisions
+ *   node tests/dev-scripts/test-prompt.js HEAD~1 summary
+ *   node tests/dev-scripts/test-prompt.js abc1234 summary
  */
 
-import { gatherContextForCommit } from './src/integrators/context-integrator.js';
-import { generateSummary } from './src/generators/summary-generator.js';
-import { generateDevelopmentDialogue } from './src/generators/dialogue-generator.js';
-import { generateTechnicalDecisions } from './src/generators/technical-decisions-generator.js';
+import { gatherContextForCommit } from '../../src/integrators/context-integrator.js';
+import { generateSummary } from '../../src/generators/summary-generator.js';
+import { generateDevelopmentDialogue } from '../../src/generators/dialogue-generator.js';
+import { generateTechnicalDecisions } from '../../src/generators/technical-decisions-generator.js';
 
 /**
  * Filters PRD files from git diff for testing prompt robustness
@@ -66,13 +66,13 @@ async function main() {
   const noPrdFlag = args.includes('--no-prd');
   
   if (!commitRef || !section) {
-    console.error('Usage: node test-prompt.js <commit> <section> [--no-prd]');
+    console.error('Usage: node tests/dev-scripts/test-prompt.js <commit> <section> [--no-prd]');
     console.error('Examples:');
-    console.error('  node test-prompt.js HEAD summary');
-    console.error('  node test-prompt.js HEAD dialogue');
-    console.error('  node test-prompt.js HEAD technical-decisions');
-    console.error('  node test-prompt.js HEAD~1 summary');
-    console.error('  node test-prompt.js HEAD summary --no-prd');
+    console.error('  node tests/dev-scripts/test-prompt.js HEAD summary');
+    console.error('  node tests/dev-scripts/test-prompt.js HEAD dialogue');
+    console.error('  node tests/dev-scripts/test-prompt.js HEAD technical-decisions');
+    console.error('  node tests/dev-scripts/test-prompt.js HEAD~1 summary');
+    console.error('  node tests/dev-scripts/test-prompt.js HEAD summary --no-prd');
     process.exit(1);
   }
   

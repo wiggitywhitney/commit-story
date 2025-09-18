@@ -189,7 +189,7 @@ Git Commit → Post-commit Hook → Context Collection → Content Extraction �
 ### DD-014: Test-First Prompt Development
 **Decision**: Build a test harness for prompt iteration before integrating with the full system.  
 **Rationale**: Prompt engineering is empirical, not theoretical. Real-world testing with actual commit data provides immediate feedback on prompt quality. The feedback loop should be minutes, not hours.  
-**Impact**: Add `test-prompt.js` utility that enables rapid iteration: `node test-prompt.js HEAD summary`.
+**Impact**: Add `tests/dev-scripts/test-prompt.js` utility that enables rapid iteration: `node tests/dev-scripts/test-prompt.js HEAD summary`.
 
 ### DD-015: Hybrid Anti-Hallucination Strategy
 **Decision**: Both factor out common rules AND explicitly repeat them in each prompt.  
@@ -998,7 +998,7 @@ Initial approach of jumping directly to parser implementation risked building wr
   │   └── index.js
   └── prompt-builder.js   # Composes guidelines + prompts
   ```
-- Test harness (`test-prompt.js`) for rapid feedback loops
+- Test harness (`tests/dev-scripts/test-prompt.js`) for rapid feedback loops
 - Guidelines composed with section prompts at runtime
 - Fresh OpenAI clients per generation for isolation
 - Extensible context object pattern for future-proof function signatures
@@ -1038,7 +1038,7 @@ Initial approach of jumping directly to parser implementation risked building wr
 
 **Completed Components**:
 - [x] Summary section prompt with authentic significance matching philosophy - Evidence: `src/generators/prompts/sections/summary-prompt.js`
-- [x] Test harness for rapid prompt iteration - Evidence: `test-prompt.js` utility
+- [x] Test harness for rapid prompt iteration - Evidence: `tests/dev-scripts/test-prompt.js` utility
 - [x] Summary generator with OpenAI integration - Evidence: `src/generators/summary-generator.js`
 - [x] Dynamic input documentation system - Evidence: `getAvailableDataDescription()` in context integrator
 - [x] Six new design decisions documented - Evidence: DD-020 through DD-025 in PRD
@@ -1173,12 +1173,12 @@ Initial approach of jumping directly to parser implementation risked building wr
 **Focus**: Infrastructure implementation to unblock validation pathways
 
 **Completed PRD Items**:
-- [x] **TR-020**: Multi-commit test capability - Evidence: Successfully modified `git-collector.js`, `context-integrator.js`, and `test-prompt.js` to accept commit references; test harness validated with HEAD~1, HEAD~2, HEAD~3
+- [x] **TR-020**: Multi-commit test capability - Evidence: Successfully modified `git-collector.js`, `context-integrator.js`, and `tests/dev-scripts/test-prompt.js` to accept commit references; test harness validated with HEAD~1, HEAD~2, HEAD~3
 
 **Technical Implementation**:
 - **git-collector.js**: Added `commitRef` parameter to `getLatestCommitData()`, updated git commands to use variable commit references
 - **context-integrator.js**: Modified `gatherContextForCommit()` and `getPreviousCommitData()` to accept and calculate from specified commits
-- **test-prompt.js**: Updated to pass commit references through entire pipeline
+- **tests/dev-scripts/test-prompt.js**: Updated to pass commit references through entire pipeline
 - **Validation results**: Successfully tested across multiple commits (489, 591, 440 chat messages for different sessions)
 
 **Architecture Impact**:
@@ -1193,7 +1193,7 @@ Initial approach of jumping directly to parser implementation risked building wr
 **Focus**: Completing enhanced validation infrastructure and improving summary generation quality
 
 **Completed PRD Items**:
-- [x] **TR-021**: Complete PRD context masking implementation - Evidence: Modified `test-prompt.js` to null commit messages and filter PRD codes from chat messages when `--no-prd` flag used; updated `summary-generator.js` to handle null commit messages gracefully
+- [x] **TR-021**: Complete PRD context masking implementation - Evidence: Modified `tests/dev-scripts/test-prompt.js` to null commit messages and filter PRD codes from chat messages when `--no-prd` flag used; updated `summary-generator.js` to handle null commit messages gracefully
 - [x] Summary prompt methodology enhancement - Evidence: Added 4-step code-first analysis approach to `summary-prompt.js` (examine code changes → extract reasoning from chat → include contextual discussions → combine into complete story)
 
 **Implementation Details**:

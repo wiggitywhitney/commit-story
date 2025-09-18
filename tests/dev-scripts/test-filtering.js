@@ -6,17 +6,17 @@
  * Development script to validate that context filtering resolves the 169-message
  * token limit issue discovered during M2.2a testing.
  * 
- * Usage: node test-filtering.js <commit1> [commit2] [commit3] ...
- * 
+ * Usage: node tests/dev-scripts/test-filtering.js <commit1> [commit2] [commit3] ...
+ *
  * Examples:
- *   node test-filtering.js cbf15b1
- *   node test-filtering.js cbf15b1 151b761 08ed62f
- *   node test-filtering.js HEAD HEAD~1 HEAD~2
+ *   node tests/dev-scripts/test-filtering.js cbf15b1
+ *   node tests/dev-scripts/test-filtering.js cbf15b1 151b761 08ed62f
+ *   node tests/dev-scripts/test-filtering.js HEAD HEAD~1 HEAD~2
  */
 
 import { execSync } from 'child_process';
-import { extractChatForCommit } from './src/collectors/claude-collector.js';
-import { filterContext } from './src/generators/filters/context-filter.js';
+import { extractChatForCommit } from '../../src/collectors/claude-collector.js';
+import { filterContext } from '../../src/generators/filters/context-filter.js';
 
 function estimateTokens(text) {
   if (!text || typeof text !== 'string') return 0;
@@ -179,11 +179,11 @@ async function main() {
   const [,, ...commitHashes] = process.argv;
   
   if (commitHashes.length === 0) {
-    console.error('Usage: node test-filtering.js <commit1> [commit2] [commit3] ...');
+    console.error('Usage: node tests/dev-scripts/test-filtering.js <commit1> [commit2] [commit3] ...');
     console.error('Examples:');
-    console.error('  node test-filtering.js cbf15b1');
-    console.error('  node test-filtering.js cbf15b1 151b761 08ed62f');
-    console.error('  node test-filtering.js HEAD HEAD~1 HEAD~2');
+    console.error('  node tests/dev-scripts/test-filtering.js cbf15b1');
+    console.error('  node tests/dev-scripts/test-filtering.js cbf15b1 151b761 08ed62f');
+    console.error('  node tests/dev-scripts/test-filtering.js HEAD HEAD~1 HEAD~2');
     process.exit(1);
   }
   

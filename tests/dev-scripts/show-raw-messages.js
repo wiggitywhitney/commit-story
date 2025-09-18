@@ -7,7 +7,7 @@
  */
 
 import { config } from 'dotenv';
-import { gatherContextForCommit } from './src/integrators/context-integrator.js';
+import { gatherContextForCommit } from '../../src/integrators/context-integrator.js';
 
 config();
 

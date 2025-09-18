@@ -3,7 +3,7 @@
  * Tests against real data from research findings
  */
 
-import { extractChatForCommit } from './src/collectors/claude-collector.js';
+import { extractChatForCommit } from '../../src/collectors/claude-collector.js';
 
 console.log('🧪 Testing Claude Code JSONL Parser\n');
 
