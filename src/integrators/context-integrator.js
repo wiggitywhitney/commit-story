@@ -102,7 +102,7 @@ const tracer = trace.getTracer('commit-story-context', '1.0.0');
  * @returns {Object|null} context.previousCommit - Previous commit basic data or null
  */
 export async function gatherContextForCommit(commitRef = 'HEAD') {
-  return await tracer.startActiveSpan('context.gather-for-commit', {
+  return await tracer.startActiveSpan('context.gather_for_commit', {
     attributes: {
       'commit_story.commit.ref': commitRef,
       'commit_story.repository.path': process.cwd(),

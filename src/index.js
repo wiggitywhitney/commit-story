@@ -24,7 +24,7 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
  * Main entry point - orchestrates the complete journal generation flow
  */
 export default async function main(commitRef = 'HEAD') {
-  return await tracer.startActiveSpan('commit-story.main', {
+  return await tracer.startActiveSpan('commit_story.main', {
     attributes: {
       'commit_story.commit.ref': commitRef,
       'commit_story.repository.path': process.cwd(),
@@ -76,7 +76,7 @@ export default async function main(commitRef = 'HEAD') {
     
       try {
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        await tracer.startActiveSpan('gen_ai.connectivity-test', async (connectivitySpan) => {
+        await tracer.startActiveSpan('gen_ai.connectivity_test', async (connectivitySpan) => {
           try {
             await client.chat.completions.create({
               model: 'gpt-4o-mini',

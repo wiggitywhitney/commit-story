@@ -40,7 +40,7 @@ function getProviderFromModel(modelName) {
  * @returns {Promise<string>} Generated technical decisions section
  */
 export async function generateTechnicalDecisions(context) {
-  return await tracer.startActiveSpan('technical-decisions.generate', {
+  return await tracer.startActiveSpan('technical_decisions.generate', {
     attributes: {
       'commit_story.commit.hash': context.commit.data.hash,
       'gen_ai.request.model': DEFAULT_MODEL,
