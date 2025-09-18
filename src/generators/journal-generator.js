@@ -29,7 +29,7 @@ const tracer = trace.getTracer('commit-story-generator', '1.0.0');
  * @returns {Promise<Object>} Object containing all journal sections
  */
 export async function generateJournalEntry(context) {
-  return await tracer.startActiveSpan('journal.generate-entry', {
+  return await tracer.startActiveSpan('journal.generate_entry', {
     attributes: {
       'commit_story.commit.hash': context.commit.data.hash,
       'commit_story.commit.message': context.commit.data.message.split('\n')[0],
@@ -79,8 +79,8 @@ export async function generateJournalEntry(context) {
       span.setAttributes({
         'commit_story.sections.dialogue_length': dialogue.length,
         'commit_story.sections.technical_decisions_length': technicalDecisions.length,
-        'sections.total.count': 4,
-        'generation.completed': true,
+        'commit_story.sections.total_count': 4,
+        'commit_story.generation.completed': true,
       });
       
       // Return sections object for journal-manager to format

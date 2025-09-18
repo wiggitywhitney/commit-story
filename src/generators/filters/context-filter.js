@@ -182,7 +182,7 @@ function filterGitDiff(diff) {
  * @returns {Object} Filtered context object
  */
 export function filterContext(context) {
-  return tracer.startActiveSpan('context.filter-messages', {
+  return tracer.startActiveSpan('context.filter_messages', {
     attributes: {
       'commit_story.commit.hash': context.commit?.data?.hash || context.commit?.hash || 'unknown',
     }
