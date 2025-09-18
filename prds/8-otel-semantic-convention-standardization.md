@@ -57,10 +57,10 @@ Fix mixed `ai.*` and `gen_ai.*` attribute usage in AI generators.
 ```
 
 #### Deliverables
-- [ ] Update summary-generator.js (lines ~108, 123)
-- [ ] Update dialogue-generator.js (lines ~105, 120)
-- [ ] Update technical-decisions-generator.js (lines ~139, 154)
-- [ ] Run test validation to confirm GenAI compliance
+- [x] Update summary-generator.js (lines ~108, 123)
+- [x] Update dialogue-generator.js (lines ~105, 120)
+- [x] Update technical-decisions-generator.js (lines ~139, 154)
+- [x] Run test validation to confirm GenAI compliance
 
 ### Phase 2: Custom Namespace Implementation
 **Timeline**: 2 hours
@@ -113,7 +113,7 @@ Fix mixed `ai.*` and `gen_ai.*` attribute usage in AI generators.
 ```
 
 #### Deliverables
-- [ ] Update all VCS attributes (8 attributes, 4 files)
+- [x] Update all VCS attributes (8 attributes, 7 files)
 - [ ] Update all business logic attributes (15 attributes, 6 files)
 - [ ] Update section and output attributes (6 attributes, 2 files)
 - [ ] Validate all custom attributes have proper namespace
@@ -220,17 +220,17 @@ export OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
 ## Success Metrics
 
 ### Completion Criteria
-- [ ] **Zero mixed conventions**: No `ai.*` attributes in GenAI spans
-- [ ] **Complete namespace coverage**: All 45 custom attributes use `commit_story.*`
+- [x] **Zero mixed conventions**: No `ai.*` attributes in GenAI spans
+- [ ] **Complete namespace coverage**: All 45 custom attributes use `commit_story.*` (8/45 complete - 18%)
 - [ ] **Standard span names**: All 6 span names use underscores
-- [ ] **Test validation**: All instrumentation tests pass
+- [ ] **Test validation**: All instrumentation tests pass (partial - Phase 1&2A validated)
 - [ ] **Tool compatibility**: Improved Datadog/observability integration
 
 ### Quality Gates
-1. **Phase 1 Gate**: No mixed `ai.*` and `gen_ai.*` attributes
-2. **Phase 2 Gate**: All attributes have proper namespace prefix
-3. **Phase 3 Gate**: All span names follow underscore convention
-4. **Final Gate**: 100% semantic convention compliance validated
+1. ✅ **Phase 1 Gate**: No mixed `ai.*` and `gen_ai.*` attributes
+2. ⏳ **Phase 2 Gate**: All attributes have proper namespace prefix (18% complete)
+3. ⏳ **Phase 3 Gate**: All span names follow underscore convention
+4. ⏳ **Final Gate**: 100% semantic convention compliance validated
 
 ## Dependencies
 
@@ -258,6 +258,62 @@ export OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental
 - ✅ Comprehensive migration plan with phase breakdown
 
 **Next Steps**: Begin Phase 1 implementation with mixed convention fixes
+
+### September 18, 2025: Phase 1 + Phase 2A Implementation - COMPLETE ✅
+**Duration**: ~1 hour total
+**Focus**: Mixed convention fixes and VCS attribute namespace implementation
+
+#### Phase 1: Mixed Convention Fixes (30 minutes)
+**Completed Items**:
+- ✅ **src/generators/summary-generator.js** - Fixed mixed `ai.*` + `gen_ai.*` attributes
+  - Line 108: `'ai.request.messages.count'` → `'gen_ai.request.messages.count'`
+  - Line 123: `'ai.response.length'` → `'gen_ai.response.length'`
+- ✅ **src/generators/dialogue-generator.js** - Fixed mixed `ai.*` + `gen_ai.*` attributes
+  - Line 105: `'ai.request.messages.count'` → `'gen_ai.request.messages.count'`
+  - Line 120: `'ai.response.length'` → `'gen_ai.response.length'`
+- ✅ **src/generators/technical-decisions-generator.js** - Fixed mixed `ai.*` + `gen_ai.*` attributes
+  - Line 139: `'ai.request.messages.count'` → `'gen_ai.request.messages.count'`
+  - Line 154: `'ai.response.length'` → `'gen_ai.response.length'`
+- ✅ **Validation**: `npm run trace:test` passed - all AI spans now use pure `gen_ai.*` attributes
+
+#### Phase 2A: VCS Attributes Namespace Implementation (30 minutes)
+**Completed Items**:
+- ✅ **All 8 VCS attributes** updated across 7 files (17 total occurrences):
+  - `commit.hash` → `commit_story.commit.hash` (7 files updated)
+  - `commit.ref` → `commit_story.commit.ref` (2 files updated)
+  - `commit.message` → `commit_story.commit.message` (2 files updated)
+  - `commit.timestamp` → `commit_story.commit.timestamp` (2 files updated)
+  - `commit.author` → `commit_story.commit.author` (1 file updated)
+  - `repo.path` → `commit_story.repository.path` (2 files updated)
+  - `previous.commit.hash` → `commit_story.previous_commit.hash` (1 file updated)
+  - `previous.commit.timestamp` → `commit_story.previous_commit.timestamp` (1 file updated)
+
+**Files Modified**:
+- `src/index.js`: 4 VCS attributes updated
+- `src/integrators/context-integrator.js`: 8 VCS attributes updated
+- `src/generators/journal-generator.js`: 2 VCS attributes updated
+- `src/generators/summary-generator.js`: 1 VCS attribute updated
+- `src/generators/dialogue-generator.js`: 1 VCS attribute updated
+- `src/generators/technical-decisions-generator.js`: 1 VCS attribute updated
+- `src/generators/filters/context-filter.js`: 1 VCS attribute updated
+
+**Validation Results**:
+- ✅ Trace test passes with 11 spans generated successfully
+- ✅ All VCS attributes now use `commit_story.*` namespace in trace output
+- ✅ Zero old VCS attribute patterns remain (confirmed via grep)
+- ✅ Established namespace pattern for remaining Phase 2B/2C work
+
+#### Progress Impact
+- **Semantic Convention Compliance**: 24% improvement (14 out of 58 total attributes now compliant)
+- **Mixed Conventions**: Completely eliminated ✅
+- **Custom Namespace Progress**: 18% complete (8 out of 45 custom attributes updated)
+- **Phase 1 Gate**: ✅ Passed - No mixed conventions remain
+- **Foundation Established**: `commit_story.*` namespace pattern ready for remaining attributes
+
+#### Next Session Priorities
+- Phase 2B: Business logic attributes (`chat.*`, `context.*` attributes)
+- Phase 2C: Section and output attributes (`sections.*`, `journal.*` attributes)
+- Phase 3: Span name standardization (underscores vs hyphens)
 
 ---
 

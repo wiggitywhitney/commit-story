@@ -26,8 +26,8 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
 export default async function main(commitRef = 'HEAD') {
   return await tracer.startActiveSpan('commit-story.main', {
     attributes: {
-      'commit.ref': commitRef,
-      'repo.path': process.cwd(),
+      'commit_story.commit.ref': commitRef,
+      'commit_story.repository.path': process.cwd(),
     }
   }, async (span) => {
     try {
@@ -47,8 +47,8 @@ export default async function main(commitRef = 'HEAD') {
       // Validate repository-specific chat data availability (DD-068)
       if (context.chatMetadata.data.totalMessages === 0) {
         span.addEvent('no-chat-data-found', {
-          'repo.path': process.cwd(),
-          'commit.timestamp': context.commit.data.timestamp,
+          'commit_story.repository.path': process.cwd(),
+          'commit_story.commit.timestamp': context.commit.data.timestamp,
         });
         console.log(`⚠️  No chat data found for this repository and time window`);
         console.log(`   Repository: ${process.cwd()}`);

@@ -40,7 +40,7 @@ function getProviderFromModel(modelName) {
 export async function generateDevelopmentDialogue(context, summary) {
   return await tracer.startActiveSpan('dialogue.generate', {
     attributes: {
-      'commit.hash': context.commit.data.hash,
+      'commit_story.commit.hash': context.commit.data.hash,
       'gen_ai.request.model': DEFAULT_MODEL,
       'gen_ai.operation.name': 'chat',
       'gen_ai.provider.name': getProviderFromModel(DEFAULT_MODEL),
@@ -102,7 +102,7 @@ ${dialoguePrompt}
       span.setAttributes({
         'gen_ai.request.model': requestPayload.model,
         'gen_ai.request.temperature': requestPayload.temperature,
-        'ai.request.messages.count': requestPayload.messages.length, // Keep custom metric
+        'gen_ai.request.messages.count': requestPayload.messages.length,
       });
 
       // Add timeout wrapper (30 seconds)
@@ -117,7 +117,7 @@ ${dialoguePrompt}
 
       // Add response attributes to span
       span.setAttributes({
-        'ai.response.length': dialogue.length, // Keep custom metric
+        'gen_ai.response.length': dialogue.length,
         'gen_ai.response.model': completion.model,
         'gen_ai.usage.input_tokens': completion.usage?.prompt_tokens || 0,
         'gen_ai.usage.output_tokens': completion.usage?.completion_tokens || 0,

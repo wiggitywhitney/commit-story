@@ -31,8 +31,8 @@ const tracer = trace.getTracer('commit-story-generator', '1.0.0');
 export async function generateJournalEntry(context) {
   return await tracer.startActiveSpan('journal.generate-entry', {
     attributes: {
-      'commit.hash': context.commit.data.hash,
-      'commit.message': context.commit.data.message.split('\n')[0],
+      'commit_story.commit.hash': context.commit.data.hash,
+      'commit_story.commit.message': context.commit.data.message.split('\n')[0],
       'chat.messages.count': context.chatMessages.data.length,
       'chat.metadata.totalMessages': context.chatMetadata.data.totalMessages,
     }

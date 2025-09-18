@@ -104,8 +104,8 @@ const tracer = trace.getTracer('commit-story-context', '1.0.0');
 export async function gatherContextForCommit(commitRef = 'HEAD') {
   return await tracer.startActiveSpan('context.gather-for-commit', {
     attributes: {
-      'commit.ref': commitRef,
-      'repo.path': process.cwd(),
+      'commit_story.commit.ref': commitRef,
+      'commit_story.repository.path': process.cwd(),
     }
   }, async (span) => {
     try {
@@ -117,10 +117,10 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       
       // Add commit data to span
       span.setAttributes({
-        'commit.hash': currentCommit.hash,
-        'commit.message': currentCommit.message.split('\n')[0],
-        'commit.timestamp': currentCommit.timestamp.toISOString(),
-        'commit.author': currentCommit.author,
+        'commit_story.commit.hash': currentCommit.hash,
+        'commit_story.commit.message': currentCommit.message.split('\n')[0],
+        'commit_story.commit.timestamp': currentCommit.timestamp.toISOString(),
+        'commit_story.commit.author': currentCommit.author,
       });
 
       // Get previous commit data for time window
@@ -128,8 +128,8 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       
       if (previousCommit) {
         span.setAttributes({
-          'previous.commit.hash': previousCommit.hash,
-          'previous.commit.timestamp': previousCommit.timestamp.toISOString(),
+          'commit_story.previous_commit.hash': previousCommit.hash,
+          'commit_story.previous_commit.timestamp': previousCommit.timestamp.toISOString(),
         });
       }
       
