@@ -450,28 +450,35 @@ return await tracer.startActiveSpan('operation.name', {
 
 #### Implementation Tasks
 
-##### Task 0: OpenTelemetry Standards Research (DD-011) - HIGHEST PRIORITY
-**Must be completed before any other changes**
-- [ ] Comprehensive code audit:
-  - [ ] Catalog ALL span names across entire codebase
-  - [ ] Document ALL attribute names currently in use
-  - [ ] List ALL metric names and types
-  - [ ] Create spreadsheet mapping current → proposed standard names
+##### Task 0: OpenTelemetry Standards Research (DD-011) - ✅ COMPLETE
+**Research foundation completed with comprehensive documentation**
 
-- [ ] OpenTelemetry documentation research:
-  - [ ] Review latest semantic conventions (record version/date)
-  - [ ] Study VCS conventions for git/repository operations
-  - [ ] Study code conventions for file/function operations
-  - [ ] Study HTTP conventions for API calls
-  - [ ] Study general attribute naming conventions
-  - [ ] Research proper custom attribute namespacing
-  - [ ] Note EXPERIMENTAL vs STABLE status of conventions
+**📁 Research Documentation Created:**
+- `docs/telemetry/research/otel-instrumentation-audit.md` - Complete instrumentation audit
+- `docs/telemetry/research/otel-semantic-conventions-research.md` - Standards research
+- `docs/telemetry/research/attribute-mapping-table.md` - Detailed attribute mapping
+- `docs/telemetry/research/migration-plan.md` - Implementation migration plan
 
-- [ ] Create migration plan:
-  - [ ] Map each current attribute to OTel standard equivalent
-  - [ ] Define namespace for custom business metrics (e.g., `commit_story.*`)
-  - [ ] Document attributes that have no standard equivalent
-  - [ ] Assess breaking changes and downstream impact
+- [x] Comprehensive code audit:
+  - [x] Catalog ALL span names across entire codebase → **See `docs/telemetry/research/otel-instrumentation-audit.md`**
+  - [x] Document ALL attribute names currently in use → **See audit document (58 attributes cataloged)**
+  - [x] List ALL metric names and types → **See audit document (spans, attributes, events)**
+  - [x] Create spreadsheet mapping current → proposed standard names → **See `docs/telemetry/research/attribute-mapping-table.md`**
+
+- [x] OpenTelemetry documentation research → **See `docs/telemetry/research/otel-semantic-conventions-research.md`**:
+  - [x] Review latest semantic conventions (OpenTelemetry v1.37.0 documented)
+  - [x] Study VCS conventions for git/repository operations (no official conventions found)
+  - [x] Study code conventions for file/function operations (limited official support)
+  - [x] Study HTTP conventions for API calls
+  - [x] Study general attribute naming conventions (documented best practices)
+  - [x] Research proper custom attribute namespacing (`commit_story.*` recommended)
+  - [x] Note EXPERIMENTAL vs STABLE status (GenAI experimental, requires opt-in)
+
+- [x] Create migration plan → **See `docs/telemetry/research/migration-plan.md`**:
+  - [x] Map each current attribute to OTel standard equivalent (58 attributes mapped)
+  - [x] Define namespace for custom business metrics (`commit_story.*` chosen)
+  - [x] Document attributes that have no standard equivalent (45 custom attributes)
+  - [x] Assess breaking changes and downstream impact (88% of attributes need updates)
 
 ##### Task 1: Semantic Convention Consistency (DD-009, DD-011)
 - [ ] Fix GenAI convention inconsistencies:
@@ -922,8 +929,58 @@ return await tracer.startActiveSpan('operation.name', {
 3. Validate all spans with test scripts
 4. Update documentation with new telemetry details
 
+### September 18, 2025 (Later): DD-011 OpenTelemetry Standards Research - COMPLETE ✅
+**Duration**: ~3 hours
+**Focus**: Comprehensive OpenTelemetry semantic convention research and migration planning
+
+**Research Documentation Created:**
+- ✅ **Complete Instrumentation Audit**: `docs/telemetry/research/otel-instrumentation-audit.md`
+  - Cataloged all 8 spans across 6 instrumented files
+  - Documented all 58 unique attributes with file locations and usage patterns
+  - Identified semantic convention compliance issues (mixed `ai.*` and `gen_ai.*`)
+  - Analyzed coverage gaps in uninstrumented components
+- ✅ **Semantic Conventions Research**: `docs/telemetry/research/otel-semantic-conventions-research.md`
+  - Latest OpenTelemetry v1.37.0 conventions documented
+  - GenAI experimental conventions detailed (requires `OTEL_SEMCONV_STABILITY_OPT_IN`)
+  - Custom attribute namespacing guidelines established
+  - VCS/Code operation analysis (limited official support, custom namespace required)
+- ✅ **Detailed Attribute Mapping**: `docs/telemetry/research/attribute-mapping-table.md`
+  - Complete mapping of current → standard attribute names for all 58 attributes
+  - 88% of attributes identified as needing updates (51 out of 58)
+  - Mixed convention issues prioritized in AI generators
+  - Recommended `commit_story.*` namespace for all custom attributes
+- ✅ **Implementation Migration Plan**: `docs/telemetry/research/migration-plan.md`
+  - 4-phase migration approach with detailed effort estimates
+  - Phase 1: Fix mixed `ai.*` + `gen_ai.*` conventions (30 min, HIGH priority)
+  - Phase 2: Apply `commit_story.*` namespacing (2-3 hours)
+  - Phase 3: Standardize span names with underscores (30 min)
+  - Phase 4: Add enhanced GenAI features (1 hour)
+
+**Key Research Findings:**
+- ✅ **GenAI Conventions Status**: Experimental, requires `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental`
+- ⚠️ **Critical Issues**: Mixed `ai.*` and `gen_ai.*` attributes in same spans (3 AI generators affected)
+- ❌ **Missing VCS Conventions**: No official OpenTelemetry VCS conventions found
+- 🎯 **Namespace Decision**: `commit_story.*` prefix chosen for all 45 custom business attributes
+- 📊 **Impact Assessment**: 51 attributes need changes, 6 span names need underscore fixes
+
+**Technical Achievements:**
+- Comprehensive standards compliance foundation established
+- Future-ready migration plan with exact implementation steps
+- Reusable documentation for team and future AI instances
+- Complete understanding of OpenTelemetry v1.37.0 semantic conventions
+- Provider-agnostic design validated against latest standards
+
+**Strategic Decision:**
+- **Migration work split to PRD-8**: Created separate PRD for semantic convention standardization
+- **PRD-7 refocused**: Returns to original mission of adding new instrumentation coverage
+- **Clean dependencies**: PRD-8 handles standards, PRD-7 adds new capabilities following standards
+
+**Next Session Priority:**
+- **PRD-7**: Continue with uninstrumented components (collectors, managers, config)
+- **PRD-8**: Begin Phase 1 mixed convention fixes (30 minutes, high impact)
+
 ---
 
 **PRD Created**: January 16, 2025
 **Last Updated**: September 18, 2025
-**Document Version**: 1.6
+**Document Version**: 1.7
