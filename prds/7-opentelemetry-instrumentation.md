@@ -496,8 +496,9 @@ return await tracer.startActiveSpan('operation.name', {
 **Timeline**: 2-3 hours
 **Priority**: Critical
 **Dependencies**: DD-001 through DD-011, DD-012 through DD-015
+**Note**: Advanced automation features (DD-012 through DD-015) have been moved to **PRD-9** for better separation of concerns.
 
-This phase creates a standards module to enforce OpenTelemetry conventions and fixes critical violations found in existing instrumentation.
+This phase creates a standards module to enforce OpenTelemetry conventions and fixes critical violations found in existing instrumentation. The core standards module will be created here, with advanced automation and tooling features handled in PRD-9.
 
 #### Phase 2.1: Create Standards Module (30 minutes)
 ##### Deliverables
@@ -861,6 +862,26 @@ export function createTraceLogger() {
 - [ ] Enable AI to analyze its own performance
 - [ ] Self-optimization based on trace data
 - [ ] Anomaly detection in generation patterns
+
+## Related PRDs
+
+### PRD-9: OpenTelemetry Automation & Developer Experience Tooling
+**Status**: Planning
+**Created**: September 18, 2025
+**GitHub Issue**: [#10](https://github.com/wiggitywhitney/commit-story/issues/10)
+**File**: [prds/9-otel-automation-tooling.md](./9-otel-automation-tooling.md)
+
+**Scope Separation**: PRD-9 handles advanced automation features that were originally planned for PRD-7 Phase 2 (DD-012 through DD-015):
+
+- `/add-telemetry` command (AI-powered automation)
+- Dynamic convention discovery from OTEL docs
+- Standards module extensibility features
+- Enhanced validation tooling
+- Convention recommendation engine
+
+**Dependencies**: PRD-9 depends on PRD-7 Phase 2.1 (Standards Module) being complete. The basic standards module created in PRD-7 provides the foundation that PRD-9 extends with automation capabilities.
+
+**Why Separated**: This separation allows PRD-7 to focus on core instrumentation infrastructure while PRD-9 handles developer experience and automation tooling. Future AI instances should work on PRD-7 Phase 2.1-2.4 for core standards, then move to PRD-9 for automation features.
 
 ## Risk Mitigation
 
@@ -1248,9 +1269,33 @@ export function createTraceLogger() {
 - **PRD-7 refocused**: Returns to original mission of adding new instrumentation coverage
 - **Clean dependencies**: PRD-8 handles standards, PRD-7 adds new capabilities following standards
 
+### September 18, 2025 (Later): PRD Scope Reorganization
+**Duration**: ~15 minutes
+**Focus**: Clarify scope boundaries and prevent future AI confusion
+
+**Reorganization Completed**:
+- ✅ **Created PRD-9**: OpenTelemetry Automation & Developer Experience Tooling
+- ✅ **Moved automation features**: DD-012 through DD-015 transferred to PRD-9 scope
+- ✅ **Updated PRD-7 references**: Clear separation between core infrastructure (PRD-7) and automation (PRD-9)
+- ✅ **Defined dependencies**: PRD-9 depends on PRD-7 Phase 2.1 (Standards Module)
+
+**Scope Clarification**:
+- **PRD-7 Focus**: Core instrumentation infrastructure, standards module, existing component instrumentation
+- **PRD-9 Focus**: AI-powered automation, convention discovery, dynamic extensibility, developer experience
+- **Clean Handoff**: PRD-7 Phase 2.1 provides foundation, PRD-9 adds automation layer
+
+**Benefits of Separation**:
+- Prevents scope creep in PRD-7
+- Allows focused completion of core infrastructure
+- Clear dependency chain for future work
+- Better organization for team reference
+
 **Next Session Priority:**
-- **PRD-7**: Continue with uninstrumented components (collectors, managers, config)
-- **PRD-8**: Begin Phase 1 mixed convention fixes (30 minutes, high impact)
+- **PRD-7 Phase 2.1**: Create core standards module (30 minutes, critical foundation)
+- **PRD-7 Phase 3**: Add instrumentation to remaining components (collectors, managers, config)
+- **PRD-9**: Advanced automation features (after Phase 2.1 complete)
+
+**Note**: PRD-8 is complete (semantic convention standardization). Automation features moved to PRD-9 for better scope separation.
 
 ---
 
