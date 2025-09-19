@@ -14,6 +14,7 @@ import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
+import { OTEL } from './telemetry/standards.js';
 
 config();
 
@@ -24,10 +25,10 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
  * Main entry point - orchestrates the complete journal generation flow
  */
 export default async function main(commitRef = 'HEAD') {
-  return await tracer.startActiveSpan('commit_story.main', {
+  return await tracer.startActiveSpan(OTEL.span.main(), {
     attributes: {
-      'commit_story.commit.ref': commitRef,
-      'commit_story.repository.path': process.cwd(),
+      ...OTEL.attrs.repository({ path: process.cwd() }),
+      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef
     }
   }, async (span) => {
     try {
@@ -38,10 +39,11 @@ export default async function main(commitRef = 'HEAD') {
       
       // Add context attributes to the span
       span.setAttributes({
-        'commit_story.context.commit_hash': context.commit.data.hash,
-        'commit_story.context.commit_message': context.commit.data.message.split('\n')[0], // First line only
-        'commit_story.context.chat_messages_total': context.chatMessages.data.length,
-        'commit_story.context.chat_total_messages': context.chatMetadata.data.totalMessages,
+        ...OTEL.attrs.commit(context.commit.data),
+        ...OTEL.attrs.chat({
+          count: context.chatMessages.data.length,
+          total: context.chatMetadata.data.totalMessages
+        })
       });
       
       // Validate repository-specific chat data availability (DD-068)
@@ -76,7 +78,7 @@ export default async function main(commitRef = 'HEAD') {
     
       try {
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        await tracer.startActiveSpan('gen_ai.connectivity_test', async (connectivitySpan) => {
+        await tracer.startActiveSpan(OTEL.span.connectivity(), async (connectivitySpan) => {
           try {
             await client.chat.completions.create({
               model: 'gpt-4o-mini',

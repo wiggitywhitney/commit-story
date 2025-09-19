@@ -14,6 +14,7 @@ import { generateSummary } from './summary-generator.js';
 import { generateDevelopmentDialogue } from './dialogue-generator.js';
 import { generateTechnicalDecisions } from './technical-decisions-generator.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../telemetry/standards.js';
 
 // Get tracer instance for journal generation instrumentation
 const tracer = trace.getTracer('commit-story-generator', '1.0.0');
@@ -29,12 +30,13 @@ const tracer = trace.getTracer('commit-story-generator', '1.0.0');
  * @returns {Promise<Object>} Object containing all journal sections
  */
 export async function generateJournalEntry(context) {
-  return await tracer.startActiveSpan('journal.generate_entry', {
+  return await tracer.startActiveSpan(OTEL.span.journal.generate(), {
     attributes: {
-      'commit_story.commit.hash': context.commit.data.hash,
-      'commit_story.commit.message': context.commit.data.message.split('\n')[0],
-      'commit_story.chat.messages_count': context.chatMessages.data.length,
-      'commit_story.chat.total_messages': context.chatMetadata.data.totalMessages,
+      ...OTEL.attrs.commit(context.commit.data),
+      ...OTEL.attrs.chat({
+        count: context.chatMessages.data.length,
+        total: context.chatMetadata.data.totalMessages
+      })
     }
   }, async (span) => {
     try {
@@ -57,10 +59,10 @@ export async function generateJournalEntry(context) {
       span.addEvent('phase2.start', { phase: 'waiting-for-summary' });
       const summary = await summaryPromise;
       
-      span.setAttributes({
-        'commit_story.sections.summary_length': summary.length,
-        'commit_story.sections.commit_details_length': commitDetails.length,
-      });
+      span.setAttributes(OTEL.attrs.sections({
+        summary: summary.length,
+        details: commitDetails.length
+      }));
       
       // Phase 3: Start dialogue with summary result
       console.log('  💬 Generating development dialogue...');
@@ -77,10 +79,12 @@ export async function generateJournalEntry(context) {
       
       // Add final section lengths to span
       span.setAttributes({
-        'commit_story.sections.dialogue_length': dialogue.length,
-        'commit_story.sections.technical_decisions_length': technicalDecisions.length,
-        'commit_story.sections.total_count': 4,
-        'commit_story.generation.completed': true,
+        ...OTEL.attrs.sections({
+          dialogue: dialogue.length,
+          technical: technicalDecisions.length
+        }),
+        [`${OTEL.NAMESPACE}.sections.total_count`]: 4,
+        [`${OTEL.NAMESPACE}.generation.completed`]: true
       });
       
       // Return sections object for journal-manager to format

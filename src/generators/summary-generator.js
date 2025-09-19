@@ -11,23 +11,11 @@ import { summaryPrompt } from './prompts/sections/summary-prompt.js';
 import { selectContext } from './utils/context-selector.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
+import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
 
 // Get tracer instance for summary generation instrumentation
 const tracer = trace.getTracer('commit-story-summary', '1.0.0');
 
-/**
- * Detects AI provider from model name for telemetry
- * @param {string} modelName - The model name (e.g., 'gpt-4o-mini', 'claude-3')
- * @returns {string} Provider name ('openai', 'anthropic', 'google', 'meta', 'unknown')
- */
-function getProviderFromModel(modelName) {
-  const model = modelName.toLowerCase();
-  if (model.startsWith('gpt')) return 'openai';
-  if (model.includes('claude')) return 'anthropic';
-  if (model.includes('gemini')) return 'google';
-  if (model.includes('llama')) return 'meta';
-  return 'unknown';
-}
 
 /**
  * Generates a summary narrative for a development session
@@ -39,13 +27,11 @@ function getProviderFromModel(modelName) {
  * @returns {Promise<string>} Generated summary paragraph
  */
 export async function generateSummary(context) {
-  return await tracer.startActiveSpan('summary.generate', {
+  return await tracer.startActiveSpan(OTEL.span.ai.summary(), {
     attributes: {
-      'commit_story.commit.hash': context.commit.data.hash,
-      'gen_ai.request.model': DEFAULT_MODEL,
-      'gen_ai.operation.name': 'chat',
-      'gen_ai.provider.name': getProviderFromModel(DEFAULT_MODEL),
-      'commit_story.chat.messages_count': context.chatMessages.data.length,
+      ...OTEL.attrs.commit(context.commit.data),
+      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatMessages.data.length),
+      ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
     }
   }, async (span) => {
     try {
@@ -102,11 +88,11 @@ ${guidelines}
 
 
       // Add request payload attributes to span
-      span.setAttributes({
-        'gen_ai.request.model': requestPayload.model,
-        'gen_ai.request.temperature': requestPayload.temperature,
-        'gen_ai.request.messages.count': requestPayload.messages.length,
-      });
+      span.setAttributes(OTEL.attrs.genAI.request(
+        requestPayload.model,
+        requestPayload.temperature,
+        requestPayload.messages.length
+      ));
 
       // Add timeout wrapper (30 seconds)
       const completion = await Promise.race([
@@ -119,12 +105,11 @@ ${guidelines}
       const result = completion.choices[0].message.content.trim();
       
       // Add response attributes to span
-      span.setAttributes({
-        'gen_ai.response.length': result.length,
-        'gen_ai.response.model': completion.model,
-        'gen_ai.usage.input_tokens': completion.usage?.prompt_tokens || 0,
-        'gen_ai.usage.output_tokens': completion.usage?.completion_tokens || 0,
-      });
+      span.setAttributes(OTEL.attrs.genAI.usage({
+        model: completion.model,
+        content: result,
+        usage: completion.usage
+      }));
       
       span.setStatus({ code: SpanStatusCode.OK, message: 'Summary generated successfully' });
       return result;

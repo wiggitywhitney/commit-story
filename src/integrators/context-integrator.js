@@ -11,6 +11,7 @@ import { execSync } from 'child_process';
 import { filterContext } from '../generators/filters/context-filter.js';
 import { redactSensitiveData } from '../generators/filters/sensitive-data-filter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../telemetry/standards.js';
 
 /**
  * Extracts clean text content from Claude messages, handling mixed content formats
@@ -102,10 +103,10 @@ const tracer = trace.getTracer('commit-story-context', '1.0.0');
  * @returns {Object|null} context.previousCommit - Previous commit basic data or null
  */
 export async function gatherContextForCommit(commitRef = 'HEAD') {
-  return await tracer.startActiveSpan('context.gather_for_commit', {
+  return await tracer.startActiveSpan(OTEL.span.context.gather(), {
     attributes: {
-      'commit_story.commit.ref': commitRef,
-      'commit_story.repository.path': process.cwd(),
+      ...OTEL.attrs.repository({ path: process.cwd() }),
+      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef
     }
   }, async (span) => {
     try {
@@ -116,20 +117,15 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       }
       
       // Add commit data to span
-      span.setAttributes({
-        'commit_story.commit.hash': currentCommit.hash,
-        'commit_story.commit.message': currentCommit.message.split('\n')[0],
-        'commit_story.commit.timestamp': currentCommit.timestamp.toISOString(),
-        'commit_story.commit.author': currentCommit.author,
-      });
+      span.setAttributes(OTEL.attrs.commit(currentCommit));
 
       // Get previous commit data for time window
       const previousCommit = await getPreviousCommitData(commitRef);
       
       if (previousCommit) {
         span.setAttributes({
-          'commit_story.previous_commit.hash': previousCommit.hash,
-          'commit_story.previous_commit.timestamp': previousCommit.timestamp.toISOString(),
+          [`${OTEL.NAMESPACE}.previous_commit.hash`]: previousCommit.hash,
+          [`${OTEL.NAMESPACE}.previous_commit.timestamp`]: previousCommit.timestamp.toISOString()
         });
       }
       
@@ -145,10 +141,10 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
       
       // Add raw message data to span
-      span.setAttributes({
-        'commit_story.chat.raw_messages_count': rawChatMessages?.length || 0,
-        'commit_story.chat.clean_messages_count': cleanChatMessages.length,
-      });
+      span.setAttributes(OTEL.attrs.chat({
+        raw: rawChatMessages?.length || 0,
+        count: cleanChatMessages.length
+      }));
       
       // Apply complete context preparation (consolidate all filtering and token management)
       const rawContext = {
@@ -161,13 +157,13 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       const metadata = calculateChatMetadata(cleanChatMessages);
       
       // Add final metadata to span
-      span.setAttributes({
-        'commit_story.context.chat_total_messages': metadata.totalMessages,
-        'commit_story.context.chat_user_messages': metadata.userMessageCount,
-        'commit_story.context.chat_assistant_messages': metadata.assistantMessageCount,
-        'commit_story.context.chat_user_messages_over_twenty': metadata.userMessages.overTwentyCharacters,
-        'commit_story.context.filtered_messages_count': filteredContext.chatMessages.length,
-      });
+      span.setAttributes(OTEL.attrs.chat({
+        total: metadata.totalMessages,
+        userMessages: metadata.userMessageCount,
+        assistantMessages: metadata.assistantMessageCount,
+        userMessagesOverTwenty: metadata.userMessages.overTwentyCharacters,
+        filtered: filteredContext.chatMessages.length
+      }));
       
       // Return self-documenting context object for journal generation
       const result = {

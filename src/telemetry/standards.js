@@ -1,0 +1,229 @@
+/**
+ * OpenTelemetry Standards Module
+ *
+ * Centralizes OpenTelemetry semantic conventions and provides builders to enforce
+ * correct attribute naming and span patterns. Prevents instrumentation errors
+ * and ensures consistency across the entire codebase.
+ *
+ * Semantic Namespace Guidelines:
+ * - gen_ai.*: Direct AI operation characteristics (model params, tokens, response metrics)
+ * - commit_story.*: Application-specific attributes (business logic, infrastructure)
+ */
+
+/**
+ * Detects AI provider from model name for telemetry
+ * @param {string} modelName - The model name (e.g., 'gpt-4o-mini', 'claude-3')
+ * @returns {string} Provider name ('openai', 'anthropic', 'google', 'meta', 'unknown')
+ */
+export function getProviderFromModel(modelName) {
+  if (!modelName) return 'unknown';
+  const model = modelName.toLowerCase();
+  if (model.startsWith('gpt')) return 'openai';
+  if (model.includes('claude')) return 'anthropic';
+  if (model.includes('gemini')) return 'google';
+  if (model.includes('llama')) return 'meta';
+  return 'unknown';
+}
+
+/**
+ * OpenTelemetry standards constant - centralized patterns and conventions
+ */
+export const OTEL = {
+  // Application namespace for custom attributes
+  NAMESPACE: 'commit_story',
+
+  // Span name builders (enforce correct naming patterns)
+  span: {
+    main: () => 'commit_story.main',
+
+    // Application infrastructure operations
+    connectivity: () => 'commit_story.connectivity_test',
+
+    // Context and data operations
+    context: {
+      gather: () => 'context.gather_for_commit',
+      filter: () => 'context.filter_messages'
+    },
+
+    // Journal generation operations
+    journal: {
+      generate: () => 'journal.generate_entry',
+      save: () => 'journal.save_entry'
+    },
+
+    // AI generation operations
+    ai: {
+      summary: () => 'summary.generate',
+      dialogue: () => 'dialogue.generate',
+      technical: () => 'technical_decisions.generate'
+    },
+
+    // Data collection operations
+    collectors: {
+      claude: () => 'claude.collect_messages',
+      git: () => 'git.collect_data'
+    }
+  },
+
+  // Attribute builders (enforce correct conventions)
+  attrs: {
+
+    /**
+     * Official OpenTelemetry GenAI attributes
+     * Based on: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+     */
+    genAI: {
+      /**
+       * Request attributes for AI operations
+       * @param {string} model - Model name
+       * @param {number} temperature - Generation temperature
+       * @param {number} msgCount - Number of messages sent to AI
+       * @returns {Object} Official GenAI request attributes
+       */
+      request: (model, temperature, msgCount) => ({
+        'gen_ai.request.model': model,
+        'gen_ai.request.temperature': temperature,
+        'gen_ai.request.messages_count': msgCount, // Extension: AI-specific metric
+        'gen_ai.operation.name': 'chat',
+        'gen_ai.provider.name': getProviderFromModel(model)
+      }),
+
+      /**
+       * Usage/response attributes for AI operations
+       * @param {Object} response - AI response object
+       * @returns {Object} Official GenAI usage attributes
+       */
+      usage: (response) => ({
+        'gen_ai.response.model': response.model,
+        'gen_ai.response.message_length': response.content?.length || 0, // Extension: AI response characteristic
+        'gen_ai.usage.input_tokens': response.usage?.prompt_tokens || 0,
+        'gen_ai.usage.output_tokens': response.usage?.completion_tokens || 0
+      }),
+
+      /**
+       * Conversation tracking attributes
+       * @param {string} conversationId - Unique conversation ID
+       * @returns {Object} Conversation attributes
+       */
+      conversation: (conversationId) => ({
+        'gen_ai.conversation.id': conversationId
+      })
+    },
+
+    /**
+     * Application-specific commit attributes
+     * @param {Object} commitData - Commit information
+     * @returns {Object} Commit attributes with commit_story namespace
+     */
+    commit: (commitData) => ({
+      [`${OTEL.NAMESPACE}.commit.hash`]: commitData.hash,
+      [`${OTEL.NAMESPACE}.commit.message`]: commitData.message?.split('\n')[0], // First line only
+      [`${OTEL.NAMESPACE}.commit.timestamp`]: commitData.timestamp?.toISOString(),
+      [`${OTEL.NAMESPACE}.commit.author`]: commitData.author,
+      [`${OTEL.NAMESPACE}.commit.ref`]: commitData.ref
+    }),
+
+    /**
+     * Application chat context attributes
+     * @param {Object} chatData - Chat statistics
+     * @returns {Object} Chat attributes with commit_story namespace
+     */
+    chat: (chatData) => ({
+      [`${OTEL.NAMESPACE}.chat.messages_count`]: chatData.filtered || chatData.count,
+      [`${OTEL.NAMESPACE}.chat.raw_messages_count`]: chatData.raw,
+      [`${OTEL.NAMESPACE}.chat.total_messages`]: chatData.total,
+      [`${OTEL.NAMESPACE}.chat.user_messages`]: chatData.userMessages,
+      [`${OTEL.NAMESPACE}.chat.assistant_messages`]: chatData.assistantMessages,
+      [`${OTEL.NAMESPACE}.chat.user_messages_over_twenty`]: chatData.userMessagesOverTwenty
+    }),
+
+    /**
+     * Context processing attributes
+     * @param {Object} contextData - Context processing metrics
+     * @returns {Object} Context attributes
+     */
+    context: (contextData) => ({
+      [`${OTEL.NAMESPACE}.context.original_messages`]: contextData.originalCount,
+      [`${OTEL.NAMESPACE}.context.filtered_messages`]: contextData.filteredCount,
+      [`${OTEL.NAMESPACE}.context.removed_messages`]: contextData.removedCount,
+      [`${OTEL.NAMESPACE}.context.token_reduction`]: contextData.tokensSaved,
+      [`${OTEL.NAMESPACE}.context.token_reduction_percent`]: contextData.reductionPercent,
+      [`${OTEL.NAMESPACE}.context.original_chat_tokens`]: contextData.originalChatTokens,
+      [`${OTEL.NAMESPACE}.context.filtered_chat_tokens`]: contextData.filteredChatTokens,
+      [`${OTEL.NAMESPACE}.context.diff_tokens`]: contextData.diffTokens,
+      [`${OTEL.NAMESPACE}.context.total_estimated_tokens`]: contextData.totalTokens,
+      [`${OTEL.NAMESPACE}.context.final_messages`]: contextData.finalMessages,
+      [`${OTEL.NAMESPACE}.context.final_chat_tokens`]: contextData.finalChatTokens,
+      [`${OTEL.NAMESPACE}.context.aggressive_filtering`]: contextData.aggressiveFiltering
+    }),
+
+    /**
+     * Journal section length attributes
+     * @param {Object} sectionLengths - Length of each journal section
+     * @returns {Object} Section attributes
+     */
+    sections: (sectionLengths) => ({
+      [`${OTEL.NAMESPACE}.sections.summary_length`]: sectionLengths.summary,
+      [`${OTEL.NAMESPACE}.sections.dialogue_length`]: sectionLengths.dialogue,
+      [`${OTEL.NAMESPACE}.sections.technical_decisions_length`]: sectionLengths.technical,
+      [`${OTEL.NAMESPACE}.sections.commit_details_length`]: sectionLengths.details
+    }),
+
+    /**
+     * Repository and environment attributes
+     * @param {Object} repoData - Repository information
+     * @returns {Object} Repository attributes
+     */
+    repository: (repoData) => ({
+      [`${OTEL.NAMESPACE}.repository.path`]: repoData.path,
+      [`${OTEL.NAMESPACE}.repository.name`]: repoData.name
+    })
+  },
+
+  // Event builders for structured events
+  events: {
+    /**
+     * GenAI prompt event
+     * @param {Array} messages - Messages sent to AI
+     * @param {string} model - Model used
+     * @returns {Object} Event attributes
+     */
+    genAI: {
+      prompt: (messages, model) => ({
+        'gen_ai.content.prompt': JSON.stringify(messages),
+        'gen_ai.request.model': model,
+        'gen_ai.provider.name': getProviderFromModel(model)
+      }),
+
+      /**
+       * GenAI completion event
+       * @param {Object} response - AI response
+       * @returns {Object} Event attributes
+       */
+      completion: (response) => ({
+        'gen_ai.content.completion': response.content,
+        'gen_ai.response.model': response.model,
+        'gen_ai.usage.input_tokens': response.usage?.prompt_tokens || 0,
+        'gen_ai.usage.output_tokens': response.usage?.completion_tokens || 0
+      })
+    }
+  }
+};
+
+/**
+ * Utility for structured logging with trace context
+ * @param {import('@opentelemetry/api').Span} span - Active span
+ * @returns {Object} Trace context for logging
+ */
+export function getTraceContext(span) {
+  if (!span) return {};
+
+  const spanContext = span.spanContext();
+  if (!spanContext) return {};
+
+  return {
+    trace_id: spanContext.traceId,
+    span_id: spanContext.spanId,
+    service: OTEL.NAMESPACE
+  };
+}

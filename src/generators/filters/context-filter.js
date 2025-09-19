@@ -9,6 +9,7 @@
 
 import { redactSensitiveData } from './sensitive-data-filter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../../telemetry/standards.js';
 
 // Get tracer instance for context filtering instrumentation
 const tracer = trace.getTracer('commit-story-context-filter', '1.0.0');
@@ -182,9 +183,9 @@ function filterGitDiff(diff) {
  * @returns {Object} Filtered context object
  */
 export function filterContext(context) {
-  return tracer.startActiveSpan('context.filter_messages', {
+  return tracer.startActiveSpan(OTEL.span.context.filter(), {
     attributes: {
-      'commit_story.commit.hash': context.commit?.data?.hash || context.commit?.hash || 'unknown',
+      [`${OTEL.NAMESPACE}.commit.hash`]: context.commit?.data?.hash || context.commit?.hash || 'unknown',
     }
   }, (span) => {
     try {
@@ -193,18 +194,18 @@ export function filterContext(context) {
   const commit = context.commit?.data || context.commit;
 
   // Add initial metrics to span
-  span.setAttributes({
-    'commit_story.context.original_messages': chatMessages.length,
-  });
-  
+  span.setAttributes(OTEL.attrs.context({
+    originalCount: chatMessages.length
+  }));
+
   // Filter chat messages
   const filteredChatMessages = filterChatMessages(chatMessages);
 
   // Add filtering metrics to span
-  span.setAttributes({
-    'commit_story.context.filtered_messages': filteredChatMessages.length,
-    'commit_story.context.removed_messages': chatMessages.length - filteredChatMessages.length,
-  });
+  span.setAttributes(OTEL.attrs.context({
+    filteredCount: filteredChatMessages.length,
+    removedCount: chatMessages.length - filteredChatMessages.length
+  }));
   
   // Filter git diff if needed
   const filteredDiff = filterGitDiff(commit?.diff);
@@ -223,12 +224,12 @@ export function filterContext(context) {
   const totalTokens = chatTokens + diffTokens + systemPromptTokens;
 
   // Add token metrics to span
-  span.setAttributes({
-    'commit_story.context.original_chat_tokens': originalChatTokens,
-    'commit_story.context.filtered_chat_tokens': chatTokens,
-    'commit_story.context.diff_tokens': diffTokens,
-    'commit_story.context.total_estimated_tokens': totalTokens,
-  });
+  span.setAttributes(OTEL.attrs.context({
+    originalChatTokens: originalChatTokens,
+    filteredChatTokens: chatTokens,
+    diffTokens: diffTokens,
+    totalTokens: totalTokens
+  }));
   
   // If still too large, apply more aggressive filtering (keep most recent)
   let finalChatMessages = filteredChatMessages;
@@ -254,14 +255,14 @@ export function filterContext(context) {
     finalChatMessages = recentMessages;
 
     // Add aggressive filtering metrics
-    span.setAttributes({
-      'commit_story.context.final_messages': finalChatMessages.length,
-      'commit_story.context.aggressive_filtering': true,
-    });
+    span.setAttributes(OTEL.attrs.context({
+      finalMessages: finalChatMessages.length,
+      aggressiveFiltering: true
+    }));
   } else {
-    span.setAttributes({
-      'commit_story.context.aggressive_filtering': false,
-    });
+    span.setAttributes(OTEL.attrs.context({
+      aggressiveFiltering: false
+    }));
   }
 
   // Final metrics
@@ -269,10 +270,10 @@ export function filterContext(context) {
     return sum + estimateTokens(getMessageContentString(msg));
   }, 0);
 
-  span.setAttributes({
-    'commit_story.context.final_chat_tokens': finalChatTokens,
-    'commit_story.context.token_reduction': originalChatTokens - finalChatTokens,
-  });
+  span.setAttributes(OTEL.attrs.context({
+    finalChatTokens: finalChatTokens,
+    tokenReduction: originalChatTokens - finalChatTokens
+  }));
 
   span.setStatus({ code: SpanStatusCode.OK, message: 'Context filtered successfully' });
 

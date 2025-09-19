@@ -12,23 +12,11 @@ import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { selectContext } from './utils/context-selector.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
+import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
 
 // Get tracer instance for technical decisions generation instrumentation
 const tracer = trace.getTracer('commit-story-technical-decisions', '1.0.0');
 
-/**
- * Detects AI provider from model name for telemetry
- * @param {string} modelName - The model name (e.g., 'gpt-4o-mini', 'claude-3')
- * @returns {string} Provider name ('openai', 'anthropic', 'google', 'meta', 'unknown')
- */
-function getProviderFromModel(modelName) {
-  const model = modelName.toLowerCase();
-  if (model.startsWith('gpt')) return 'openai';
-  if (model.includes('claude')) return 'anthropic';
-  if (model.includes('gemini')) return 'google';
-  if (model.includes('llama')) return 'meta';
-  return 'unknown';
-}
 
 /**
  * Generates technical decisions documentation for a development session
@@ -40,13 +28,11 @@ function getProviderFromModel(modelName) {
  * @returns {Promise<string>} Generated technical decisions section
  */
 export async function generateTechnicalDecisions(context) {
-  return await tracer.startActiveSpan('technical_decisions.generate', {
+  return await tracer.startActiveSpan(OTEL.span.ai.technical(), {
     attributes: {
-      'commit_story.commit.hash': context.commit.data.hash,
-      'gen_ai.request.model': DEFAULT_MODEL,
-      'gen_ai.operation.name': 'chat',
-      'gen_ai.provider.name': getProviderFromModel(DEFAULT_MODEL),
-      'commit_story.chat.messages_count': context.chatMessages.data.length,
+      ...OTEL.attrs.commit(context.commit.data),
+      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.1, context.chatMessages.data.length),
+      ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
     }
   }, async (span) => {
     try {
@@ -133,11 +119,11 @@ ${guidelines}
       };
 
       // Add request payload attributes to span
-      span.setAttributes({
-        'gen_ai.request.model': requestPayload.model,
-        'gen_ai.request.temperature': requestPayload.temperature,
-        'gen_ai.request.messages.count': requestPayload.messages.length,
-      });
+      span.setAttributes(OTEL.attrs.genAI.request(
+        requestPayload.model,
+        requestPayload.temperature,
+        requestPayload.messages.length
+      ));
 
       // Add timeout wrapper (30 seconds)
       const response = await Promise.race([
@@ -150,12 +136,11 @@ ${guidelines}
       const technicalDecisions = response.choices[0].message.content.trim();
 
       // Add response attributes to span
-      span.setAttributes({
-        'gen_ai.response.length': technicalDecisions.length,
-        'gen_ai.response.model': response.model,
-        'gen_ai.usage.input_tokens': response.usage?.prompt_tokens || 0,
-        'gen_ai.usage.output_tokens': response.usage?.completion_tokens || 0,
-      });
+      span.setAttributes(OTEL.attrs.genAI.usage({
+        model: response.model,
+        content: technicalDecisions,
+        usage: response.usage
+      }));
 
       span.setStatus({ code: SpanStatusCode.OK, message: 'Technical decisions generated successfully' });
       return technicalDecisions;
