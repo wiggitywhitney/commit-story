@@ -127,6 +127,16 @@ Edit `commit-story.config.json` in your project root:
 }
 ```
 
+## Development
+
+### Telemetry Standards
+
+This project uses OpenTelemetry for comprehensive observability. For development and contributing:
+
+- See [TELEMETRY.md](./TELEMETRY.md) for telemetry patterns and conventions
+- Run `npm run validate:telemetry` to check telemetry compliance
+- All telemetry follows OpenTelemetry semantic conventions
+
 ## Troubleshooting
 
 ### First Step: Enable Debug Mode

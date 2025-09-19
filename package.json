@@ -15,8 +15,9 @@
     "commit-story:init-hook": "bash scripts/install-commit-journal-hook.sh",
     "commit-story:remove-hook": "bash scripts/uninstall-commit-journal-hook.sh",
     "secrets:pull": "teller env",
-    "trace:test": "node scripts/test-otel.js",
-    "trace:validate": "node scripts/test-otel.js"
+    "test:trace": "node scripts/test-otel.js",
+    "validate:trace": "node scripts/test-otel.js",
+    "validate:telemetry": "node scripts/validate-telemetry.js"
   },
   "repository": {
     "type": "git",
