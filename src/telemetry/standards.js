@@ -177,6 +177,16 @@ export const OTEL = {
     repository: (repoData) => ({
       [`${OTEL.NAMESPACE}.repository.path`]: repoData.path,
       [`${OTEL.NAMESPACE}.repository.name`]: repoData.name
+    }),
+
+    /**
+     * Journal completion attributes
+     * @param {Object} journalData - Journal completion information
+     * @returns {Object} Journal attributes
+     */
+    journal: (journalData) => ({
+      [`${OTEL.NAMESPACE}.journal.file_path`]: journalData.filePath,
+      [`${OTEL.NAMESPACE}.journal.completed`]: journalData.completed
     })
   },
 

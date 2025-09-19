@@ -7,6 +7,11 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../telemetry/standards.js';
+
+// Get tracer instance for Claude collector instrumentation
+const tracer = trace.getTracer('commit-story-claude-collector', '1.0.0');
 
 /**
  * Extract chat messages for a specific commit time window
@@ -16,46 +21,88 @@ import { homedir } from 'os';
  * @returns {Array} Sorted array of complete chat message objects from the time window
  */
 export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
-  const messages = [];
-  
-  // 1. Find all Claude JSONL files
-  const files = findClaudeFiles();
-  
-  // 2. Process each JSONL file
-  for (const filePath of files) {
+  return tracer.startActiveSpan(OTEL.span.collectors.claude(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.collector.repo_path`]: repoPath,
+      [`${OTEL.NAMESPACE}.collector.time_window_start`]: previousCommitTime.toISOString(),
+      [`${OTEL.NAMESPACE}.collector.time_window_end`]: commitTime.toISOString()
+    }
+  }, (span) => {
     try {
-      const content = readFileSync(filePath, 'utf8');
-      const lines = content.trim().split('\n');
-      
-      for (const line of lines) {
-        if (!line.trim()) continue; // Skip empty lines
-        
+      const messages = [];
+
+      // 1. Find all Claude JSONL files
+      const files = findClaudeFiles();
+      span.setAttributes({
+        [`${OTEL.NAMESPACE}.collector.files_found`]: files.length
+      });
+
+      let processedFiles = 0;
+      let skippedFiles = 0;
+      let totalLines = 0;
+      let validMessages = 0;
+
+      // 2. Process each JSONL file
+      for (const filePath of files) {
         try {
-          const message = JSON.parse(line);
-          
-          // 3. Filter by project using cwd field
-          if (message.cwd !== repoPath) continue;
-          
-          // 4. Filter by time window
-          const messageTime = parseTimestamp(message.timestamp);
-          if (!messageTime) continue;
-          
-          if (previousCommitTime <= messageTime && messageTime <= commitTime) {
-            messages.push(message); // Full message object
+          const content = readFileSync(filePath, 'utf8');
+          const lines = content.trim().split('\n');
+          totalLines += lines.length;
+          processedFiles++;
+
+          for (const line of lines) {
+            if (!line.trim()) continue; // Skip empty lines
+
+            try {
+              const message = JSON.parse(line);
+
+              // 3. Filter by project using cwd field
+              if (message.cwd !== repoPath) continue;
+
+              // 4. Filter by time window
+              const messageTime = parseTimestamp(message.timestamp);
+              if (!messageTime) continue;
+
+              if (previousCommitTime <= messageTime && messageTime <= commitTime) {
+                messages.push(message); // Full message object
+                validMessages++;
+              }
+            } catch (parseError) {
+              // Skip malformed JSON lines, continue processing
+              continue;
+            }
           }
-        } catch (parseError) {
-          // Skip malformed JSON lines, continue processing
+        } catch (fileError) {
+          // Skip files that can't be read, continue with other files
+          skippedFiles++;
           continue;
         }
       }
-    } catch (fileError) {
-      // Skip files that can't be read, continue with other files
-      continue;
+
+      // Add final processing metrics
+      span.setAttributes({
+        [`${OTEL.NAMESPACE}.collector.files_processed`]: processedFiles,
+        [`${OTEL.NAMESPACE}.collector.files_skipped`]: skippedFiles,
+        [`${OTEL.NAMESPACE}.collector.total_lines`]: totalLines,
+        [`${OTEL.NAMESPACE}.collector.messages_collected`]: validMessages,
+        [`${OTEL.NAMESPACE}.collector.messages_filtered`]: messages.length
+      });
+
+      // 5. Sort by timestamp in chronological order
+      const sortedMessages = messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected successfully' });
+      return sortedMessages;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      console.error(`❌ Claude message collection failed: ${error.message}`);
+      return [];
+    } finally {
+      span.end();
     }
-  }
-  
-  // 5. Sort by timestamp in chronological order
-  return messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  });
 }
 
 /**

@@ -108,12 +108,12 @@ export default async function main(commitRef = 'HEAD') {
       const sections = await generateJournalEntry(context);
       
       // Add sections metadata to span
-      span.setAttributes({
-        'commit_story.sections.summary_length': sections.summary?.length || 0,
-        'commit_story.sections.dialogue_length': sections.dialogue?.length || 0,
-        'commit_story.sections.technical_decisions_length': sections.technicalDecisions?.length || 0,
-        'commit_story.sections.commit_details_length': sections.commitDetails?.length || 0,
-      });
+      span.setAttributes(OTEL.attrs.sections({
+        summary: sections.summary?.length || 0,
+        dialogue: sections.dialogue?.length || 0,
+        technical: sections.technicalDecisions?.length || 0,
+        details: sections.commitDetails?.length || 0
+      }));
       
       // Save the complete journal entry to daily file
       const filePath = await saveJournalEntry(
@@ -123,10 +123,10 @@ export default async function main(commitRef = 'HEAD') {
       );
       
       // Add final attributes
-      span.setAttributes({
-        'commit_story.journal.file_path': filePath,
-        'commit_story.journal.completed': true,
-      });
+      span.setAttributes(OTEL.attrs.journal({
+        filePath: filePath,
+        completed: true
+      }));
       
       console.log(`✅ Journal entry saved to: ${filePath}`);
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });

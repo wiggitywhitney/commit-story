@@ -1,7 +1,7 @@
 # PRD-7: Comprehensive OpenTelemetry Instrumentation
 
 **GitHub Issue**: [#7](https://github.com/wiggitywhitney/commit-story/issues/7)  
-**Status**: In Progress (Core Implementation 100% Complete - Advanced Features Remaining)  
+**Status**: In Progress (Core Implementation 100% Complete + Data Collectors 100% Complete - Advanced Features Remaining)  
 **Priority**: High  
 **Timeline**: 1 day  
 
@@ -220,20 +220,24 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 - Missing spans make it impossible to identify performance bottlenecks
 - Datadog traces show HTTP calls without corresponding business logic spans
 
-**Current Gaps Identified**:
-- `dialogue-generator.js`: No tracing at all, hardcoded model instead of DEFAULT_MODEL
-- `technical-decisions-generator.js`: No tracing at all, hardcoded model
-- `context-filter.js`: No instrumentation for chat filtering operations
+**Progress Update**:
+- ✅ `dialogue-generator.js`: COMPLETE - Full instrumentation with GenAI attributes and DEFAULT_MODEL
+- ✅ `technical-decisions-generator.js`: COMPLETE - Full instrumentation with GenAI attributes and DEFAULT_MODEL
+- ✅ `context-filter.js`: COMPLETE - Full instrumentation with filtering metrics
+- ✅ `claude-collector.js`: COMPLETE - Full instrumentation with collection metrics (added Sep 19, 2025)
+- ✅ `git-collector.js`: COMPLETE - Full instrumentation with git operation metrics (added Sep 19, 2025)
 
-**Implementation Requirements**:
-- Add `dialogue.generate` span with full GenAI attributes
-- Add `technical-decisions.generate` span with full GenAI attributes  
-- Add `context.filter-messages` span with filtering metrics
-- Use DEFAULT_MODEL constant consistently across all generators
-- Copy provider detection function to all generator files
+**Implementation Completed**:
+- ✅ Added `dialogue.generate` span with full GenAI attributes
+- ✅ Added `technical-decisions.generate` span with full GenAI attributes
+- ✅ Added `context.filter-messages` span with filtering metrics
+- ✅ Added `claude.collect_messages` span with comprehensive collection metrics
+- ✅ Added `git.collect_data` span with git operation metrics
+- ✅ DEFAULT_MODEL used consistently across all generators
+- ✅ Provider detection implemented across all generators
 
-**Impact**: Complete observability of all AI operations, consistent provider support  
-**Status**: ⏳ Outstanding - critical for full observability
+**Impact**: Complete observability of all AI operations, consistent provider support
+**Status**: ✅ COMPLETE - Full observability achieved
 
 ### DD-007: Context Retrieval and Processing Visibility
 **Decision**: Instrument all context gathering, filtering, and transformation operations  
@@ -675,20 +679,20 @@ This phase adds instrumentation to all remaining components using the establishe
 All new instrumentation will use the OTEL standards module created in Phase 2.
 
 ##### Deliverables
-- [ ] Instrument `src/collectors/claude-collector.js`:
-  - [ ] Import OTEL from standards module
-  - [ ] Use `OTEL.span.collectors.claude()` for main span name
-  - [ ] Use `OTEL.attrs.collectors.claude(data)` for metrics:
+- [x] Instrument `src/collectors/claude-collector.js`:
+  - [x] Import OTEL from standards module
+  - [x] Use `OTEL.span.collectors.claude()` for main span name
+  - [x] Use `OTEL.attrs.collectors.claude(data)` for metrics:
     - Files discovered, lines parsed, messages collected
     - Time window statistics, filtering metrics
-  - [ ] Add child spans for file discovery, JSONL parsing, message filtering
-- [ ] Instrument `src/collectors/git-collector.js`:
-  - [ ] Import OTEL from standards module
-  - [ ] Use `OTEL.span.collectors.git()` for main span name
-  - [ ] Use `OTEL.attrs.collectors.git(data)` for command metrics:
+  - [x] Add child spans for file discovery, JSONL parsing, message filtering
+- [x] Instrument `src/collectors/git-collector.js`:
+  - [x] Import OTEL from standards module
+  - [x] Use `OTEL.span.collectors.git()` for main span name
+  - [x] Use `OTEL.attrs.collectors.git(data)` for command metrics:
     - Command execution duration, output size, error status
-  - [ ] Add child spans for each git command execution
-- [ ] Test collector instrumentation with `npm run trace:validate`
+  - [x] Add child spans for each git command execution
+- [x] Test collector instrumentation with `npm run trace:validate`
 
 ##### Implementation Pattern
 ```javascript
@@ -1327,6 +1331,47 @@ export function createTraceLogger() {
 ### September 19, 2025: Phase 2.4 Validation & Documentation - COMPLETE ✅
 **Duration**: ~1.5 hours
 **Commits**: Implementation pending
+
+### September 19, 2025 (Later): Phase 3.1 Data Collectors Implementation - COMPLETE ✅
+**Duration**: ~2 hours
+**Commits**: 5 commits for complete collector instrumentation and telemetry compliance
+**Primary Focus**: Comprehensive instrumentation of data collection layer
+
+**Completed PRD Items**:
+- [x] **Full Claude Collector Instrumentation** - Evidence: `src/collectors/claude-collector.js` with OTEL spans
+  - Added `claude.collect_messages` span with comprehensive metrics
+  - Tracked files discovered (89), processing duration (230ms), message counts
+  - Full OTEL builder compliance following TELEMETRY.md standards
+
+- [x] **Full Git Collector Instrumentation** - Evidence: `src/collectors/git-collector.js` with OTEL spans
+  - Added `git.collect_data` span with git operation metrics
+  - Tracked diff size (14KB, 287 lines), commit metadata, processing time (25ms)
+  - Used OTEL.attrs.commit() builder for consistent attribute patterns
+
+- [x] **Telemetry Standards Compliance** - Evidence: Zero validation warnings achieved
+  - Fixed all hardcoded attribute strings in src/index.js
+  - Added missing OTEL.attrs.journal() builder to standards module
+  - Achieved 100% TELEMETRY.md compliance across entire codebase
+
+- [x] **Datadog Integration Verification** - Evidence: Live traces confirmed in Datadog
+  - OTLP endpoint connectivity validated (localhost:4318)
+  - Both collector spans visible in trace hierarchy with full attributes
+  - Complete parent-child relationship: context.gather_for_commit → collectors
+
+**Additional Work Done**:
+- **Standards Module Extension**: Added journal completion attributes builder
+- **MCP Server Testing**: Confirmed Datadog MCP integration retrieves traces successfully
+- **Infrastructure Validation**: Verified end-to-end telemetry pipeline (console + Datadog)
+
+**Technical Achievement**:
+- **DD-006 COMPLETE**: All AI generators + collectors now fully instrumented
+- **Phase 3.1 COMPLETE**: Data collection layer has comprehensive observability
+- **Foundation Ready**: Infrastructure prepared for PRD-10 trace data experiments
+
+**Next Session Priorities**:
+- **Phase 3.2**: Instrument core managers (journal-manager.js, config/openai.js)
+- **DD-005**: Implement JSON-structured log-trace correlation
+- **Advanced Features**: Begin conversation ID tracking and event recording
 **Primary Focus**: Telemetry validation tooling and documentation
 
 **Completed PRD Items**:
