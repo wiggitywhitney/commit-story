@@ -4,7 +4,7 @@
 **Status**: Planning
 **Priority**: Medium
 **Timeline**: 2-3 weeks experimental phase
-**Dependencies**: PRD-6 (OpenTelemetry MVP) and Datadog MCP server configured
+**Dependencies**: **PRD-6 M4 completion** (AI system intelligence validation) and foundation report in `docs/dev/prd-10-foundation.md`
 
 ## Executive Summary
 
@@ -33,6 +33,13 @@ When asked to "modify data going into a generator function," Claude Code might:
 
 ### Opportunity
 Leverage existing OpenTelemetry instrumentation and Datadog MCP server to enhance Claude Code's architectural awareness through runtime insights.
+
+### PRD-6 M4 Foundation
+This experiment builds on technical validation from **PRD-6 M4: AI System Intelligence Validation**:
+- **Technical Feasibility**: PRD-6 M4 proves AI can query trace data via MCP and extract actionable insights
+- **Instrumentation Patterns**: PRD-6 M4 documents optimal I/O data capture strategies for AI analysis
+- **Performance Baselines**: PRD-6 M4 establishes overhead thresholds for production consideration
+- **Foundation Document**: `docs/dev/prd-10-foundation.md` contains PRD-6 M4 findings, failure modes, and recommended experiment triggers
 
 ## Success Criteria
 
@@ -86,10 +93,11 @@ Leverage existing OpenTelemetry instrumentation and Datadog MCP server to enhanc
 **Priority**: High
 
 #### Deliverables
-- [ ] Define trace consultation triggers
-- [ ] Create logging framework
-- [ ] Establish value assessment criteria
-- [ ] Document experiment protocol
+- [ ] **Review PRD-6 M4 foundation document** (`docs/dev/prd-10-foundation.md`) for validated patterns and baseline metrics
+- [ ] Define trace consultation triggers **based on PRD-6 M4 task type analysis**
+- [ ] Create logging framework **incorporating PRD-6 M4 performance thresholds**
+- [ ] Establish value assessment criteria **using PRD-6 M4 success patterns as starting benchmarks**
+- [ ] Document experiment protocol **referencing PRD-6 M4 instrumentation patterns and failure modes**
 
 ### Phase 2: Discovery Period
 **Timeline**: 2 weeks

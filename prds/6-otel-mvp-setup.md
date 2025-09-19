@@ -359,6 +359,8 @@ This PRD establishes the foundation for:
 - [ ] AI workflow validation: code → trace → MCP query → analysis
 - [ ] Full I/O data capture testing at key data flow points
 - [ ] Document optimal instrumentation patterns in `docs/dev/otel-instrumentation-patterns.md`
+- [ ] **PRD-10 Foundation Report**: Create `docs/dev/prd-10-foundation.md` with PRD-6 M4 findings
+- [ ] **Update PRD-10**: Incorporate PRD-6 M4 technical validation results and baseline metrics
 - [ ] Cleanup: Archive validation artifacts to `examples/otel-poc/`
 
 #### Technical Requirements
@@ -389,15 +391,27 @@ This PRD establishes the foundation for:
 - How to balance instrumentation richness (especially I/O data) vs performance impact?
 - Where in the data flow should we capture full I/O for maximum AI benefit?
 - What patterns should be applied to instrument the full Commit Story project?
+- **PRD-10 Foundation Questions**:
+  - Which specific task types show traces providing unique insights vs static analysis?
+  - What failure modes and noise patterns should PRD-10 experiments avoid?
+  - What baseline performance metrics should inform PRD-10's success criteria?
+  - Which experiment triggers should PRD-10 prioritize based on PRD-6 M4 validation?
 
 #### Cleanup Requirements
 - Move `src/utils/journal-stats.js` to `examples/otel-poc/` with README
 - Archive test data and configurations with explanations
 - Create `docs/dev/otel-instrumentation-patterns.md` with validated patterns
+- **Create `docs/dev/prd-10-foundation.md` with PRD-6 M4 findings for PRD-10 planning**:
+  - Technical validation results (feasibility, performance impact)
+  - Specific task types where traces provided unique insights
+  - Catalog of failure modes and noise patterns encountered
+  - Baseline metrics and performance thresholds
+  - Recommended experiment triggers and success criteria for PRD-10
 - Update `docs/dev/otel-ai-verification-concept.md` with references to new documentation
+- **Update PRD-10** with explicit dependency on PRD-6 M4 completion and reference to foundation document
 - Ensure no development artifacts remain in main codebase
 
-**Overall Progress**: 70% complete (M1 ✅, M2 ✅, M3 🟡 80% Complete - Documentation Pending, M4 ⏳ Ready to Start)
+**Overall Progress**: 75% complete (M1 ✅, M2 ✅, M3 ✅, M4 ⏳ Ready to Start)
 
 ---
 
