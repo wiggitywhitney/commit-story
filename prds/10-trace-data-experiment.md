@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This PRD defines a systematic experiment to discover when and how runtime trace data from Datadog enhances Claude Code's effectiveness during development tasks. The goal is to build evidence-based patterns for whether trace integration improves code discovery, implementation decisions, and verification workflows.
+This PRD defines a systematic experiment to discover whether and when runtime trace data from Datadog affects Claude Code's effectiveness during development tasks. The goal is to build evidence-based patterns documenting if trace integration changes code discovery, implementation decisions, and verification workflows - whether positively, negatively, or not at all.
 
 ## Context & Motivation
 
@@ -28,26 +28,26 @@ Static analysis misses critical runtime context:
 ### Real Example
 When asked to "modify data going into a generator function," Claude Code might:
 - **Current approach**: Modify the generator directly
-- **Better approach**: Trace data flow upstream to find existing helper functions
-- **Result**: Missed reuse opportunities and code duplication
+- **Alternative approach**: Use traces to find data flow upstream through helper functions
+- **Question**: Would the trace-informed approach produce better results or just add overhead?
 
 ### Opportunity
-Leverage existing OpenTelemetry instrumentation and Datadog MCP server to enhance Claude Code's architectural awareness through runtime insights.
+Test whether existing OpenTelemetry instrumentation and Datadog MCP server can improve Claude Code's architectural understanding through runtime insights.
 
 ### PRD-6 M4 Foundation
 This experiment builds on technical validation from **PRD-6 M4: AI System Intelligence Validation**:
-- **Technical Feasibility**: PRD-6 M4 proves AI can query trace data via MCP and extract actionable insights
-- **Instrumentation Patterns**: PRD-6 M4 documents optimal I/O data capture strategies for AI analysis
+- **Technical Feasibility**: PRD-6 M4 validates AI can query trace data via MCP (connectivity confirmed)
+- **Instrumentation Patterns**: PRD-6 M4 documents data capture strategies tested for AI analysis
 - **Performance Baselines**: PRD-6 M4 establishes overhead thresholds for production consideration
-- **Foundation Document**: `docs/dev/prd-10-foundation.md` contains PRD-6 M4 findings, failure modes, and recommended experiment triggers
+- **Foundation Document**: `docs/dev/prd-10-foundation.md` contains PRD-6 M4 findings, failure modes, and experiment guidance
 
 ## Success Criteria
 
-1. **Clear Evidence**: Documented patterns of when traces add value vs noise
-2. **Measurable Impact**: >40% of trace consultations provide actionable insights
-3. **Workflow Integration**: Seamless enhancement without disrupting development
-4. **Decision Framework**: Clear go/no-go criteria for permanent integration
-5. **Reusable Patterns**: Documented approaches applicable to other AI coding tools
+1. **Clear Evidence**: Documented patterns of when traces add value, noise, or have no effect
+2. **Measurable Impact**: Track what percentage of trace consultations provide actionable insights (target unknown - let data decide)
+3. **Workflow Integration**: Determine if integration can occur without disrupting development
+4. **Decision Framework**: Clear go/no-go criteria based on actual results for permanent integration
+5. **Reusable Patterns**: Document what worked, what didn't, and why - applicable to other AI coding tools
 
 ## Technical Requirements
 
@@ -141,15 +141,15 @@ This experiment builds on technical validation from **PRD-6 M4: AI System Intell
 
 ### Quantitative
 - Number of trace consultations attempted
-- Success rate by task category
-- Time saved vs time spent
-- Mistakes prevented
+- Success rate by task category (including failure rates)
+- Time saved vs time spent (including time wasted)
+- Mistakes prevented vs mistakes introduced
 
 ### Qualitative
-- Developer confidence improvements
-- Code quality enhancements
-- Architectural understanding gains
-- Specific "aha moments" documented
+- Developer confidence changes (positive, negative, or neutral)
+- Code quality changes (improvements, degradations, or no change)
+- Architectural understanding changes
+- Specific insights documented (including cases where traces misled)
 
 ## Work Log
 
@@ -161,9 +161,9 @@ This experiment builds on technical validation from **PRD-6 M4: AI System Intell
 - Aligned with existing PRD format and numbering
 
 **Key Insights**:
-- Trace data addresses "architectural blindness" in static analysis
+- Trace data may address "architectural blindness" in static analysis (to be tested)
 - Failed consultations are valuable data about boundaries
-- Integration should enhance, not replace existing workflows
+- Integration should be tested to see if it enhances, disrupts, or has no effect on existing workflows
 
 **Next Steps**:
 - Design experiment protocol
