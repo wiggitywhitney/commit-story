@@ -902,14 +902,14 @@ This phase focuses exclusively on the human-facing console stream, implementing 
 - [x] Evaluate console trace exporter output:
   - [x] Consider making it conditional (test mode only, not debug mode)
   - [x] Implemented: Console exporter only enabled during `npm run validate:trace`
-- [ ] Implement consistent debug mode output (DD-020):
-  - [ ] Standardize log output when COMMIT_STORY_DEBUG=true runs hook in foreground
-  - [ ] Choose between: all DEBUG-style logs OR all emoji-style logs (not mixed)
-  - [ ] Update hook scripts to use consistent formatting in debug mode
-- [ ] Document log categories in comments:
-  - [ ] User progress indicators (keep)
-  - [ ] Debug/technical details (remove)
-  - [ ] Errors/warnings (keep)
+- [x] Implement consistent debug mode output (DD-020):
+  - [x] Standardize log output when COMMIT_STORY_DEBUG=true runs hook in foreground
+  - [x] Choose between: all DEBUG-style logs OR all emoji-style logs (not mixed)
+  - [x] Update hook scripts to use consistent formatting in debug mode
+- [x] Document log categories in comments:
+  - [x] User progress indicators (keep)
+  - [x] Debug/technical details (remove)
+  - [x] Errors/warnings (keep)
 
 **Expected Outcome**:
 - ✅ Remove all debug/implementation detail logs
@@ -1727,6 +1727,44 @@ export function createTraceLogger() {
 
 **User Experience Achievement**:
 - Clean terminal output: only "🎯 Generating..." → "✅ Generated successfully"
+
+### September 20, 2025 (Later): DD-020 Debug Mode Consistency Complete - COMPLETE ✅
+**Duration**: ~30 minutes
+**Primary Focus**: Consistent debug mode output implementation
+**Commit**: feat(prd-7): implement DD-020 debug-only logging
+
+**Completed PRD Items**:
+- [x] **Debug mode detection implemented** - JavaScript detects debug mode from commit-story.config.json
+- [x] **Console logging made conditional** - All JavaScript console.log statements only output when debug mode enabled
+- [x] **Bash hook logs simplified** - Removed redundant debug messages to eliminate duplication
+- [x] **Consistent debug output format** - Simple flow-based messages with minimal success/error emoji
+
+**Debug Mode Experience Achievement**:
+- **Normal mode (debug: false)**: Complete silence - no JavaScript output
+- **Debug mode (debug: true)**: Clean flow showing actual debugging information:
+  ```
+  [DEBUG] Post-commit hook triggered
+  [DEBUG] Debug mode enabled - running in foreground
+  Starting context collection for commit abc12345
+  Found 13 chat messages
+  Found git metadata
+  Started journal generation
+  ✅ Successfully generated journal
+  ✅ Journal saved to: journal/entries/2025-09/2025-09-20.md
+  ```
+
+**Technical Implementation**:
+- Added debug detection logic in src/index.js, src/generators/journal-generator.js, src/tracing-simple.js, src/managers/journal-manager.js
+- Replaced all console.log statements with debugLog() function that checks isDebugMode
+- Simplified bash debug logs in hooks/post-commit and .git/hooks/post-commit
+- Maintained error fallback behavior (only shows in debug mode)
+- Clean separation: bash handles hook lifecycle, JavaScript handles application flow
+
+**Impact**:
+- **DD-020 Complete**: Consistent debug mode output eliminates mixed logging confusion
+- **User experience improved**: Normal mode is completely silent, debug mode shows meaningful flow
+- **Foundation ready**: Clean logging base for Phase 4 log-trace correlation features
+- **Zero functional regressions**: All functionality preserved, only output behavior changed
 - All implementation details removed from user-facing output
 - Telemetry data fully preserved for debugging
 - Zero functional regressions

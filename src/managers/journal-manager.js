@@ -1,10 +1,23 @@
 import { promises as fs } from 'fs';
+import fsSync from 'fs';
 import { dirname, join } from 'path';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
 
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
+
+// Debug mode detection from config file
+let isDebugMode = false;
+try {
+  const configPath = './commit-story.config.json';
+  if (fsSync.existsSync(configPath)) {
+    const configData = JSON.parse(fsSync.readFileSync(configPath, 'utf8'));
+    isDebugMode = configData.debug === true;
+  }
+} catch (error) {
+  // Silently ignore config file errors - debug mode defaults to false
+}
 
 /**
  * Journal File Management System
@@ -83,13 +96,10 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
 
-      // Fallback to stdout (preserve existing error handling)
-      const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
-      console.error(`⚠️ Cannot write journal file: ${error.message}`);
-      console.error('Journal entry content (save manually if needed):');
-      console.log('--- JOURNAL ENTRY START ---');
-      console.log(formattedEntry);
-      console.log('--- JOURNAL ENTRY END ---');
+      // File write failed - report error in debug mode only
+      if (isDebugMode) {
+        console.error(`❌ ERROR: Cannot write journal file: ${error.message}`);
+      }
 
       return 'stdout (file write failed)';
     } finally {

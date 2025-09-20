@@ -9,6 +9,7 @@
 import './tracing-simple.js';
 
 import { config } from 'dotenv';
+import fs from 'fs';
 import OpenAI from 'openai';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
@@ -17,6 +18,25 @@ import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 
 config();
+
+// Debug mode detection from config file
+let isDebugMode = false;
+try {
+  const configPath = './commit-story.config.json';
+  if (fs.existsSync(configPath)) {
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    isDebugMode = configData.debug === true;
+  }
+} catch (error) {
+  // Silently ignore config file errors - debug mode defaults to false
+}
+
+// Debug-only logging
+const debugLog = (message) => {
+  if (isDebugMode) {
+    console.log(message);
+  }
+};
 
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
@@ -32,7 +52,7 @@ export default async function main(commitRef = 'HEAD') {
     }
   }, async (span) => {
     try {
-      console.log(`🚀 Commit Story - Generating journal entry for ${commitRef}...`);
+      debugLog(`Starting context collection for commit ${commitRef.substring(0, 8)}`);
     
       // Gather all context for the specified commit
       const context = await gatherContextForCommit(commitRef);
@@ -52,26 +72,20 @@ export default async function main(commitRef = 'HEAD') {
           'commit_story.repository.path': process.cwd(),
           'commit_story.commit.timestamp': context.commit.data.timestamp,
         });
-        console.log(`⚠️  No chat data found for this repository and time window`);
-        console.log(`   Repository: ${process.cwd()}`);
-        console.log(`   Time window: ${context.commit.data.timestamp}`);
-        console.log(`   This may indicate the commit was made outside of Claude Code sessions.`);
+        debugLog(`❌ ERROR: No chat data found for this repository and time window`);
         span.setStatus({ code: SpanStatusCode.OK, message: 'No chat data found - graceful exit' });
         span.end();
         process.exit(0); // Graceful exit, not an error
       }
     
-      console.log('📊 Context Summary:');
-      console.log(`   Commit: ${context.commit.data.hash.substring(0, 8)} - "${context.commit.data.message}"`);
-      console.log(`   Chat Messages: ${context.chatMessages.data.length} messages found`);
+      debugLog(`Found ${context.chatMessages.data.length} chat messages`);
+      debugLog('Found git metadata');
       
       // Validate OpenAI connectivity before expensive processing
-      console.log('🔑 Validating OpenAI connectivity...');
       if (!process.env.OPENAI_API_KEY) {
         span.recordException(new Error('OPENAI_API_KEY not found in environment'));
         span.setStatus({ code: SpanStatusCode.ERROR, message: 'Missing OpenAI API key' });
-        console.log(`⚠️  OPENAI_API_KEY not found in environment`);
-        console.log(`   Set your API key in .env file or run: npm run journal-ai-connectivity`);
+        debugLog(`❌ ERROR: OPENAI_API_KEY not configured`);
         span.end();
         process.exit(1);
       }
@@ -86,7 +100,7 @@ export default async function main(commitRef = 'HEAD') {
               max_tokens: 1
             });
             connectivitySpan.setStatus({ code: SpanStatusCode.OK, message: 'OpenAI connectivity confirmed' });
-            console.log('   ✅ OpenAI connectivity confirmed');
+            // OpenAI connectivity confirmed - no need to log in debug mode
           } catch (error) {
             connectivitySpan.recordException(error);
             connectivitySpan.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
@@ -98,8 +112,7 @@ export default async function main(commitRef = 'HEAD') {
       } catch (error) {
         span.recordException(error);
         span.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
-        console.log(`⚠️  OpenAI connectivity failed: ${error.message}`);
-        console.log(`   Run: npm run journal-ai-connectivity for detailed diagnostics`);
+        debugLog(`❌ ERROR: OpenAI connectivity failed: ${error.message}`);
         span.end();
         process.exit(1);
       }
@@ -129,7 +142,7 @@ export default async function main(commitRef = 'HEAD') {
         completed: true
       }));
       
-      console.log(`✅ Journal entry saved to: ${filePath}`);
+      debugLog(`✅ Journal saved to: ${filePath}`);
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });
       
     } catch (error) {

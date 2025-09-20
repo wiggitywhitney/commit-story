@@ -51,9 +51,6 @@ debug_log "Post-commit hook triggered"
 
 # Only run if Commit Story is configured for this repository
 if is_commit_story_enabled; then
-    debug_log "Commit Story enabled, starting journal generation"
-    debug_log "Starting journal generation for commit $(git rev-parse HEAD)"
-    
     # Run in foreground if debug mode, background otherwise
     if is_debug_enabled; then
         debug_log "Debug mode enabled - running in foreground"
@@ -70,8 +67,6 @@ if is_commit_story_enabled; then
             (node src/index.js HEAD >/dev/null 2>&1 &)
         fi
     fi
-    
-    debug_log "Journal generation completed"
 else
     debug_log "Commit Story not configured for this repository, skipping"
 fi

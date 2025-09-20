@@ -10,6 +10,7 @@
  * 3. Run Development Dialogue with summary result
  */
 
+import fs from 'fs';
 import { generateSummary } from './summary-generator.js';
 import { generateDevelopmentDialogue } from './dialogue-generator.js';
 import { generateTechnicalDecisions } from './technical-decisions-generator.js';
@@ -18,6 +19,25 @@ import { OTEL } from '../telemetry/standards.js';
 
 // Get tracer instance for journal generation instrumentation
 const tracer = trace.getTracer('commit-story-generator', '1.0.0');
+
+// Debug mode detection from config file
+let isDebugMode = false;
+try {
+  const configPath = './commit-story.config.json';
+  if (fs.existsSync(configPath)) {
+    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    isDebugMode = configData.debug === true;
+  }
+} catch (error) {
+  // Silently ignore config file errors - debug mode defaults to false
+}
+
+// Debug-only logging
+const debugLog = (message) => {
+  if (isDebugMode) {
+    console.log(message);
+  }
+};
 
 /**
  * Generates a complete journal entry for a development session
@@ -40,7 +60,7 @@ export async function generateJournalEntry(context) {
     }
   }, async (span) => {
     try {
-      console.log('🎯 Generating journal sections...');
+      debugLog('Started journal generation');
       
       // Phase 1: Run independent generators in parallel + generate commit details immediately
       span.addEvent('phase1.start', { phase: 'parallel-generation' });
@@ -90,14 +110,14 @@ export async function generateJournalEntry(context) {
         commitDetails
       };
       
-      console.log('✅ Journal sections generated successfully');
+      debugLog('✅ Successfully generated journal');
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal sections generated successfully' });
       return sections;
     
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-      console.error('❌ Error generating journal entry:', error.message);
+      debugLog(`❌ ERROR: ${error.message}`);
       throw error;
     } finally {
       span.end();
