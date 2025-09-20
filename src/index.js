@@ -119,6 +119,7 @@ export default async function main(commitRef = 'HEAD') {
       const filePath = await saveJournalEntry(
         context.commit.data.hash,
         context.commit.data.timestamp,
+        context.commit.data.message,
         sections
       );
       
