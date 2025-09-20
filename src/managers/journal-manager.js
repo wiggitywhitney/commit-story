@@ -3,6 +3,7 @@ import fsSync from 'fs';
 import { dirname, join } from 'path';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
@@ -43,9 +44,12 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       [`${OTEL.NAMESPACE}.commit.message`]: commitMessage?.split('\n')[0]
     }
   }, async (span) => {
+    const logger = createNarrativeLogger('journal.save_entry');
     const startTime = Date.now();
 
     try {
+      logger.start('journal entry save', `Saving journal entry for commit: ${commitHash.slice(0, 8)}`);
+
       const date = new Date(timestamp);
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -56,6 +60,8 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       const fileName = `${year}-${month}-${day}.md`;
       const filePath = join(process.cwd(), 'journal', 'entries', monthDir, fileName);
 
+      logger.progress('journal entry save', `Target file: ${monthDir}/${fileName}`);
+
       // Format entry for file or stdout
       const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
 
@@ -65,10 +71,17 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       try {
         await fs.mkdir(dirPath, { recursive: true });
         dirCreated = true;
+        if (dirCreated) {
+          logger.progress('journal entry save', `Created directory structure: ${monthDir}`);
+        }
       } catch (dirError) {
         // Directory creation failed, but continue to try file write
         dirCreated = false;
+        logger.progress('journal entry save', 'Directory already exists');
       }
+
+      const entrySizeKB = Math.round(formattedEntry.length / 1024);
+      logger.progress('journal entry save', `Writing ${entrySizeKB}KB journal entry to daily file`);
 
       // Append to daily file
       await fs.appendFile(filePath, formattedEntry, 'utf8');
@@ -80,6 +93,8 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
         dirCreated: dirCreated,
         writeDuration: Date.now() - startTime
       }));
+
+      logger.complete('journal entry save', `Journal entry saved successfully to ${fileName}`);
 
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry saved successfully' });
       return filePath;
@@ -96,10 +111,9 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
 
-      // File write failed - report error in debug mode only
-      if (isDebugMode) {
-        console.error(`❌ ERROR: Cannot write journal file: ${error.message}`);
-      }
+      logger.error('journal entry save', 'File write failed - output to console instead', error, {
+        targetPath: filePath
+      });
 
       return 'stdout (file write failed)';
     } finally {

@@ -10,6 +10,7 @@
 import { redactSensitiveData } from './sensitive-data-filter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
+import { createNarrativeLogger } from '../../utils/trace-logger.js';
 
 // Get tracer instance for context filtering instrumentation
 const tracer = trace.getTracer('commit-story-context-filter', '1.0.0');
@@ -188,52 +189,68 @@ export function filterContext(context) {
       [`${OTEL.NAMESPACE}.commit.hash`]: context.commit?.data?.hash || context.commit?.hash || 'unknown',
     }
   }, (span) => {
+    const logger = createNarrativeLogger('context.filter_messages');
+
     try {
-  // Handle both old structure (context.chatMessages) and new structure (context.chatMessages.data)
-  const chatMessages = context.chatMessages?.data || context.chatMessages || [];
-  const commit = context.commit?.data || context.commit;
+      // Handle both old structure (context.chatMessages) and new structure (context.chatMessages.data)
+      const chatMessages = context.chatMessages?.data || context.chatMessages || [];
+      const commit = context.commit?.data || context.commit;
 
-  // Add initial metrics to span
-  span.setAttributes(OTEL.attrs.context({
-    originalCount: chatMessages.length
-  }));
+      logger.start('context filtering', `Starting intelligent token filtering with ${chatMessages.length} messages`);
 
-  // Filter chat messages
-  const filteredChatMessages = filterChatMessages(chatMessages);
+      // Add initial metrics to span
+      span.setAttributes(OTEL.attrs.context({
+        originalCount: chatMessages.length
+      }));
 
-  // Add filtering metrics to span
-  span.setAttributes(OTEL.attrs.context({
-    filteredCount: filteredChatMessages.length,
-    removedCount: chatMessages.length - filteredChatMessages.length
-  }));
+      // Filter chat messages
+      const filteredChatMessages = filterChatMessages(chatMessages);
+
+      const removedMessages = chatMessages.length - filteredChatMessages.length;
+      logger.progress('context filtering', `Filtered out ${removedMessages} noisy messages (tool calls, system messages, empty content)`);
+
+      // Add filtering metrics to span
+      span.setAttributes(OTEL.attrs.context({
+        filteredCount: filteredChatMessages.length,
+        removedCount: removedMessages
+      }));
+
+      // Filter git diff if needed
+      const filteredDiff = filterGitDiff(commit?.diff);
+      const diffOriginalTokens = estimateTokens(commit?.diff || '');
+      const diffFilteredTokens = estimateTokens(filteredDiff || '');
+
+      if (diffFilteredTokens < diffOriginalTokens) {
+        logger.progress('context filtering', `Reduced git diff from ${diffOriginalTokens} to ${diffFilteredTokens} tokens`);
+      }
   
-  // Filter git diff if needed
-  const filteredDiff = filterGitDiff(commit?.diff);
-  
-  // Calculate token usage after initial filtering
-  const originalChatTokens = chatMessages.reduce((sum, msg) => {
-    return sum + estimateTokens(getMessageContentString(msg));
-  }, 0);
+      // Calculate token usage after initial filtering
+      const originalChatTokens = chatMessages.reduce((sum, msg) => {
+        return sum + estimateTokens(getMessageContentString(msg));
+      }, 0);
 
-  const chatTokens = filteredChatMessages.reduce((sum, msg) => {
-    return sum + estimateTokens(getMessageContentString(msg));
-  }, 0);
+      const chatTokens = filteredChatMessages.reduce((sum, msg) => {
+        return sum + estimateTokens(getMessageContentString(msg));
+      }, 0);
 
-  const diffTokens = estimateTokens(filteredDiff || '');
-  const systemPromptTokens = 2000; // Estimate for system prompt overhead
-  const totalTokens = chatTokens + diffTokens + systemPromptTokens;
+      const diffTokens = estimateTokens(filteredDiff || '');
+      const systemPromptTokens = 2000; // Estimate for system prompt overhead
+      const totalTokens = chatTokens + diffTokens + systemPromptTokens;
 
-  // Add token metrics to span
-  span.setAttributes(OTEL.attrs.context({
-    originalChatTokens: originalChatTokens,
-    filteredChatTokens: chatTokens,
-    diffTokens: diffTokens,
-    totalTokens: totalTokens
-  }));
-  
-  // If still too large, apply more aggressive filtering (keep most recent)
-  let finalChatMessages = filteredChatMessages;
-  if (totalTokens > MAX_TOKENS) {
+      logger.progress('context filtering', `Token usage: ${chatTokens} chat + ${diffTokens} diff + ${systemPromptTokens} system = ${totalTokens} tokens`);
+
+      // Add token metrics to span
+      span.setAttributes(OTEL.attrs.context({
+        originalChatTokens: originalChatTokens,
+        filteredChatTokens: chatTokens,
+        diffTokens: diffTokens,
+        totalTokens: totalTokens
+      }));
+
+      // If still too large, apply more aggressive filtering (keep most recent)
+      let finalChatMessages = filteredChatMessages;
+      if (totalTokens > MAX_TOKENS) {
+        logger.decision('context filtering', `Exceeds ${MAX_TOKENS} token limit - applying aggressive filtering to keep most recent messages`);
     // Keep only the most recent messages that fit in budget
     const availableTokens = MAX_TOKENS - diffTokens - systemPromptTokens;
     let usedTokens = 0;
@@ -251,31 +268,39 @@ export function filterContext(context) {
         break;
       }
     }
-    
-    finalChatMessages = recentMessages;
 
-    // Add aggressive filtering metrics
-    span.setAttributes(OTEL.attrs.context({
-      finalMessages: finalChatMessages.length,
-      aggressiveFiltering: true
-    }));
-  } else {
-    span.setAttributes(OTEL.attrs.context({
-      aggressiveFiltering: false
-    }));
-  }
+        finalChatMessages = recentMessages;
 
-  // Final metrics
-  const finalChatTokens = finalChatMessages.reduce((sum, msg) => {
-    return sum + estimateTokens(getMessageContentString(msg));
-  }, 0);
+        logger.progress('context filtering', `Aggressive filtering: kept ${finalChatMessages.length} of ${filteredChatMessages.length} most recent messages`);
 
-  span.setAttributes(OTEL.attrs.context({
-    finalChatTokens: finalChatTokens,
-    tokenReduction: originalChatTokens - finalChatTokens
-  }));
+        // Add aggressive filtering metrics
+        span.setAttributes(OTEL.attrs.context({
+          finalMessages: finalChatMessages.length,
+          aggressiveFiltering: true
+        }));
+      } else {
+        logger.decision('context filtering', `Within ${MAX_TOKENS} token limit - no aggressive filtering needed`);
+        span.setAttributes(OTEL.attrs.context({
+          aggressiveFiltering: false
+        }));
+      }
 
-  span.setStatus({ code: SpanStatusCode.OK, message: 'Context filtered successfully' });
+      // Final metrics
+      const finalChatTokens = finalChatMessages.reduce((sum, msg) => {
+        return sum + estimateTokens(getMessageContentString(msg));
+      }, 0);
+
+      const tokenReduction = originalChatTokens - finalChatTokens;
+      const reductionPercent = originalChatTokens > 0 ? Math.round((tokenReduction / originalChatTokens) * 100) : 0;
+
+      logger.complete('context filtering', `Context filtered successfully: ${originalChatTokens} → ${finalChatTokens} tokens (${reductionPercent}% reduction)`);
+
+      span.setAttributes(OTEL.attrs.context({
+        finalChatTokens: finalChatTokens,
+        tokenReduction: tokenReduction
+      }));
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Context filtered successfully' });
 
   // Return filtered context maintaining original structure
   return {
@@ -290,6 +315,7 @@ export function filterContext(context) {
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('context filtering', 'Context filtering failed', error);
       throw error;
     } finally {
       span.end();

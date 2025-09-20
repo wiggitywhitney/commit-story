@@ -13,6 +13,7 @@ import { selectContext } from './utils/context-selector.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 // Get tracer instance for dialogue generation instrumentation
 const tracer = trace.getTracer('commit-story-dialogue', '1.0.0');
@@ -33,15 +34,22 @@ export async function generateDevelopmentDialogue(context, summary) {
       ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
     }
   }, async (span) => {
+    const logger = createNarrativeLogger('ai.generate_dialogue');
+
     try {
+      logger.start('dialogue generation', 'Starting dialogue extraction from chat messages');
+
       // Select chat messages and metadata for dialogue extraction (ignore git data)
       const selected = selectContext(context, ['chatMessages', 'chatMetadata']);
       const cleanMessages = selected.data.chatMessages;
 
       // Check if any user messages are substantial enough for dialogue extraction (DD-054)
       if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
+        logger.decision('dialogue generation', 'No substantial user messages found - skipping dialogue generation');
         return "No significant dialogue found for this development session";
       }
+
+      logger.progress('dialogue generation', `Found ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages`);
 
       // Create fresh OpenAI instance (DD-016: prevent context bleeding)
       const openai = new OpenAI({

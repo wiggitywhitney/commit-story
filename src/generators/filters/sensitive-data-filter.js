@@ -7,6 +7,7 @@
 
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
+import { createNarrativeLogger } from '../../utils/trace-logger.js';
 
 // Get tracer instance for sensitive data filter instrumentation
 const tracer = trace.getTracer('commit-story-sensitive-data-filter', '1.0.0');
@@ -24,8 +25,13 @@ export function redactSensitiveData(text) {
       [`${OTEL.NAMESPACE}.filter.input_length`]: text.length
     }
   }, (span) => {
+    const logger = createNarrativeLogger('filters.redact_sensitive_data');
+
     try {
       const startTime = Date.now();
+      const inputSizeKB = Math.round(text.length / 1024);
+
+      logger.start('sensitive data redaction', `Scanning ${inputSizeKB}KB of text for sensitive patterns`);
 
       // Count redactions by type (security-conscious: count only, never capture values)
       let keysRedacted = 0;
@@ -80,6 +86,18 @@ export function redactSensitiveData(text) {
       const processingDuration = Date.now() - startTime;
       const totalRedactions = keysRedacted + jwtsRedacted + tokensRedacted + emailsRedacted;
 
+      if (totalRedactions === 0) {
+        logger.complete('sensitive data redaction', `No sensitive data found - text is clean`);
+      } else {
+        const redactionSummary = [];
+        if (keysRedacted > 0) redactionSummary.push(`${keysRedacted} API keys`);
+        if (jwtsRedacted > 0) redactionSummary.push(`${jwtsRedacted} JWTs`);
+        if (tokensRedacted > 0) redactionSummary.push(`${tokensRedacted} Bearer tokens`);
+        if (emailsRedacted > 0) redactionSummary.push(`${emailsRedacted} emails`);
+
+        logger.complete('sensitive data redaction', `Redacted ${totalRedactions} items: ${redactionSummary.join(', ')}`);
+      }
+
       // Set span attributes with counts only (no sensitive data)
       span.setAttributes(OTEL.attrs.filters.sensitiveData({
         inputLength: text.length,
@@ -98,6 +116,7 @@ export function redactSensitiveData(text) {
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('sensitive data redaction', 'Redaction processing failed', error);
       throw error;
     } finally {
       span.end();

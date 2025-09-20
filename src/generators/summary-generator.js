@@ -12,6 +12,7 @@ import { selectContext } from './utils/context-selector.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 // Get tracer instance for summary generation instrumentation
 const tracer = trace.getTracer('commit-story-summary', '1.0.0');
@@ -34,17 +35,24 @@ export async function generateSummary(context) {
       ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
     }
   }, async (span) => {
-    try {
-  // Select both commit and chat data for summary generation
-  const selected = selectContext(context, ['commit', 'chatMessages']);
-  
-  // Create fresh OpenAI instance (DD-016: prevent context bleeding)
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+    const logger = createNarrativeLogger('ai.generate_summary');
 
-  // Build the complete prompt (DD-018: compose guidelines + section prompt)
-  const guidelines = getAllGuidelines();
+    try {
+      // Select both commit and chat data for summary generation
+      const selected = selectContext(context, ['commit', 'chatMessages']);
+
+      logger.start('summary generation', `Generating summary for commit: ${selected.data.commit.hash.slice(0, 8)}`);
+
+      const messagesCount = selected.data.chatMessages.length;
+      logger.progress('summary generation', `Using ${messagesCount} chat messages and git diff for context`);
+
+      // Create fresh OpenAI instance (DD-016: prevent context bleeding)
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      // Build the complete prompt (DD-018: compose guidelines + section prompt)
+      const guidelines = getAllGuidelines();
   
   const systemPrompt = `
 ${selected.description}
@@ -87,6 +95,9 @@ ${guidelines}
   };
 
 
+      const promptTokens = JSON.stringify(contextForAI).length / 4; // Rough estimate
+      logger.progress('summary generation', `Constructed prompt: ~${Math.round(promptTokens)} tokens using ${DEFAULT_MODEL}`);
+
       // Add request payload attributes to span
       span.setAttributes(OTEL.attrs.genAI.request(
         requestPayload.model,
@@ -94,15 +105,20 @@ ${guidelines}
         requestPayload.messages.length
       ));
 
+      logger.progress('summary generation', 'Calling OpenAI API for summary generation');
+
       // Add timeout wrapper (30 seconds)
       const completion = await Promise.race([
         openai.chat.completions.create(requestPayload),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
         )
       ]);
 
       const result = completion.choices[0].message.content.trim();
+      const responseTokens = completion.usage?.completion_tokens || 0;
+
+      logger.progress('summary generation', `Received response: ${responseTokens} tokens, ${result.length} characters`);
       
       // Add response attributes to span
       span.setAttributes(OTEL.attrs.genAI.usage({
@@ -111,13 +127,18 @@ ${guidelines}
         usage: completion.usage
       }));
       
+      logger.complete('summary generation', `Summary generated successfully: ${result.split(' ').length} words`);
+
       span.setStatus({ code: SpanStatusCode.OK, message: 'Summary generated successfully' });
       return result;
 
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-      console.error(`⚠️ Summary generation failed: ${error.message}`);
+      logger.error('summary generation', 'OpenAI API call failed', error, {
+        model: DEFAULT_MODEL,
+        hasApiKey: !!process.env.OPENAI_API_KEY
+      });
       return `[Summary generation failed: ${error.message}]`;
     } finally {
       span.end();

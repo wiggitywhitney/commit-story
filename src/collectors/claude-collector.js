@@ -9,6 +9,7 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 // Get tracer instance for Claude collector instrumentation
 const tracer = trace.getTracer('commit-story-claude-collector', '1.0.0');
@@ -28,8 +29,13 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
       [`${OTEL.NAMESPACE}.collector.time_window_end`]: commitTime.toISOString()
     }
   }, (span) => {
+    const logger = createNarrativeLogger('claude.collect_messages');
+
     try {
       const messages = [];
+
+      const timeWindowMinutes = Math.round((commitTime - previousCommitTime) / (1000 * 60));
+      logger.start('chat message collection', `Collecting Claude messages for ${timeWindowMinutes}-minute commit window`);
 
       // 1. Find all Claude JSONL files
       const files = findClaudeFiles();
@@ -37,10 +43,18 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
         [`${OTEL.NAMESPACE}.collector.files_found`]: files.length
       });
 
+      logger.progress('chat message collection', `Found ${files.length} Claude JSONL files in ~/.claude/projects directories`);
+
       let processedFiles = 0;
       let skippedFiles = 0;
       let totalLines = 0;
       let validMessages = 0;
+      let projectFilteredOut = 0;
+      let timeFilteredOut = 0;
+
+      if (files.length === 0) {
+        logger.progress('chat message collection', 'No Claude JSONL files found in ~/.claude/projects - creating empty result');
+      }
 
       // 2. Process each JSONL file
       for (const filePath of files) {
@@ -57,7 +71,10 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
               const message = JSON.parse(line);
 
               // 3. Filter by project using cwd field
-              if (message.cwd !== repoPath) continue;
+              if (message.cwd !== repoPath) {
+                projectFilteredOut++;
+                continue;
+              }
 
               // 4. Filter by time window
               const messageTime = parseTimestamp(message.timestamp);
@@ -66,6 +83,8 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
               if (previousCommitTime <= messageTime && messageTime <= commitTime) {
                 messages.push(message); // Full message object
                 validMessages++;
+              } else {
+                timeFilteredOut++;
               }
             } catch (parseError) {
               // Skip malformed JSON lines, continue processing
@@ -77,6 +96,13 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
           skippedFiles++;
           continue;
         }
+      }
+
+      // Log processing results
+      logger.progress('chat message collection', `Processed ${processedFiles} files (${skippedFiles} skipped), parsed ${totalLines} JSONL lines`);
+
+      if (projectFilteredOut > 0 || timeFilteredOut > 0) {
+        logger.progress('chat message collection', `Filtered out ${projectFilteredOut} messages (wrong project) + ${timeFilteredOut} messages (outside time window)`);
       }
 
       // Add final processing metrics
@@ -91,13 +117,19 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
       // 5. Sort by timestamp in chronological order
       const sortedMessages = messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
+      if (validMessages === 0) {
+        logger.complete('chat message collection', 'No messages found in time window - empty result');
+      } else {
+        logger.complete('chat message collection', `Collected ${validMessages} messages, sorted chronologically`);
+      }
+
       span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected successfully' });
       return sortedMessages;
 
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-      console.error(`❌ Claude message collection failed: ${error.message}`);
+      logger.error('chat message collection', 'Collection failed', error);
       return [];
     } finally {
       span.end();
