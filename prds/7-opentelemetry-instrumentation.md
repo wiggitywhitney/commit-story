@@ -456,6 +456,27 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: Enables trace-informed Claude Code workflows, better debugging correlation, maintains simplicity
 **Status**: ⏳ Outstanding - Ready for Phase 4 implementation
 
+### DD-017: Dual-Output Strategy for Human and Machine Consumption
+**Decision**: Implement dual-output logging that preserves human-readable console output while adding OpenTelemetry-compliant structured JSON logs for trace correlation
+**Rationale**:
+- **Preserves user experience**: End users still see emoji-rich progress indicators
+- **Enables AI-informed debugging**: Claude Code can consume correlated JSON logs
+- **Maintains OpenTelemetry compliance**: Uses same JSON structure as DD-016 (traceId, spanId, severityText, body)
+- **Debug mode becomes richer**: Shows both human progress AND trace correlation data
+- **Explores new frontier**: AI can query its own operational data via correlated logs
+**Implementation Details** (building on DD-016):
+- trace-logger.js outputs OpenTelemetry-compliant JSON (as already specified in DD-016)
+- ALSO preserves existing console.log statements for human readability
+- Use environment variable to control output mode:
+  - Default: Human-readable only (current behavior)
+  - LOG_FORMAT=json: JSON only (CI/CD, AI consumption)
+  - LOG_FORMAT=dual: Both outputs (debug mode, development)
+- JSON structure remains exactly as specified in DD-016 (hex traceId, spanId, etc.)
+- No external dependencies, builds on console.log as per DD-016
+**Key Insight**: We don't replace console.logs, we augment them with parallel structured logging
+**Impact**: Enables trace-informed Claude Code workflows while preserving user experience
+**Status**: ⏳ Outstanding - Ready for Phase 4 implementation
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -779,72 +800,92 @@ As new components are instrumented, the standards module will need additional sp
 - [ ] Add filter patterns to standards module (pending Phase 3.3)
 - [ ] Update TELEMETRY.md with filter examples (pending Phase 3.3)
 
-### Phase 4: JSON-Structured Log-Trace Correlation (DD-005, DD-016)
-**Timeline**: 1 hour
-**Priority**: HIGH - Enables trace-informed Claude Code workflows
+### Phase 4: Dual-Output Log-Trace Correlation (DD-005, DD-016, DD-017)
+**Timeline**: 1.5 hours
+**Priority**: HIGH - Enables trace-informed Claude Code workflows while preserving user experience
 **Dependencies**: Phase 3 complete (all core instrumentation uses standards module)
 **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands.
 
-This phase implements DD-016 (OpenTelemetry-Compliant Structured Logging Strategy) using research-validated approach that avoids external dependencies and alpha APIs.
+This phase implements DD-016 (OpenTelemetry-Compliant Structured Logging Strategy) and DD-017 (Dual-Output Strategy) to enable both human-readable progress indicators and machine-readable trace correlation.
 
 ##### Deliverables
-- [ ] Create `src/utils/trace-logger.js` following DD-016 specifications:
+- [ ] Create `src/utils/trace-logger.js` following DD-016/DD-017 specifications:
   - [ ] Extract traceId/spanId from active span using `@opentelemetry/api`
   - [ ] Output OpenTelemetry-compliant JSON structure (timestamp, traceId, spanId, severityText, body, service)
   - [ ] Use hex format for trace IDs (OpenTelemetry standard)
   - [ ] Support multiple log levels (info, warn, error, debug)
   - [ ] Build on console.log (no Winston/Pino dependencies per DD-016)
+  - [ ] Support environment-based output modes (LOG_FORMAT=pretty/json/dual)
 - [ ] Update standards module with logging helpers:
   - [ ] Add `OTEL.logging.traceContext()` helper for consistent trace extraction
   - [ ] Add JSON structure builders for log format consistency
-- [ ] Replace strategic console.log calls (high-value correlation targets):
-  - [ ] src/index.js - Main application errors and key operations
-  - [ ] src/generators/journal-generator.js - Generation phase start/completion
-  - [ ] src/generators/summary-generator.js - AI operation status and errors
-  - [ ] src/integrators/context-integrator.js - Context processing issues
-- [ ] Update TELEMETRY.md with logging standards section per DD-016
-- [ ] Test correlation: Verify trace_id filtering works in Datadog UI
+- [ ] Augment console.log calls with parallel structured logging (DD-017 approach):
+  - [ ] src/index.js - All progress indicators and status messages
+  - [ ] src/generators/journal-generator.js - All generation phase logging
+  - [ ] src/generators/summary-generator.js - All AI operation logging
+  - [ ] src/generators/technical-decisions-generator.js - All file analysis logging
+  - [ ] src/integrators/context-integrator.js - All context processing logging
+  - [ ] Preserve existing human-readable console.log statements
+  - [ ] Add parallel trace-logger calls for machine consumption
+- [ ] Update TELEMETRY.md with dual-output logging standards section
+- [ ] Test both outputs: Human readability AND trace_id filtering in Datadog UI
 
-##### Implementation Using Standards Module (Per DD-016)
+##### Implementation Using Standards Module (Per DD-016 + DD-017)
 ```javascript
-// src/utils/trace-logger.js - OpenTelemetry-compliant structured logger
-import { OTEL } from '../telemetry/standards.js';
+// src/utils/trace-logger.js - Dual-output OpenTelemetry-compliant logger
 import { trace } from '@opentelemetry/api';
+
+const LOG_FORMAT = process.env.LOG_FORMAT || 'pretty';
 
 export function createTraceLogger() {
   return {
     info: (message, context = {}) => {
       const span = trace.getActiveSpan();
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        severityText: 'INFO',
-        traceId: span?.spanContext().traceId || 'no-trace',
-        spanId: span?.spanContext().spanId || 'no-span',
-        service: 'commit-story',
-        body: message,
-        ...context
-      }));
+
+      // Always output structured JSON (for AI consumption)
+      if (LOG_FORMAT === 'json' || LOG_FORMAT === 'dual') {
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          severityText: 'INFO',
+          traceId: span?.spanContext().traceId || 'no-trace',
+          spanId: span?.spanContext().spanId || 'no-span',
+          service: 'commit-story',
+          body: message,
+          ...context
+        }));
+      }
+
+      // Return human-readable message for console.log calls
+      return message;
     },
+
     error: (message, error, context = {}) => {
       const span = trace.getActiveSpan();
-      console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        severityText: 'ERROR',
-        traceId: span?.spanContext().traceId || 'no-trace',
-        spanId: span?.spanContext().spanId || 'no-span',
-        service: 'commit-story',
-        body: message,
-        error: error?.message,
-        stack: error?.stack,
-        ...context
-      }));
+
+      // Always output structured JSON (for AI consumption)
+      if (LOG_FORMAT === 'json' || LOG_FORMAT === 'dual') {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          severityText: 'ERROR',
+          traceId: span?.spanContext().traceId || 'no-trace',
+          spanId: span?.spanContext().spanId || 'no-span',
+          service: 'commit-story',
+          body: message,
+          error: error?.message,
+          stack: error?.stack,
+          ...context
+        }));
+      }
+
+      return message;
     }
   };
 }
 
-// Usage example (replaces console.log):
-// OLD: console.log('Starting journal generation...');
-// NEW: logger.info('Starting journal generation', { phase: 'init' });
+// Usage example (DD-017 dual-output approach):
+// Human-readable: console.log('🚀 Starting journal generation...');
+// Machine-readable: logger.info('Starting journal generation', { phase: 'init' });
+// Result: Users see emoji message, Claude Code gets JSON with trace correlation
 ```
 
 **Note**: Other advanced features (DD-002, DD-003, DD-007) have been marked as NOT NEEDED or COMPLETE based on complexity vs. benefit analysis.
