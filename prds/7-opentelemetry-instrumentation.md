@@ -437,44 +437,45 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: New documentation structure, update README.md to reference it
 **Status**: ⏳ Outstanding
 
-### DD-016: OpenTelemetry-Compliant Structured Logging Strategy
-**Decision**: Implement structured JSON logging with trace correlation using a simple console.log-based approach, avoiding external logging dependencies and alpha OpenTelemetry Logs API
+### DD-016: Structured Logging for AI Trace Correlation
+**Decision**: Implement OpenTelemetry-compliant structured JSON logging specifically for AI agents and observability tools to correlate logs with traces
 **Rationale**:
-- **OpenTelemetry Logs Bridge API is still alpha/unstable** - not recommended for direct application use as of 2024
-- **Research findings**: OTel best practice is structured JSON logs with traceId/spanId fields for correlation
-- **Pragmatic approach**: Create trace-aware logger utility that outputs OTel-compliant JSON to console
-- **No external dependencies**: Avoid Winston/Pino complexity, build on existing console.log infrastructure
-- **Immediate Datadog correlation**: JSON structure with trace_id enables search/filtering in observability UI
-- **Future-proof**: Can migrate to official Logs API when it becomes stable
+- **OpenTelemetry best practice**: "Logs should include trace and span identifiers (via traceId and spanId)" for correlation
+- **AI consumption focused**: This is for Claude Code and observability backends, NOT human console output
+- **JavaScript Logs API limitation**: OTel Logs Bridge API remains alpha/unstable in JavaScript as of 2024, requiring structured console.log approach
+- **Follows OTel principle**: "Structure everything using consistent attribute naming and semantic conventions"
+- **Machine-readable format**: JSON structure enables automated parsing and correlation by AI agents
+- **Automatic correlation**: OpenTelemetry best practice of including traceId/spanId for "correlation is king"
 **Implementation Details**:
 - Create `src/utils/trace-logger.js` with structured JSON output
 - Extract traceId/spanId from active span using `@opentelemetry/api` trace context
 - Use OpenTelemetry hex format for trace IDs (vendor neutral)
 - Include standard OTel log fields: `timestamp`, `traceId`, `spanId`, `severityText`, `body`, `service`
-- Replace strategic console.log calls in 4 key instrumented files
+- Output separate from console UX - this is for AI/observability consumption only
 - Add logging standards section to TELEMETRY.md for future AI reference
-**Impact**: Enables trace-informed Claude Code workflows, better debugging correlation, maintains simplicity
+**Impact**: Enables trace-informed Claude Code workflows, better debugging correlation by AI agents
 **Status**: ⏳ Outstanding - Ready for Phase 4 implementation
 
-### DD-017: Dual-Output Strategy for Human and Machine Consumption
-**Decision**: Implement dual-output logging that preserves human-readable console output while adding OpenTelemetry-compliant structured JSON logs for trace correlation
+### DD-017: Parallel Logging Architecture for Dual Consumption
+**Decision**: Implement parallel logging streams - one for human console UX, one for AI trace correlation - maintaining complete separation of concerns
 **Rationale**:
-- **Preserves user experience**: End users still see emoji-rich progress indicators
-- **Enables AI-informed debugging**: Claude Code can consume correlated JSON logs
-- **Maintains OpenTelemetry compliance**: Uses same JSON structure as DD-016 (traceId, spanId, severityText, body)
-- **Debug mode becomes richer**: Shows both human progress AND trace correlation data
-- **Explores new frontier**: AI can query its own operational data via correlated logs
+- **Two distinct consumers**: Humans need clean progress indicators, AI agents need structured correlation data
+- **OpenTelemetry compliance**: Structured stream follows "correlation is king" principle with traceId/spanId
+- **Separation of concerns**: Console UX optimization (DD-018, DD-020) separate from AI correlation infrastructure
+- **Flexible consumption**: AI tools can consume structured logs independently of console output
+- **Future-proof architecture**: Each stream optimized for its specific audience and use case
 **Implementation Details** (building on DD-016):
-- trace-logger.js outputs OpenTelemetry-compliant JSON (as already specified in DD-016)
-- ALSO preserves existing console.log statements for human readability
-- Use environment variable to control output mode:
-  - Default: Human-readable only (current behavior)
-  - LOG_FORMAT=json: JSON only (CI/CD, AI consumption)
-  - LOG_FORMAT=dual: Both outputs (debug mode, development)
-- JSON structure remains exactly as specified in DD-016 (hex traceId, spanId, etc.)
-- No external dependencies, builds on console.log as per DD-016
-**Key Insight**: We don't replace console.logs, we augment them with parallel structured logging
-**Impact**: Enables trace-informed Claude Code workflows while preserving user experience
+- **Console stream**: Maintain existing emoji-rich progress indicators for human UX
+- **Structured stream**: trace-logger.js outputs OpenTelemetry-compliant JSON for AI/observability consumption
+- **Parallel operation**: Both streams operate simultaneously but independently
+- **Environment control**:
+  - Default: Console stream only (current clean UX)
+  - TRACE_CORRELATION=true: Enable structured stream for AI consumption
+  - Debug mode: Both streams visible for troubleshooting
+- **No replacement**: Console logs remain untouched, structured logging is additive
+- **OpenTelemetry format**: JSON structure per DD-016 (hex traceId, spanId, severityText, body, service)
+**Key Insight**: Two separate logging systems for two separate audiences, not one system serving both
+**Impact**: Clean human UX preserved while enabling AI trace correlation workflows
 **Status**: ⏳ Outstanding - Ready for Phase 4 implementation
 
 ### DD-018: Log Rationalization Before Correlation
@@ -532,6 +533,25 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Implementation**: Conditional output formatting based on debug mode state
 **Impact**: Cleaner debugging experience, easier troubleshooting of commit hook issues
 **Status**: ⏳ Outstanding - Needs implementation
+
+### DD-021: Clear Separation of Logging Concerns
+**Decision**: Maintain strict architectural separation between console UX and AI trace correlation logging systems
+**Rationale**:
+- **Different audiences**: Console logs serve human users, structured logs serve AI agents and observability tools
+- **Different purposes**:
+  - **Console UX**: Progress indicators, user feedback, debug troubleshooting
+  - **AI Correlation**: OpenTelemetry-compliant trace correlation for automated analysis
+- **Different triggers**: Console always active, structured logging on-demand or environment-controlled
+- **Different formats**: Human-readable (emoji, colors) vs machine-readable (JSON with traceId/spanId)
+- **OpenTelemetry alignment**: Follows best practice of "structured logs are preferable because they are machine-readable"
+- **Architectural clarity**: Prevents conflation of user experience concerns with observability infrastructure
+**Key Distinctions**:
+- **Console stream**: DD-018 (cleanup) + DD-020 (debug consistency) - optimized for humans
+- **Structured stream**: DD-016 + DD-017 - optimized for AI/observability following OpenTelemetry conventions
+- **No mixing**: Each system serves its audience without compromise or confusion
+**Implementation**: Two parallel but independent logging architectures
+**Impact**: Clear separation enables optimization of each system for its specific use case
+**Status**: ✅ DESIGN COMPLETE - Clarifies architectural boundaries for implementation
 
 ## Technical Implementation
 
@@ -856,14 +876,14 @@ As new components are instrumented, the standards module will need additional sp
 - [x] Add filter patterns to standards module (Phase 3.3 complete)
 - [x] Update TELEMETRY.md with filter examples (Phase 3.3 complete)
 
-### Phase 3.5: Log Cleanup and Rationalization (DD-018) - MOSTLY COMPLETE
+### Phase 3.5: Console UX Optimization (DD-018, DD-020) - MOSTLY COMPLETE
 **Timeline**: 30 minutes
-**Priority**: HIGH - Prerequisite for clean correlation implementation
+**Priority**: HIGH - Clean human-facing console output experience
 **Dependencies**: None
 **Status**: 🔄 90% COMPLETE - Console exporter fixed, debug output consistency (DD-020) outstanding
-**Rationale**: Clean up verbose/debug logging before implementing correlation to ensure only valuable logs are correlated
+**Rationale**: Optimize console output for human users, separate from AI correlation infrastructure (per DD-021)
 
-This phase implements DD-018 to remove debug logs and consolidate progress indicators before adding trace correlation.
+This phase focuses exclusively on the human-facing console stream, implementing DD-018 log cleanup and preparing DD-020 debug consistency fixes.
 
 #### Deliverables
 - [x] Remove debug logs from `src/generators/technical-decisions-generator.js`:
@@ -927,13 +947,15 @@ This phase implements DD-019 to instrument context-selector.js and any other uti
 - Usage pattern insights across all generators
 - Zero gaps in business logic instrumentation coverage
 
-### Phase 4: Dual-Output Log-Trace Correlation (DD-005, DD-016, DD-017)
+### Phase 4: AI Trace Correlation Infrastructure (DD-005, DD-016, DD-017)
 **Timeline**: 1.5 hours
-**Priority**: HIGH - Enables trace-informed Claude Code workflows while preserving user experience
+**Priority**: HIGH - Enables trace-informed Claude Code workflows via structured logging
 **Dependencies**: Phase 3 complete (all core instrumentation uses standards module)
 **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands.
 
-This phase implements DD-016 (OpenTelemetry-Compliant Structured Logging Strategy) and DD-017 (Dual-Output Strategy) to enable both human-readable progress indicators and machine-readable trace correlation.
+This phase implements AI-focused trace correlation infrastructure following OpenTelemetry best practices. Per DD-021, this creates a separate structured logging stream for AI/observability consumption, independent of console UX (Phase 3.5).
+
+**OpenTelemetry Compliance**: Implements "correlation is king" principle with traceId/spanId inclusion, structured JSON format for machine readability, and follows semantic conventions for consistent attribute naming.
 
 ##### Deliverables
 - [ ] Create `src/utils/trace-logger.js` following DD-016/DD-017 specifications:
@@ -946,11 +968,12 @@ This phase implements DD-016 (OpenTelemetry-Compliant Structured Logging Strateg
 - [ ] Update standards module with logging helpers:
   - [ ] Add `OTEL.logging.traceContext()` helper for consistent trace extraction
   - [ ] Add JSON structure builders for log format consistency
-- [ ] Augment console.log calls with parallel structured logging (DD-017 approach):
-  - [ ] src/index.js - All progress indicators and status messages
-  - [ ] src/generators/journal-generator.js - All generation phase logging
-  - [ ] src/generators/summary-generator.js - All AI operation logging
-  - [ ] src/generators/technical-decisions-generator.js - All file analysis logging
+- [ ] Create parallel structured logging stream (DD-017 approach):
+  - [ ] src/index.js - Add structured logs parallel to console progress indicators
+  - [ ] src/generators/journal-generator.js - Add structured logs parallel to emoji phase indicators
+  - [ ] src/generators/summary-generator.js - Add structured logs parallel to AI operation messages
+  - [ ] src/generators/technical-decisions-generator.js - Add structured logs parallel to analysis messages
+  - [ ] IMPORTANT: Console logs remain unchanged - this adds AI correlation stream only
   - [ ] src/integrators/context-integrator.js - All context processing logging
   - [ ] Preserve existing human-readable console.log statements
   - [ ] Add parallel trace-logger calls for machine consumption
