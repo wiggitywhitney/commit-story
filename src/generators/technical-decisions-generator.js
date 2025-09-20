@@ -46,13 +46,11 @@ export async function generateTechnicalDecisions(context) {
       }
 
       // Analyze file types to determine implementation status
-      console.log('📁 Git diff file analysis:');
       const diffLines = selected.data.commit.diff.split('\n');
       const changedFiles = diffLines
         .filter(line => line.startsWith('diff --git'))
         .map(line => line.match(/diff --git a\/(.+) b\/.+/)?.[1])
         .filter(Boolean);
-      console.log('   Files changed:', changedFiles);
 
       // Simple approach: documentation files are .md, .txt, README, CHANGELOG
       const docFiles = changedFiles.filter(file =>
@@ -60,9 +58,6 @@ export async function generateTechnicalDecisions(context) {
         file.includes('README') || file.includes('CHANGELOG')
       );
       const nonDocFiles = changedFiles.filter(file => !docFiles.includes(file));
-
-      console.log('   Documentation files:', docFiles);
-      console.log('   Non-documentation files:', nonDocFiles);
 
       // Generate dynamic prompt addition based on file analysis
       let implementationGuidance = '';

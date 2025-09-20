@@ -43,7 +43,6 @@ export async function generateJournalEntry(context) {
       console.log('🎯 Generating journal sections...');
       
       // Phase 1: Run independent generators in parallel + generate commit details immediately
-      console.log('  📝 Starting summary and technical decisions in parallel...');
       span.addEvent('phase1.start', { phase: 'parallel-generation' });
       
       const [summaryPromise, technicalDecisionsPromise] = [
@@ -51,11 +50,9 @@ export async function generateJournalEntry(context) {
         generateTechnicalDecisions(context)
       ];
       
-      console.log('  📊 Generating commit details...');
       const commitDetails = generateCommitDetailsSection(context);
       
       // Phase 2: Wait for summary (needed for dialogue), let technical decisions continue
-      console.log('  ⏳ Waiting for summary completion...');
       span.addEvent('phase2.start', { phase: 'waiting-for-summary' });
       const summary = await summaryPromise;
       
@@ -65,12 +62,10 @@ export async function generateJournalEntry(context) {
       }));
       
       // Phase 3: Start dialogue with summary result
-      console.log('  💬 Generating development dialogue...');
       span.addEvent('phase3.start', { phase: 'dialogue-generation' });
       const dialoguePromise = generateDevelopmentDialogue(context, summary);
       
       // Phase 4: Wait for all remaining generators to complete
-      console.log('  ⏳ Waiting for remaining sections...');
       span.addEvent('phase4.start', { phase: 'waiting-for-completion' });
       const [dialogue, technicalDecisions] = await Promise.all([
         dialoguePromise,
