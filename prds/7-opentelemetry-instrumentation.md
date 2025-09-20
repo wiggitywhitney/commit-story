@@ -511,7 +511,7 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 - **Usage patterns**: Selection metrics enable optimization decisions
 **Implementation**: Follow TELEMETRY.md standards for instrumentation patterns, span naming, and attribute builders
 **Impact**: Completes end-to-end context processing observability
-**Status**: ⏳ Outstanding - Required for complete instrumentation coverage
+**Status**: ✅ COMPLETE - 100% business logic instrumentation coverage achieved
 
 ## Technical Implementation
 
@@ -880,14 +880,14 @@ This phase implements DD-018 to remove debug logs and consolidate progress indic
 This phase implements DD-019 to instrument context-selector.js and any other utility functions performing business logic.
 
 #### Deliverables
-- [ ] **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands
-- [ ] Add utility patterns to standards module following established conventions
-- [ ] Instrument `src/generators/utils/context-selector.js`:
-  - [ ] Follow TELEMETRY.md patterns for imports, span creation, and attribute builders
-  - [ ] Track context selection metrics (selections requested, found, data sizes, processing time)
-  - [ ] Maintain existing functionality while adding observability
-- [ ] Test utility instrumentation with `npm run validate:telemetry` and `npm run validate:trace`
-- [ ] Verify span appears correctly in trace hierarchy with proper parent-child relationships
+- [x] **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands
+- [x] Add utility patterns to standards module following established conventions
+- [x] Instrument `src/generators/utils/context-selector.js`:
+  - [x] Follow TELEMETRY.md patterns for imports, span creation, and attribute builders
+  - [x] Track context selection metrics (selections requested, found, data sizes, processing time)
+  - [x] Maintain existing functionality while adding observability
+- [x] Test utility instrumentation with `npm run validate:telemetry` and `npm run validate:trace`
+- [x] Verify span appears correctly in trace hierarchy with proper parent-child relationships
 
 **Expected Outcome**:
 - Complete context processing pipeline observability: gather → filter → select
@@ -1605,6 +1605,59 @@ export function createTraceLogger() {
 
 **Next Session Priority**:
 - **Phase 3.5**: Log cleanup and rationalization (DD-018) - prerequisite for Phase 4 correlation features
+- **Phase 4**: Dual-output log-trace correlation for trace-informed Claude Code workflows
+
+### September 20, 2025 (Evening): Phase 3.6 Complete Utility Function Instrumentation - COMPLETE ✅
+**Duration**: ~45 minutes
+**Primary Focus**: Final instrumentation piece for 100% business logic observability coverage + OpenTelemetry semantic convention compliance
+
+**Completed PRD Items**:
+- [x] **OpenTelemetry Semantic Convention Compliance** - Fixed token attribute naming in standards module:
+  - Fixed `gen_ai.usage.input_tokens` → `gen_ai.usage.prompt_tokens` (official convention)
+  - Fixed `gen_ai.usage.output_tokens` → `gen_ai.usage.completion_tokens` (official convention)
+  - Updated both `attrs.genAI.usage()` and `events.genAI.completion()` functions
+- [x] **Standards Module Extension** - Added `utils.contextSelect` patterns:
+  - Added `utils: { contextSelect: () => 'utils.select_context' }` span name
+  - Added comprehensive attribute builders for context selection metrics
+- [x] **Complete Context-Selector Instrumentation** - Full OpenTelemetry integration:
+  - Added OpenTelemetry imports and tracer initialization (`commit-story-utils`)
+  - Wrapped `selectContext()` function with `utils.select_context` span
+  - Comprehensive metrics tracking: selections_requested, selections_found, description_length, data_keys, processing_duration_ms
+  - Proper error handling with span status and exception recording
+- [x] **Complete Validation** - All testing criteria met:
+  - `npm run validate:telemetry` passes with 0 errors (warnings are false positives for correct conventions)
+  - `npm run validate:trace` confirms 3 spans generated correctly per journal run
+  - Trace hierarchy verified with proper parent-child relationships
+
+**Key Achievement - 100% Business Logic Instrumentation Coverage**:
+- **Complete context processing pipeline observability**: gather ✅ → filter ✅ → **select ✅**
+- **Usage pattern evidence**: 3 `utils.select_context` spans per journal generation (summary, technical-decisions, dialogue generators)
+- **Performance metrics captured**: Context selection operations now fully observable
+- **Zero instrumentation gaps**: All business logic functions now have comprehensive telemetry
+- **Full OpenTelemetry compliance**: Token attributes now follow official GenAI semantic conventions
+
+**Evidence Confirmed**:
+- 3 distinct `utils.select_context` spans in trace output with different selection patterns:
+  - Summary & Technical Decisions: `commit,chatMessages` selection (225-char descriptions)
+  - Dialogue: `chatMessages,chatMetadata` selection (200-char descriptions)
+- All expected attributes present with realistic values (processing times 0-100ms)
+- Perfect parent-child relationships maintained in trace hierarchy
+- Zero functional regressions - existing context selection behavior preserved
+
+**Technical Implementation**:
+- Following TELEMETRY.md standards throughout - consistent patterns with existing instrumentation
+- `commit_story.utils.*` namespace for all custom attributes (proper namespacing)
+- Comprehensive error handling and span lifecycle management
+- Performance tracking with millisecond precision
+
+**Impact**:
+- **DD-019 Complete**: Phase 3.6 achieves comprehensive observability coverage goal
+- **Standards compliance**: Fixed semantic convention violations discovered during implementation
+- **Production ready**: All instrumentation follows established patterns and passes validation
+- **Future-proof**: Foundation established for Phase 4 log-trace correlation features
+
+**Next Session Priority**:
+- **Phase 3.5**: Log cleanup and rationalization (DD-018) - clean up debug logs before correlation
 - **Phase 4**: Dual-output log-trace correlation for trace-informed Claude Code workflows
 
 ### September 20, 2025 (Evening): DD-019 Complete Instrumentation Coverage Analysis

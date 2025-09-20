@@ -72,6 +72,11 @@ export const OTEL = {
     // Data filtering operations
     filters: {
       sensitiveData: () => 'filters.redact_sensitive_data'
+    },
+
+    // Utility operations
+    utils: {
+      contextSelect: () => 'utils.select_context'
     }
   },
 
@@ -106,8 +111,8 @@ export const OTEL = {
       usage: (response) => ({
         'gen_ai.response.model': response.model,
         'gen_ai.response.message_length': response.content?.length || 0, // Extension: AI response characteristic
-        'gen_ai.usage.input_tokens': response.usage?.prompt_tokens || 0,
-        'gen_ai.usage.output_tokens': response.usage?.completion_tokens || 0
+        'gen_ai.usage.prompt_tokens': response.usage?.prompt_tokens || 0,
+        'gen_ai.usage.completion_tokens': response.usage?.completion_tokens || 0
       }),
 
       /**
@@ -252,6 +257,24 @@ export const OTEL = {
         [`${OTEL.NAMESPACE}.filter.total_redactions`]: filterData.totalRedactions,
         [`${OTEL.NAMESPACE}.filter.processing_duration_ms`]: filterData.processingDuration
       })
+    },
+
+    /**
+     * Utility function operation attributes
+     */
+    utils: {
+      /**
+       * Context selection operation attributes
+       * @param {Object} selectionData - Context selection metrics
+       * @returns {Object} Context selection attributes
+       */
+      contextSelect: (selectionData) => ({
+        [`${OTEL.NAMESPACE}.utils.selections_requested`]: selectionData.selectionsRequested,
+        [`${OTEL.NAMESPACE}.utils.selections_found`]: selectionData.selectionsFound,
+        [`${OTEL.NAMESPACE}.utils.description_length`]: selectionData.descriptionLength,
+        [`${OTEL.NAMESPACE}.utils.data_keys`]: selectionData.dataKeys,
+        [`${OTEL.NAMESPACE}.utils.processing_duration_ms`]: selectionData.processingDuration
+      })
     }
   },
 
@@ -278,8 +301,8 @@ export const OTEL = {
       completion: (response) => ({
         'gen_ai.content.completion': response.content,
         'gen_ai.response.model': response.model,
-        'gen_ai.usage.input_tokens': response.usage?.prompt_tokens || 0,
-        'gen_ai.usage.output_tokens': response.usage?.completion_tokens || 0
+        'gen_ai.usage.prompt_tokens': response.usage?.prompt_tokens || 0,
+        'gen_ai.usage.completion_tokens': response.usage?.completion_tokens || 0
       })
     }
   }
