@@ -437,6 +437,25 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: New documentation structure, update README.md to reference it
 **Status**: ⏳ Outstanding
 
+### DD-016: OpenTelemetry-Compliant Structured Logging Strategy
+**Decision**: Implement structured JSON logging with trace correlation using a simple console.log-based approach, avoiding external logging dependencies and alpha OpenTelemetry Logs API
+**Rationale**:
+- **OpenTelemetry Logs Bridge API is still alpha/unstable** - not recommended for direct application use as of 2024
+- **Research findings**: OTel best practice is structured JSON logs with traceId/spanId fields for correlation
+- **Pragmatic approach**: Create trace-aware logger utility that outputs OTel-compliant JSON to console
+- **No external dependencies**: Avoid Winston/Pino complexity, build on existing console.log infrastructure
+- **Immediate Datadog correlation**: JSON structure with trace_id enables search/filtering in observability UI
+- **Future-proof**: Can migrate to official Logs API when it becomes stable
+**Implementation Details**:
+- Create `src/utils/trace-logger.js` with structured JSON output
+- Extract traceId/spanId from active span using `@opentelemetry/api` trace context
+- Use OpenTelemetry hex format for trace IDs (vendor neutral)
+- Include standard OTel log fields: `timestamp`, `traceId`, `spanId`, `severityText`, `body`, `service`
+- Replace strategic console.log calls in 4 key instrumented files
+- Add logging standards section to TELEMETRY.md for future AI reference
+**Impact**: Enables trace-informed Claude Code workflows, better debugging correlation, maintains simplicity
+**Status**: ⏳ Outstanding - Ready for Phase 4 implementation
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -760,46 +779,72 @@ As new components are instrumented, the standards module will need additional sp
 - [ ] Add filter patterns to standards module (pending Phase 3.3)
 - [ ] Update TELEMETRY.md with filter examples (pending Phase 3.3)
 
-### Phase 4: JSON-Structured Log-Trace Correlation (DD-005)
+### Phase 4: JSON-Structured Log-Trace Correlation (DD-005, DD-016)
 **Timeline**: 1 hour
 **Priority**: HIGH - Enables trace-informed Claude Code workflows
 **Dependencies**: Phase 3 complete (all core instrumentation uses standards module)
 **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands.
 
-This phase implements structured JSON logging with automatic trace context injection to enable better observability correlation and support trace-informed Claude Code workflows.
+This phase implements DD-016 (OpenTelemetry-Compliant Structured Logging Strategy) using research-validated approach that avoids external dependencies and alpha APIs.
 
 ##### Deliverables
-- [ ] Create `src/utils/trace-logger.js` using OTEL standards for trace context
-- [ ] Use OpenTelemetry hex format for trace IDs (vendor neutral)
-- [ ] Replace console.log calls in key instrumented files:
-  - [ ] src/index.js - Main application logging
-  - [ ] src/generators/journal-generator.js - Generation phase logging
-  - [ ] src/generators/summary-generator.js - AI operation logging
-  - [ ] src/integrators/context-integrator.js - Context gathering logging
-- [ ] Add environment variable control for log level/format
-- [ ] Test correlation in Datadog UI with trace_id filtering
+- [ ] Create `src/utils/trace-logger.js` following DD-016 specifications:
+  - [ ] Extract traceId/spanId from active span using `@opentelemetry/api`
+  - [ ] Output OpenTelemetry-compliant JSON structure (timestamp, traceId, spanId, severityText, body, service)
+  - [ ] Use hex format for trace IDs (OpenTelemetry standard)
+  - [ ] Support multiple log levels (info, warn, error, debug)
+  - [ ] Build on console.log (no Winston/Pino dependencies per DD-016)
+- [ ] Update standards module with logging helpers:
+  - [ ] Add `OTEL.logging.traceContext()` helper for consistent trace extraction
+  - [ ] Add JSON structure builders for log format consistency
+- [ ] Replace strategic console.log calls (high-value correlation targets):
+  - [ ] src/index.js - Main application errors and key operations
+  - [ ] src/generators/journal-generator.js - Generation phase start/completion
+  - [ ] src/generators/summary-generator.js - AI operation status and errors
+  - [ ] src/integrators/context-integrator.js - Context processing issues
+- [ ] Update TELEMETRY.md with logging standards section per DD-016
+- [ ] Test correlation: Verify trace_id filtering works in Datadog UI
 
-##### Implementation Using Standards Module
+##### Implementation Using Standards Module (Per DD-016)
 ```javascript
+// src/utils/trace-logger.js - OpenTelemetry-compliant structured logger
 import { OTEL } from '../telemetry/standards.js';
 import { trace } from '@opentelemetry/api';
 
-// Create structured logger that uses OTEL patterns
 export function createTraceLogger() {
   return {
     info: (message, context = {}) => {
       const span = trace.getActiveSpan();
       console.log(JSON.stringify({
         timestamp: new Date().toISOString(),
-        level: 'info',
-        ...OTEL.logging.traceContext(span), // Gets trace_id, span_id
-        service: OTEL.NAMESPACE,
-        message,
+        severityText: 'INFO',
+        traceId: span?.spanContext().traceId || 'no-trace',
+        spanId: span?.spanContext().spanId || 'no-span',
+        service: 'commit-story',
+        body: message,
+        ...context
+      }));
+    },
+    error: (message, error, context = {}) => {
+      const span = trace.getActiveSpan();
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        severityText: 'ERROR',
+        traceId: span?.spanContext().traceId || 'no-trace',
+        spanId: span?.spanContext().spanId || 'no-span',
+        service: 'commit-story',
+        body: message,
+        error: error?.message,
+        stack: error?.stack,
         ...context
       }));
     }
   };
 }
+
+// Usage example (replaces console.log):
+// OLD: console.log('Starting journal generation...');
+// NEW: logger.info('Starting journal generation', { phase: 'init' });
 ```
 
 **Note**: Other advanced features (DD-002, DD-003, DD-007) have been marked as NOT NEEDED or COMPLETE based on complexity vs. benefit analysis.
