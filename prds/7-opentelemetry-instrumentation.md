@@ -794,19 +794,19 @@ return await tracer.startActiveSpan(OTEL.span.collectors.claude(), {
     - API key validation status, configuration validation
 - [x] Test manager instrumentation with `npm run trace:validate`
 
-#### Phase 3.3: Instrument Remaining Filters (30 minutes)
+#### Phase 3.3: Instrument Remaining Filters (30 minutes) - COMPLETE ✅
 **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands.
 
 ##### Deliverables
-- [ ] Add filter patterns to standards module first:
-  - [ ] Add `filters: { sensitiveData: () => 'filters.redact_sensitive_data' }` to OTEL.span
-  - [ ] Add `filters: { sensitiveData: (data) => ({ ... }) }` to OTEL.attrs
-- [ ] Instrument `src/generators/filters/sensitive-data-filter.js`:
-  - [ ] Import OTEL from standards module
-  - [ ] Use `OTEL.span.filters.sensitiveData()` for redaction operations
-  - [ ] Use `OTEL.attrs.filters.sensitiveData(data)` for redaction metrics:
-    - Pattern matches, redaction counts, processing time
-- [ ] Test filter instrumentation with `npm run validate:trace`
+- [x] Add filter patterns to standards module first:
+  - [x] Add `filters: { sensitiveData: () => 'filters.redact_sensitive_data' }` to OTEL.span
+  - [x] Add `filters: { sensitiveData: (data) => ({ ... }) }` to OTEL.attrs
+- [x] Instrument `src/generators/filters/sensitive-data-filter.js`:
+  - [x] Import OTEL from standards module
+  - [x] Use `OTEL.span.filters.sensitiveData()` for redaction operations
+  - [x] Use `OTEL.attrs.filters.sensitiveData(data)` for redaction metrics:
+    - Pattern matches, redaction counts, processing time (security-conscious: counts only, no sensitive data)
+- [x] Test filter instrumentation with `npm run validate:trace`
 
 #### Phase 3.4: Expand Standards Module for New Components (15 minutes)
 As new components are instrumented, the standards module will need additional span names and attribute builders.
@@ -822,8 +822,8 @@ As new components are instrumented, the standards module will need additional sp
   ```
 - [x] Add manager patterns to standards module (config.openai, journal.save)
 - [x] Update TELEMETRY.md with validation commands
-- [ ] Add filter patterns to standards module (pending Phase 3.3)
-- [ ] Update TELEMETRY.md with filter examples (pending Phase 3.3)
+- [x] Add filter patterns to standards module (Phase 3.3 complete)
+- [x] Update TELEMETRY.md with filter examples (Phase 3.3 complete)
 
 ### Phase 3.5: Log Cleanup and Rationalization (DD-018)
 **Timeline**: 30 minutes
@@ -1539,8 +1539,41 @@ export function createTraceLogger() {
 
 **Impact**: Phase 3.2 completes core infrastructure instrumentation. File I/O and configuration operations now have full observability for performance analysis and debugging.
 
+### September 20, 2025 (Later): Phase 3.3 Sensitive Data Filter Implementation - COMPLETE ✅
+**Duration**: ~30 minutes
+**Primary Focus**: Security-conscious instrumentation of sensitive data filtering with comprehensive observability
+
+**Completed PRD Items**:
+- [x] **Standards Module Extension** - Added `filters.sensitiveData` patterns to OTEL.span and OTEL.attrs builders
+- [x] **Security-Conscious Instrumentation** - Wrapped `redactSensitiveData()` function with OpenTelemetry spans tracking counts only (no sensitive data captured)
+- [x] **Comprehensive Metrics** - Implemented tracking for input/output length, redaction counts by type (keys, JWTs, tokens, emails), and processing duration
+- [x] **Full Integration** - Added proper imports, tracer initialization, error handling, and span status management
+- [x] **Complete Validation** - Both `npm run validate:telemetry` (zero errors) and `npm run validate:trace` (multiple spans generated) passing
+
+**Technical Implementation Details**:
+- **Security-first approach**: Only counts and performance metrics captured, never actual sensitive values
+- **Pattern-based counting**: Each regex replacement callback increments appropriate counters (keysRedacted, jwtsRedacted, etc.)
+- **Performance measurement**: Processing duration tracked with millisecond precision
+- **Comprehensive attributes**: All metrics follow established `commit_story.filter.*` namespace conventions
+- **Multiple span generation**: Filter called multiple times during context processing, each properly instrumented
+
+**Key Achievement**:
+- **Complete Phase 3 instrumentation coverage**: All business logic components (collectors, managers, generators, filters) now have comprehensive OpenTelemetry observability
+- **Security compliance**: Zero sensitive data exposure in telemetry while maintaining full operational visibility
+- **Performance baseline**: Processing duration metrics (0-1ms typical) establish performance expectations
+
+**Evidence Confirmed**:
+- Multiple `filters.redact_sensitive_data` spans in trace output with proper parent-child relationships
+- All expected attributes present: input_length, output_length, keys_redacted, jwts_redacted, tokens_redacted, emails_redacted, total_redactions, processing_duration_ms
+- Zero validation errors across entire codebase
+- No functional regressions - original redaction behavior preserved
+
+**Next Session Priority**:
+- **Phase 3.5**: Log cleanup and rationalization (DD-018) - prerequisite for Phase 4 correlation features
+- **Phase 4**: Dual-output log-trace correlation for trace-informed Claude Code workflows
+
 ---
 
 **PRD Created**: January 16, 2025
 **Last Updated**: September 20, 2025
-**Document Version**: 1.8
+**Document Version**: 1.9

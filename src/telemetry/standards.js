@@ -67,6 +67,11 @@ export const OTEL = {
     // Configuration operations
     config: {
       openai: () => 'config.openai'
+    },
+
+    // Data filtering operations
+    filters: {
+      sensitiveData: () => 'filters.redact_sensitive_data'
     }
   },
 
@@ -225,6 +230,27 @@ export const OTEL = {
         [`${OTEL.NAMESPACE}.config.model`]: configData.model,
         [`${OTEL.NAMESPACE}.config.provider`]: configData.provider,
         [`${OTEL.NAMESPACE}.config.init_duration_ms`]: configData.initDuration
+      })
+    },
+
+    /**
+     * Data filtering operation attributes
+     */
+    filters: {
+      /**
+       * Sensitive data redaction attributes (NO sensitive data captured, only counts)
+       * @param {Object} filterData - Filter operation metrics
+       * @returns {Object} Filter attributes (counts and performance only)
+       */
+      sensitiveData: (filterData) => ({
+        [`${OTEL.NAMESPACE}.filter.input_length`]: filterData.inputLength,
+        [`${OTEL.NAMESPACE}.filter.output_length`]: filterData.outputLength,
+        [`${OTEL.NAMESPACE}.filter.keys_redacted`]: filterData.keysRedacted,
+        [`${OTEL.NAMESPACE}.filter.jwts_redacted`]: filterData.jwtsRedacted,
+        [`${OTEL.NAMESPACE}.filter.tokens_redacted`]: filterData.tokensRedacted,
+        [`${OTEL.NAMESPACE}.filter.emails_redacted`]: filterData.emailsRedacted,
+        [`${OTEL.NAMESPACE}.filter.total_redactions`]: filterData.totalRedactions,
+        [`${OTEL.NAMESPACE}.filter.processing_duration_ms`]: filterData.processingDuration
       })
     }
   },
