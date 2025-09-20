@@ -1,7 +1,7 @@
 # PRD-7: Comprehensive OpenTelemetry Instrumentation
 
 **GitHub Issue**: [#7](https://github.com/wiggitywhitney/commit-story/issues/7)  
-**Status**: In Progress (Core Implementation 100% Complete + Data Collectors 100% Complete - Advanced Features Remaining)  
+**Status**: In Progress (Core Implementation 100% Complete + Data Collectors 100% Complete - Utility Functions & Advanced Features Remaining)  
 **Priority**: High  
 **Timeline**: 1 day  
 
@@ -502,6 +502,17 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: Reduces log noise, improves correlation value, cleaner user experience
 **Status**: ⏳ Outstanding - Prerequisite for Phase 4
 
+### DD-019: Complete Utility Function Instrumentation
+**Decision**: Instrument all utility functions that perform business logic, specifically context-selector.js
+**Rationale**:
+- **Observability gap**: context-selector.js is used by all 3 AI generators but has zero instrumentation
+- **Performance impact**: Processes context data on every generation
+- **Pipeline completion**: Completes the context processing observability chain (gather → filter → select)
+- **Usage patterns**: Selection metrics enable optimization decisions
+**Implementation**: Follow TELEMETRY.md standards for instrumentation patterns, span naming, and attribute builders
+**Impact**: Completes end-to-end context processing observability
+**Status**: ⏳ Outstanding - Required for complete instrumentation coverage
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -859,6 +870,30 @@ This phase implements DD-018 to remove debug logs and consolidate progress indic
 - Remove all debug/implementation detail logs
 - Keep only user-relevant progress indicators
 - Cleaner foundation for Phase 4 correlation
+
+### Phase 3.6: Complete Utility Function Instrumentation (DD-019)
+**Timeline**: 30 minutes
+**Priority**: HIGH - Completes comprehensive observability coverage
+**Dependencies**: Phase 3.3 complete (standards module patterns established)
+**Rationale**: Instrument remaining business logic functions to achieve complete end-to-end observability
+
+This phase implements DD-019 to instrument context-selector.js and any other utility functions performing business logic.
+
+#### Deliverables
+- [ ] **IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands
+- [ ] Add utility patterns to standards module following established conventions
+- [ ] Instrument `src/generators/utils/context-selector.js`:
+  - [ ] Follow TELEMETRY.md patterns for imports, span creation, and attribute builders
+  - [ ] Track context selection metrics (selections requested, found, data sizes, processing time)
+  - [ ] Maintain existing functionality while adding observability
+- [ ] Test utility instrumentation with `npm run validate:telemetry` and `npm run validate:trace`
+- [ ] Verify span appears correctly in trace hierarchy with proper parent-child relationships
+
+**Expected Outcome**:
+- Complete context processing pipeline observability: gather → filter → select
+- Performance metrics for context selection operations
+- Usage pattern insights across all generators
+- Zero gaps in business logic instrumentation coverage
 
 ### Phase 4: Dual-Output Log-Trace Correlation (DD-005, DD-016, DD-017)
 **Timeline**: 1.5 hours
@@ -1572,8 +1607,40 @@ export function createTraceLogger() {
 - **Phase 3.5**: Log cleanup and rationalization (DD-018) - prerequisite for Phase 4 correlation features
 - **Phase 4**: Dual-output log-trace correlation for trace-informed Claude Code workflows
 
+### September 20, 2025 (Evening): DD-019 Complete Instrumentation Coverage Analysis
+**Duration**: ~20 minutes
+**Primary Focus**: Comprehensive analysis of instrumentation gaps and PRD updates
+
+**Analysis Completed**:
+- ✅ **Comprehensive codebase audit**: Analyzed all 14 files with exported functions
+- ✅ **Instrumentation gap identification**: Found context-selector.js missing instrumentation
+- ✅ **Usage pattern analysis**: Confirmed context-selector used by all 3 AI generators
+- ✅ **Pipeline mapping**: Identified incomplete context processing observability chain
+
+**PRD Updates Completed**:
+- ✅ **DD-019 added**: Complete utility function instrumentation decision with clear rationale
+- ✅ **Phase 3.6 created**: New implementation phase for context-selector instrumentation
+- ✅ **Status updated**: Reflected additional scope in PRD status
+- ✅ **TELEMETRY.md referenced**: Ensured future implementation follows established standards
+
+**Key Findings**:
+- **Missing observability**: context-selector.js processes context data 3x per journal but has no instrumentation
+- **Pipeline gap**: Context chain incomplete (gather ✅ → filter ✅ → select ❌)
+- **Performance blindspot**: No visibility into context selection efficiency or data usage patterns
+- **Standards compliance**: All other business logic functions properly instrumented
+
+**Strategic Decision**:
+- **Focused scope**: Only context-selector.js needs instrumentation (guidelines are static strings)
+- **Standards reference**: Implementation delegated to TELEMETRY.md patterns rather than detailed specs
+- **Timeline realistic**: 30-minute estimate for single utility function instrumentation
+
+**Impact**:
+- **Complete coverage**: Achieves 100% business logic instrumentation when Phase 3.6 completed
+- **Optimization data**: Context selection metrics enable performance optimization decisions
+- **Documentation clarity**: Clear implementation guidance without over-specification
+
 ---
 
 **PRD Created**: January 16, 2025
 **Last Updated**: September 20, 2025
-**Document Version**: 1.9
+**Document Version**: 2.0
