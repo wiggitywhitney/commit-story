@@ -477,6 +477,31 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: Enables trace-informed Claude Code workflows while preserving user experience
 **Status**: ⏳ Outstanding - Ready for Phase 4 implementation
 
+### DD-018: Log Rationalization Before Correlation
+**Decision**: Clean up and rationalize console.log usage before implementing trace correlation to ensure only valuable logs are correlated
+**Rationale**:
+- **Current state analysis**: Terminal output shows many debug/implementation detail logs mixed with user progress
+- **Debug logs in production**: Git diff file analysis details shouldn't be user-facing (technical-decisions-generator.js)
+- **Too granular progress**: "Waiting for summary completion", "Generating commit details" reveal implementation internals
+- **Console exporter noise**: In debug mode, OpenTelemetry console traces create overwhelming JSON output
+- **Signal-to-noise ratio**: Need clear distinction between user progress indicators and technical debugging
+**Logs to Remove**:
+- Git diff file analysis output (technical-decisions-generator.js lines 49, 55, 64-65)
+- Overly granular progress steps that expose implementation details
+- Intermediate "waiting" messages that don't add user value
+**Logs to Keep**:
+- High-level progress: Start, major milestones, completion
+- Errors and warnings (e.g., "No chat data found")
+- One-time initialization messages (OpenTelemetry setup)
+- Critical status updates (API connectivity, save confirmation)
+**Implementation Details**:
+- Remove console.logs from technical-decisions-generator.js
+- Consolidate progress logs in journal-generator.js to essential milestones only
+- Keep user-facing emoji progress indicators
+- Consider making console trace exporter test-only, not debug mode
+**Impact**: Reduces log noise, improves correlation value, cleaner user experience
+**Status**: ⏳ Outstanding - Prerequisite for Phase 4
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -799,6 +824,41 @@ As new components are instrumented, the standards module will need additional sp
 - [x] Update TELEMETRY.md with validation commands
 - [ ] Add filter patterns to standards module (pending Phase 3.3)
 - [ ] Update TELEMETRY.md with filter examples (pending Phase 3.3)
+
+### Phase 3.5: Log Cleanup and Rationalization (DD-018)
+**Timeline**: 30 minutes
+**Priority**: HIGH - Prerequisite for clean correlation implementation
+**Dependencies**: None
+**Rationale**: Clean up verbose/debug logging before implementing correlation to ensure only valuable logs are correlated
+
+This phase implements DD-018 to remove debug logs and consolidate progress indicators before adding trace correlation.
+
+#### Deliverables
+- [ ] Remove debug logs from `src/generators/technical-decisions-generator.js`:
+  - [ ] Remove line 49: `console.log('📁 Git diff file analysis:');`
+  - [ ] Remove line 55: `console.log('   Files changed:', changedFiles);`
+  - [ ] Remove line 64: `console.log('   Documentation files:', docFiles);`
+  - [ ] Remove line 65: `console.log('   Non-documentation files:', nonDocFiles);`
+- [ ] Simplify progress logging in `src/generators/journal-generator.js`:
+  - [ ] Keep line 43: `console.log('🎯 Generating journal sections...');`
+  - [ ] Remove line 46: "Starting summary and technical decisions in parallel..."
+  - [ ] Remove line 54: "Generating commit details..."
+  - [ ] Remove line 58: "Waiting for summary completion..."
+  - [ ] Remove line 68: "Generating development dialogue..."
+  - [ ] Remove line 73: "Waiting for remaining sections..."
+  - [ ] Keep line 98: `console.log('✅ Journal sections generated successfully');`
+- [ ] Evaluate console trace exporter output:
+  - [ ] Consider making it conditional (test mode only, not debug mode)
+  - [ ] Or reduce verbosity of trace output in debug mode
+- [ ] Document log categories in comments:
+  - [ ] User progress indicators (keep)
+  - [ ] Debug/technical details (remove)
+  - [ ] Errors/warnings (keep)
+
+**Expected Outcome**:
+- Remove all debug/implementation detail logs
+- Keep only user-relevant progress indicators
+- Cleaner foundation for Phase 4 correlation
 
 ### Phase 4: Dual-Output Log-Trace Correlation (DD-005, DD-016, DD-017)
 **Timeline**: 1.5 hours
