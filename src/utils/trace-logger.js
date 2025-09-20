@@ -62,6 +62,7 @@ function narrativeLog(level, operation, message, context = {}) {
   console.log(JSON.stringify(logEntry));
 }
 
+
 /**
  * Create narrative logger for a specific operation
  * Returns an object with level-specific logging functions
@@ -71,9 +72,16 @@ function narrativeLog(level, operation, message, context = {}) {
  */
 export function createNarrativeLogger(operation) {
   return {
+    // Narrative-specific methods for operation tracking
+    start: (operationDesc, message, context) => narrativeLog('info', operation, message, { operationDesc, phase: 'start', ...context }),
+    progress: (operationDesc, message, context) => narrativeLog('info', operation, message, { operationDesc, phase: 'progress', ...context }),
+    complete: (operationDesc, message, context) => narrativeLog('info', operation, message, { operationDesc, phase: 'complete', ...context }),
+    decision: (operationDesc, message, context) => narrativeLog('info', operation, message, { operationDesc, phase: 'decision', ...context }),
+
+    // Standard logging methods
     info: (message, context) => narrativeLog('info', operation, message, context),
     warn: (message, context) => narrativeLog('warn', operation, message, context),
-    error: (message, context) => narrativeLog('error', operation, message, context),
+    error: (operationDesc, message, error, context) => narrativeLog('error', operation, message, { operationDesc, error: error?.message, stack: error?.stack, ...context }),
     debug: (message, context) => narrativeLog('debug', operation, message, context)
   };
 }

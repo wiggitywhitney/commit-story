@@ -1803,6 +1803,48 @@ logger.error('operation description', 'Error narrative', errorObject, context);
 2. **Debugging**: Trace-correlated logs enable issue diagnosis with full context
 3. **Code Validation**: AI can verify expected vs actual behavior using execution narratives
 
+### September 20, 2025: Critical System Fixes & Trace Validation - COMPLETE ✅
+**Duration**: ~2 hours
+**Focus**: Resolve system-breaking bugs in Phase 4 narrative logging implementation
+**Context**: Phase 4 appeared complete but system was non-functional due to missing method implementations
+
+**Critical Issues Resolved**:
+- [x] **Missing Method Implementation**: Fixed `createNarrativeLogger` missing `start()`, `progress()`, `complete()`, `decision()` methods
+  - **Impact**: Git collector and all instrumented components were crashing
+  - **Root Cause**: Phase 4 implementation was incomplete despite being marked "complete"
+  - **Solution**: Added all narrative logging methods to `src/utils/trace-logger.js`
+
+- [x] **Over-Instrumentation Bug**: Eliminated "bajillion redaction spans" issue
+  - **Problem**: `redactSensitiveData()` creating ~342 spans per journal generation
+  - **Impact**: Trace pollution making system unusable for debugging
+  - **Solution**: Removed OpenTelemetry spans from `src/generators/filters/sensitive-data-filter.js`
+  - **Result**: Clean 18-span traces instead of 100+ span traces
+
+**System Validation**:
+- [x] **Telemetry Pipeline**: `npm run validate:trace` passes successfully
+- [x] **Datadog Integration**: Traces properly appearing with clean hierarchy
+- [x] **Narrative Logging**: All components now working with proper method implementations
+- [x] **Trace Quality**: Eliminated span pollution, maintained full observability
+
+**Technical Evidence**:
+- **Before**: Git collector failing with "Git command failed" - narrative logger missing methods
+- **After**: Complete trace pipeline generating 18 clean spans with proper business context
+- **Datadog Results**: Traces showing proper hierarchy without redaction spam
+- **Test Results**: All telemetry validation passing
+
+**Strategic Impact**:
+- **Phase 4 NOW Actually Complete**: System functional with full narrative logging
+- **PRD-13 Ready**: Clean foundation for effectiveness evaluation
+- **Production Ready**: Over-instrumentation resolved, system stable
+
+**Files Modified**:
+- `src/utils/trace-logger.js` - Added missing narrative logging methods
+- `src/generators/filters/sensitive-data-filter.js` - Removed over-instrumentation
+
+**Important Note**: This work revealed that previous "Phase 4 Complete" status was inaccurate - the system was not functional until these fixes were applied. Future phase completions should include end-to-end system validation.
+
+**Remaining Gap**: Trace/log correlation in Datadog not yet implemented, but PRD remains closed as core instrumentation objectives are met.
+
 **Next Session Priority**:
 - **PRD-13 Phase 1**: Environment gating implementation (ENABLE_NARRATIVE_LOGS control)
 - **PRD-13 Phase 2**: Begin effectiveness evaluation data collection
@@ -1811,4 +1853,4 @@ logger.error('operation description', 'Error narrative', errorObject, context);
 
 **PRD Created**: January 16, 2025
 **Last Updated**: September 20, 2025
-**Document Version**: 2.0
+**Document Version**: 2.1
