@@ -513,6 +513,26 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Impact**: Completes end-to-end context processing observability
 **Status**: ✅ COMPLETE - 100% business logic instrumentation coverage achieved
 
+### DD-020: Consistent Debug Mode Output
+**Decision**: Standardize output format when commit hook runs in foreground during debug mode
+**Rationale**:
+- **Hook behavior**: Normal mode runs hook in background (user sees nothing), debug mode runs hook in foreground for troubleshooting
+- **Mixed output confusion**: Debug mode shows both `[DEBUG]` technical logs AND emoji user progress messages, creating poor debugging UX
+- **User expectation**: When `COMMIT_STORY_DEBUG=true` is set for troubleshooting, users need clear, consistent output to identify issues
+- **Current problem**: Mixed log styles make it difficult to follow execution flow during debugging sessions
+- **Example confusion**:
+  ```
+  [DEBUG] Starting journal generation for commit 1ff2...
+  🚀 Commit Story - Generating journal entry for HEAD...
+  [DEBUG] Debug mode enabled - running in foreground
+  🔭 OpenTelemetry initialized:
+  📊 Context Summary:
+  ```
+**Solution**: When debug mode forces foreground execution, use consistent debug-appropriate logging style
+**Implementation**: Conditional output formatting based on debug mode state
+**Impact**: Cleaner debugging experience, easier troubleshooting of commit hook issues
+**Status**: ⏳ Outstanding - Needs implementation
+
 ## Technical Implementation
 
 ### Initialization Pattern
@@ -836,11 +856,11 @@ As new components are instrumented, the standards module will need additional sp
 - [x] Add filter patterns to standards module (Phase 3.3 complete)
 - [x] Update TELEMETRY.md with filter examples (Phase 3.3 complete)
 
-### Phase 3.5: Log Cleanup and Rationalization (DD-018) - COMPLETE ✅
+### Phase 3.5: Log Cleanup and Rationalization (DD-018) - MOSTLY COMPLETE
 **Timeline**: 30 minutes
 **Priority**: HIGH - Prerequisite for clean correlation implementation
 **Dependencies**: None
-**Status**: ✅ COMPLETE
+**Status**: 🔄 90% COMPLETE - Console exporter fixed, debug output consistency (DD-020) outstanding
 **Rationale**: Clean up verbose/debug logging before implementing correlation to ensure only valuable logs are correlated
 
 This phase implements DD-018 to remove debug logs and consolidate progress indicators before adding trace correlation.
@@ -859,9 +879,13 @@ This phase implements DD-018 to remove debug logs and consolidate progress indic
   - [x] Remove line 68: "Generating development dialogue..."
   - [x] Remove line 73: "Waiting for remaining sections..."
   - [x] Keep line 98: `console.log('✅ Journal sections generated successfully');`
-- [ ] Evaluate console trace exporter output:
-  - [ ] Consider making it conditional (test mode only, not debug mode)
-  - [ ] Or reduce verbosity of trace output in debug mode
+- [x] Evaluate console trace exporter output:
+  - [x] Consider making it conditional (test mode only, not debug mode)
+  - [x] Implemented: Console exporter only enabled during `npm run validate:trace`
+- [ ] Implement consistent debug mode output (DD-020):
+  - [ ] Standardize log output when COMMIT_STORY_DEBUG=true runs hook in foreground
+  - [ ] Choose between: all DEBUG-style logs OR all emoji-style logs (not mixed)
+  - [ ] Update hook scripts to use consistent formatting in debug mode
 - [ ] Document log categories in comments:
   - [ ] User progress indicators (keep)
   - [ ] Debug/technical details (remove)
