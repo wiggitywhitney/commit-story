@@ -67,7 +67,11 @@ getProviderFromModel('claude-3');       // 'anthropic'
 
 ## Validation
 ```bash
+# Check for standards violations in source code
 npm run validate:telemetry
+
+# Test that spans are actually created properly
+npm run validate:trace
 ```
 
 ## Rules

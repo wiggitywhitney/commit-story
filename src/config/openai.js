@@ -4,19 +4,53 @@
  */
 
 import OpenAI from 'openai';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
+
+// Get tracer instance for manual instrumentation
+const tracer = trace.getTracer('commit-story', '1.0.0');
 
 export function createOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error(
-      'OPENAI_API_KEY environment variable is required. ' +
-      'Please set it in your .env file or environment.'
-    );
-  }
+  return tracer.startActiveSpan(OTEL.span.config.openai(), {
+    attributes: OTEL.attrs.config.openai({
+      apiKeyValid: !!process.env.OPENAI_API_KEY,
+      model: DEFAULT_MODEL,
+      provider: getProviderFromModel(DEFAULT_MODEL),
+      initDuration: 0
+    })
+  }, (span) => {
+    const startTime = Date.now();
 
-  return new OpenAI({
-    apiKey,
+    try {
+      const apiKey = process.env.OPENAI_API_KEY;
+
+      if (!apiKey) {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Missing API key' });
+        throw new Error(
+          'OPENAI_API_KEY environment variable is required. ' +
+          'Please set it in your .env file or environment.'
+        );
+      }
+
+      const client = new OpenAI({
+        apiKey,
+      });
+
+      // Update span with final metrics
+      span.setAttributes({
+        [`${OTEL.NAMESPACE}.config.init_duration_ms`]: Date.now() - startTime
+      });
+      span.setStatus({ code: SpanStatusCode.OK, message: 'OpenAI client initialized successfully' });
+
+      return client;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    } finally {
+      span.end();
+    }
   });
 }
 

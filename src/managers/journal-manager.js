@@ -1,5 +1,10 @@
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../telemetry/standards.js';
+
+// Get tracer instance for manual instrumentation
+const tracer = trace.getTracer('commit-story', '1.0.0');
 
 /**
  * Journal File Management System
@@ -19,37 +24,78 @@ import { dirname, join } from 'path';
  * @returns {Promise<string>} - Path to the file where entry was saved
  */
 export async function saveJournalEntry(commitHash, timestamp, commitMessage, sections) {
-  const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
-  // Build file path: journal/entries/YYYY-MM/YYYY-MM-DD.md
-  const monthDir = `${year}-${month}`;
-  const fileName = `${year}-${month}-${day}.md`;
-  const filePath = join(process.cwd(), 'journal', 'entries', monthDir, fileName);
-  
-  // Format entry for file or stdout
-  const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
-  
-  try {
-    // Create directory structure if it doesn't exist
-    const dirPath = dirname(filePath);
-    await fs.mkdir(dirPath, { recursive: true });
-    
-    // Append to daily file
-    await fs.appendFile(filePath, formattedEntry, 'utf8');
-    
-    return filePath;
-  } catch (error) {
-    console.error(`⚠️ Cannot write journal file: ${error.message}`);
-    console.error('Journal entry content (save manually if needed):');
-    console.log('--- JOURNAL ENTRY START ---');
-    console.log(formattedEntry);
-    console.log('--- JOURNAL ENTRY END ---');
-    
-    return 'stdout (file write failed)';
-  }
+  return await tracer.startActiveSpan(OTEL.span.journal.save(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.commit.hash`]: commitHash,
+      [`${OTEL.NAMESPACE}.commit.message`]: commitMessage?.split('\n')[0]
+    }
+  }, async (span) => {
+    const startTime = Date.now();
+
+    try {
+      const date = new Date(timestamp);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+
+      // Build file path: journal/entries/YYYY-MM/YYYY-MM-DD.md
+      const monthDir = `${year}-${month}`;
+      const fileName = `${year}-${month}-${day}.md`;
+      const filePath = join(process.cwd(), 'journal', 'entries', monthDir, fileName);
+
+      // Format entry for file or stdout
+      const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
+
+      // Create directory structure if it doesn't exist
+      const dirPath = dirname(filePath);
+      let dirCreated = false;
+      try {
+        await fs.mkdir(dirPath, { recursive: true });
+        dirCreated = true;
+      } catch (dirError) {
+        // Directory creation failed, but continue to try file write
+        dirCreated = false;
+      }
+
+      // Append to daily file
+      await fs.appendFile(filePath, formattedEntry, 'utf8');
+
+      // Record successful save metrics
+      span.setAttributes(OTEL.attrs.journal.save({
+        filePath: filePath,
+        entrySize: formattedEntry.length,
+        dirCreated: dirCreated,
+        writeDuration: Date.now() - startTime
+      }));
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry saved successfully' });
+      return filePath;
+
+    } catch (error) {
+      // Record error metrics
+      span.setAttributes(OTEL.attrs.journal.save({
+        filePath: 'stdout (file write failed)',
+        entrySize: 0,
+        dirCreated: false,
+        writeDuration: Date.now() - startTime
+      }));
+
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      // Fallback to stdout (preserve existing error handling)
+      const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
+      console.error(`⚠️ Cannot write journal file: ${error.message}`);
+      console.error('Journal entry content (save manually if needed):');
+      console.log('--- JOURNAL ENTRY START ---');
+      console.log(formattedEntry);
+      console.log('--- JOURNAL ENTRY END ---');
+
+      return 'stdout (file write failed)';
+    } finally {
+      span.end();
+    }
+  });
 }
 
 /**

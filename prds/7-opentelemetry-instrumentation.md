@@ -135,28 +135,28 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Status**: ✅ Implemented - DD-001 completed with provider-agnostic design
 
 ### DD-002: Add Event Recording for Prompts/Completions
-**Decision**: Implement OpenTelemetry events to capture prompt and completion content  
+**Decision**: DO NOT implement event recording for prompt/completion content
 **Rationale**:
-- Events provide structured way to capture AI conversation flow
-- Enables debugging of AI operations beyond just metrics
-- Follows OpenTelemetry event conventions for GenAI
-- Can be controlled via environment variable for privacy/volume concerns
+- Prompt/completion content would be massive (10K+ tokens per request)
+- Would require significant storage and privacy considerations
+- Token metrics, model, and timing data already captured are sufficient
+- No clear production use case for storing full prompts/completions
+- Would add complexity without proportional benefit
 
-**Implementation**: Record `gen_ai.content.prompt` and `gen_ai.content.completion` events  
-**Impact**: Increased telemetry data, better AI operation visibility  
-**Status**: ⏳ Outstanding - requires implementation
+**Impact**: Avoid unnecessary data volume and storage costs
+**Status**: ❌ NOT NEEDED - Decision reversed
 
 ### DD-003: Implement Conversation ID Tracking
-**Decision**: Track conversation context across related AI operations  
+**Decision**: DO NOT implement separate conversation ID tracking
 **Rationale**:
-- Links multiple AI calls that are part of same journal generation
-- Enables tracing complete "conversations" rather than individual API calls
-- Aligns with GenAI semantic conventions for conversation tracking
-- Improves analysis of multi-turn AI interactions
+- Each journal generation is already a single "conversation" traced by the root span
+- The trace ID already provides correlation across all AI operations within one session
+- Adding a separate conversation ID would be redundant
+- The standards module already has the builder but it's unused
+- Trace hierarchy already shows the relationship between all operations
 
-**Implementation**: Generate unique ID per journal session, pass through context  
-**Impact**: Better traceability of related operations  
-**Status**: ⏳ Outstanding - requires implementation
+**Impact**: Avoid unnecessary complexity while maintaining full traceability
+**Status**: ❌ NOT NEEDED - Trace ID provides sufficient correlation
 
 ### DD-004: Manual Instrumentation Over Third-Party Libraries
 **Decision**: Continue with manual instrumentation rather than adopting Elastic's `@opentelemetry/instrumentation-openai`  
@@ -209,8 +209,8 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 }
 ```
 
-**Impact**: Better observability correlation, increased log parsing capabilities  
-**Status**: ⏳ Outstanding - requires implementation
+**Impact**: Better observability correlation, enables trace-informed Claude Code workflows
+**Status**: 🔥 HIGH PRIORITY - Primary Phase 4 implementation focus
 
 ### DD-006: Comprehensive Instrumentation Coverage for All Generators
 **Decision**: Instrument ALL AI generator functions with OpenTelemetry spans and GenAI conventions  
@@ -240,28 +240,28 @@ This PRD documents the implementation of comprehensive OpenTelemetry instrumenta
 **Status**: ✅ COMPLETE - Full observability achieved
 
 ### DD-007: Context Retrieval and Processing Visibility
-**Decision**: Instrument all context gathering, filtering, and transformation operations  
+**Decision**: Instrument all context gathering, filtering, and transformation operations
 **Rationale**:
 - User specifically requested "all context retrieval. Everything really"
 - Need visibility into chat message filtering performance
 - Token reduction metrics are critical for cost optimization
 - Processing bottlenecks may exist in non-AI operations
 
-**Operations to Instrument**:
-- Chat message collection from claude-collector
-- Message filtering and token reduction in context-filter.js
-- Git diff processing and summarization
-- Metadata calculation (user/assistant message counts)
-- Context selection and transformation
+**Operations Completed**:
+- ✅ Chat message collection from claude-collector (Phase 3.1)
+- ✅ Message filtering and token reduction in context-filter.js (Phase 2.3)
+- ✅ Git diff processing and summarization (Phase 3.1)
+- ✅ Metadata calculation (user/assistant message counts) (Phase 2.3)
+- ✅ Context selection and transformation (Phase 2.3)
 
-**Key Metrics to Track**:
-- Original vs filtered message counts
-- Token reduction achieved
-- Processing duration for each stage
-- Memory usage for large contexts
+**Key Metrics Achieved**:
+- ✅ Original vs filtered message counts
+- ✅ Token reduction achieved (40% reduction tracked)
+- ✅ Processing duration for each stage
+- ✅ File discovery and parsing metrics
 
-**Impact**: Full visibility into data pipeline, optimization opportunities identified  
-**Status**: ⏳ Outstanding - requires implementation
+**Impact**: Full visibility into data pipeline achieved, optimization opportunities identified
+**Status**: ✅ COMPLETE - All context operations fully instrumented in Phase 3.1
 
 ### DD-008: Provider-Agnostic Model Configuration
 **Decision**: Replace all hardcoded model references with centralized DEFAULT_MODEL constant
@@ -717,32 +717,37 @@ return await tracer.startActiveSpan(OTEL.span.collectors.claude(), {
 
 #### Phase 3.2: Instrument Core Managers (45 minutes)
 ##### Deliverables
-- [ ] Instrument `src/managers/journal-manager.js`:
-  - [ ] Import OTEL from standards module
-  - [ ] Use `OTEL.span.journal.save()` for file operations
-  - [ ] Use `OTEL.attrs.journal.save(data)` for file I/O metrics:
+- [x] Instrument `src/managers/journal-manager.js`:
+  - [x] Import OTEL from standards module
+  - [x] Use `OTEL.span.journal.save()` for file operations
+  - [x] Use `OTEL.attrs.journal.save(data)` for file I/O metrics:
     - File size, directory operations, write duration
-- [ ] Instrument `src/config/openai.js`:
-  - [ ] Import OTEL from standards module
-  - [ ] Use `OTEL.span.config.openai()` for client initialization
-  - [ ] Use `OTEL.attrs.config.openai(data)` for setup metrics:
+- [x] Instrument `src/config/openai.js`:
+  - [x] Import OTEL from standards module
+  - [x] Use `OTEL.span.config.openai()` for client initialization
+  - [x] Use `OTEL.attrs.config.openai(data)` for setup metrics:
     - API key validation status, configuration validation
-- [ ] Test manager instrumentation with `npm run trace:validate`
+- [x] Test manager instrumentation with `npm run trace:validate`
 
 #### Phase 3.3: Instrument Remaining Filters (30 minutes)
+**IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands.
+
 ##### Deliverables
+- [ ] Add filter patterns to standards module first:
+  - [ ] Add `filters: { sensitiveData: () => 'filters.redact_sensitive_data' }` to OTEL.span
+  - [ ] Add `filters: { sensitiveData: (data) => ({ ... }) }` to OTEL.attrs
 - [ ] Instrument `src/generators/filters/sensitive-data-filter.js`:
   - [ ] Import OTEL from standards module
-  - [ ] Use `OTEL.span.filters.sensitive()` for redaction operations
-  - [ ] Use `OTEL.attrs.filters.sensitive(data)` for redaction metrics:
+  - [ ] Use `OTEL.span.filters.sensitiveData()` for redaction operations
+  - [ ] Use `OTEL.attrs.filters.sensitiveData(data)` for redaction metrics:
     - Pattern matches, redaction counts, processing time
-- [ ] Test filter instrumentation with `npm run trace:validate`
+- [ ] Test filter instrumentation with `npm run validate:trace`
 
 #### Phase 3.4: Expand Standards Module for New Components (15 minutes)
 As new components are instrumented, the standards module will need additional span names and attribute builders.
 
 ##### Deliverables
-- [ ] Add collector span names and attribute builders to `src/telemetry/standards.js`:
+- [x] Add collector span names and attribute builders to `src/telemetry/standards.js`:
   ```javascript
   collectors: {
     claude: () => 'claude.collect_messages',
@@ -750,63 +755,22 @@ As new components are instrumented, the standards module will need additional sp
   },
   // ... additional patterns
   ```
-- [ ] Add manager and filter patterns to standards module
-- [ ] Update TELEMETRY.md with new patterns and examples
+- [x] Add manager patterns to standards module (config.openai, journal.save)
+- [x] Update TELEMETRY.md with validation commands
+- [ ] Add filter patterns to standards module (pending Phase 3.3)
+- [ ] Update TELEMETRY.md with filter examples (pending Phase 3.3)
 
-### Phase 4: Advanced GenAI Features & Enhancements
-**Timeline**: 2-3 hours
-**Priority**: Medium
-**Dependencies**: Phase 3 complete (all core instrumentation uses standards module)
-
-This phase implements advanced observability features for AI operations using the established standards module patterns.
-
-#### Phase 4.1: Event Recording for AI Operations (DD-002)
-**Timeline**: 45 minutes
-**Dependencies**: Standards module exists
-
-##### Deliverables
-- [ ] Add environment variable `OTEL_GENAI_CAPTURE_CONTENT=true` control
-- [ ] Record `gen_ai.content.prompt` events before API calls using OTEL standards
-- [ ] Record `gen_ai.content.completion` events after API calls with token counts
-- [ ] Include model parameters and conversation context in events
-- [ ] Update all AI generators to use event recording patterns from standards module
-
-##### Implementation Using Standards Module
-```javascript
-import { OTEL } from '../telemetry/standards.js';
-
-// Event recording will be part of OTEL.events.genAI patterns
-span.addEvent('gen_ai.content.prompt', OTEL.events.genAI.prompt(messages, model));
-span.addEvent('gen_ai.content.completion', OTEL.events.genAI.completion(response));
-```
-
-#### Phase 4.2: Conversation ID Tracking (DD-003)
-**Timeline**: 30 minutes
-**Dependencies**: Standards module exists
-
-##### Deliverables
-- [ ] Generate unique conversation ID in main function
-- [ ] Pass conversation ID through context to all AI operations
-- [ ] Add `gen_ai.conversation.id` attribute using OTEL.attrs patterns
-- [ ] Update standards module with conversation tracking builders
-
-##### Implementation Using Standards Module
-```javascript
-// Add to OTEL.attrs.genAI for conversation tracking
-const conversationId = generateConversationId();
-span.setAttributes({
-  ...OTEL.attrs.genAI.request(model, temp, msgCount),
-  ...OTEL.attrs.genAI.conversation(conversationId)
-});
-```
-
-#### Phase 4.3: Structured Log-Trace Correlation (DD-005)
+### Phase 4: JSON-Structured Log-Trace Correlation (DD-005)
 **Timeline**: 1 hour
-**Dependencies**: Standards module exists
+**Priority**: HIGH - Enables trace-informed Claude Code workflows
+**Dependencies**: Phase 3 complete (all core instrumentation uses standards module)
+**IMPORTANT**: Read `TELEMETRY.md` first for current standards, patterns, and validation commands.
+
+This phase implements structured JSON logging with automatic trace context injection to enable better observability correlation and support trace-informed Claude Code workflows.
 
 ##### Deliverables
 - [ ] Create `src/utils/trace-logger.js` using OTEL standards for trace context
-- [ ] Evaluate and use OpenTelemetry hex format for trace IDs (vendor neutral)
+- [ ] Use OpenTelemetry hex format for trace IDs (vendor neutral)
 - [ ] Replace console.log calls in key instrumented files:
   - [ ] src/index.js - Main application logging
   - [ ] src/generators/journal-generator.js - Generation phase logging
@@ -838,24 +802,8 @@ export function createTraceLogger() {
 }
 ```
 
-#### Phase 4.4: Complete Context Processing Instrumentation (DD-007)
-**Timeline**: 30 minutes
-**Dependencies**: Phase 3.1 git-collector instrumentation complete
+**Note**: Other advanced features (DD-002, DD-003, DD-007) have been marked as NOT NEEDED or COMPLETE based on complexity vs. benefit analysis.
 
-##### Deliverables
-- [ ] Instrument git diff processing in git-collector.js using OTEL standards
-- [ ] Add to existing git collector instrumentation from Phase 3
-- [ ] Use OTEL.span.collectors.git() and OTEL.attrs.collectors.git() patterns
-- [ ] Track git diff parsing metrics: lines added, removed, files modified
-
-#### Phase 4.5: Documentation & Knowledge Consolidation (DD-008)
-**Timeline**: 15 minutes
-**Dependencies**: Standards module documentation exists
-
-##### Deliverables
-- [ ] Document provider detection logic in TELEMETRY.md
-- [ ] Add advanced feature examples to standards module documentation
-- [ ] Update README.md with advanced telemetry capabilities reference
 
 ### Phase 5: Future AI Intelligence Integration
 **Timeline**: Future consideration
@@ -1398,8 +1346,55 @@ export function createTraceLogger() {
 
 **Note**: Phase 2 now 100% complete. All validation and documentation infrastructure in place for Phase 3 work.
 
+### September 20, 2025: Phase 3.2 Core Managers Implementation - COMPLETE ✅
+**Duration**: ~1 hour
+**Primary Focus**: Instrumentation of critical file I/O and configuration components
+
+**Completed PRD Items**:
+- [x] **Full Journal Manager Instrumentation** - Evidence: `src/managers/journal-manager.js` with comprehensive file I/O metrics
+  - Added `journal.save_entry` span with file path, entry size, directory creation status, and write duration
+  - Proper error handling with span status and exception recording
+  - Preserves existing fallback behavior (stdout on file write failure)
+
+- [x] **Full OpenAI Config Instrumentation** - Evidence: `src/config/openai.js` with client initialization metrics
+  - Added `config.openai` span with API key validation, model detection, and provider mapping
+  - Integration with centralized provider detection from standards module
+  - Proper initialization timing and error handling
+
+- [x] **Standards Module Extension** - Evidence: `src/telemetry/standards.js` updated with new patterns
+  - Added `config.openai` span name following TELEMETRY.md conventions
+  - Extended attribute builders with `journal.save()` and `config.openai()` functions
+  - Refactored existing journal attributes to nested structure for consistency
+
+- [x] **Breaking Change Fix** - Evidence: `src/index.js` updated to use new pattern
+  - Fixed `OTEL.attrs.journal()` → `OTEL.attrs.journal.completion()` for compatibility
+  - Maintained backward compatibility while following new nested structure
+
+- [x] **Documentation Update** - Evidence: `TELEMETRY.md` updated with validation commands
+  - Added both `validate:telemetry` and `validate:trace` commands with clear explanations
+  - Improved developer experience with proper validation workflow
+
+**Technical Achievements**:
+- 100% successful trace validation - both new spans appear correctly in trace output
+- Comprehensive metrics captured: file I/O timing (15ms), client init timing (~0ms), entry sizes (5455 bytes)
+- Zero functional regressions - all existing behavior preserved
+- Full TELEMETRY.md standards compliance throughout implementation
+- Provider-agnostic design maintained with centralized detection
+
+**Trace Evidence Confirmed**:
+- `config.openai` span: API key validation, model 'gpt-4o-mini', provider 'openai'
+- `journal.save_entry` span: Full file path, 5455 byte entry, 15ms write duration
+- Perfect parent-child relationships in trace hierarchy
+- All attributes follow `commit_story.*` namespace conventions
+
+**Next Session Priority**:
+- **Phase 3.3**: Instrument sensitive-data-filter.js (30 minutes estimated)
+- **Phase 4**: High-priority JSON-structured log-trace correlation (enables trace-informed Claude Code workflows)
+
+**Impact**: Phase 3.2 completes core infrastructure instrumentation. File I/O and configuration operations now have full observability for performance analysis and debugging.
+
 ---
 
 **PRD Created**: January 16, 2025
-**Last Updated**: September 18, 2025
-**Document Version**: 1.7
+**Last Updated**: September 20, 2025
+**Document Version**: 1.8

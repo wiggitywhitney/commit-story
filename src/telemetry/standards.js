@@ -62,6 +62,11 @@ export const OTEL = {
     collectors: {
       claude: () => 'claude.collect_messages',
       git: () => 'git.collect_data'
+    },
+
+    // Configuration operations
+    config: {
+      openai: () => 'config.openai'
     }
   },
 
@@ -180,14 +185,48 @@ export const OTEL = {
     }),
 
     /**
-     * Journal completion attributes
-     * @param {Object} journalData - Journal completion information
-     * @returns {Object} Journal attributes
+     * Journal operation attributes
      */
-    journal: (journalData) => ({
-      [`${OTEL.NAMESPACE}.journal.file_path`]: journalData.filePath,
-      [`${OTEL.NAMESPACE}.journal.completed`]: journalData.completed
-    })
+    journal: {
+      /**
+       * Journal completion attributes (from main execution)
+       * @param {Object} journalData - Journal completion information
+       * @returns {Object} Journal attributes
+       */
+      completion: (journalData) => ({
+        [`${OTEL.NAMESPACE}.journal.file_path`]: journalData.filePath,
+        [`${OTEL.NAMESPACE}.journal.completed`]: journalData.completed
+      }),
+
+      /**
+       * Journal save operation attributes
+       * @param {Object} saveData - Journal save operation data
+       * @returns {Object} Journal save attributes
+       */
+      save: (saveData) => ({
+        [`${OTEL.NAMESPACE}.journal.file_path`]: saveData.filePath,
+        [`${OTEL.NAMESPACE}.journal.entry_size`]: saveData.entrySize,
+        [`${OTEL.NAMESPACE}.journal.directory_created`]: saveData.dirCreated,
+        [`${OTEL.NAMESPACE}.journal.write_duration_ms`]: saveData.writeDuration
+      })
+    },
+
+    /**
+     * Configuration operation attributes
+     */
+    config: {
+      /**
+       * OpenAI client initialization attributes
+       * @param {Object} configData - OpenAI configuration data
+       * @returns {Object} Config attributes
+       */
+      openai: (configData) => ({
+        [`${OTEL.NAMESPACE}.config.api_key_valid`]: configData.apiKeyValid,
+        [`${OTEL.NAMESPACE}.config.model`]: configData.model,
+        [`${OTEL.NAMESPACE}.config.provider`]: configData.provider,
+        [`${OTEL.NAMESPACE}.config.init_duration_ms`]: configData.initDuration
+      })
+    }
   },
 
   // Event builders for structured events

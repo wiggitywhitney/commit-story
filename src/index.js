@@ -124,7 +124,7 @@ export default async function main(commitRef = 'HEAD') {
       );
       
       // Add final attributes
-      span.setAttributes(OTEL.attrs.journal({
+      span.setAttributes(OTEL.attrs.journal.completion({
         filePath: filePath,
         completed: true
       }));
