@@ -99,11 +99,19 @@ ${guidelines}
       logger.progress('summary generation', `Constructed prompt: ~${Math.round(promptTokens)} tokens using ${DEFAULT_MODEL}`);
 
       // Add request payload attributes to span
-      span.setAttributes(OTEL.attrs.genAI.request(
+      const requestAttrs = OTEL.attrs.genAI.request(
         requestPayload.model,
         requestPayload.temperature,
         requestPayload.messages.length
-      ));
+      );
+      span.setAttributes(requestAttrs);
+
+      // Emit request metrics for AI performance analysis
+      Object.entries(requestAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number' || typeof value === 'string') {
+          OTEL.metrics.gauge(name, typeof value === 'string' ? 1 : value);
+        }
+      });
 
       logger.progress('summary generation', 'Calling OpenAI API for summary generation');
 
@@ -121,11 +129,19 @@ ${guidelines}
       logger.progress('summary generation', `Received response: ${responseTokens} tokens, ${result.length} characters`);
       
       // Add response attributes to span
-      span.setAttributes(OTEL.attrs.genAI.usage({
+      const usageAttrs = OTEL.attrs.genAI.usage({
         model: completion.model,
         content: result,
         usage: completion.usage
-      }));
+      });
+      span.setAttributes(usageAttrs);
+
+      // Emit usage metrics for cost analysis and performance monitoring
+      Object.entries(usageAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
       
       logger.complete('summary generation', `Summary generated successfully: ${result.split(' ').length} words`);
 

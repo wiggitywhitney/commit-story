@@ -87,6 +87,26 @@ commit_story.context.total_estimated_tokens
 commit_story.context.final_messages
 commit_story.context.final_chat_tokens
 commit_story.context.aggressive_filtering
+
+// AI Generation metrics (gauge) - OpenTelemetry GenAI semantic conventions
+gen_ai.request.model
+gen_ai.request.temperature
+gen_ai.request.messages_count
+gen_ai.operation.name
+gen_ai.provider.name
+gen_ai.response.model
+gen_ai.response.message_length
+gen_ai.usage.prompt_tokens
+gen_ai.usage.completion_tokens
+
+// Utility metrics (gauge) - Utility function performance and behavior
+commit_story.utils.selections_found
+commit_story.utils.selections_requested
+commit_story.utils.description_length
+commit_story.utils.processing_duration_ms
+commit_story.config.api_key_valid
+commit_story.config.init_duration_ms
+commit_story.generation.completed
 ```
 
 ### Existing Narrative Logs

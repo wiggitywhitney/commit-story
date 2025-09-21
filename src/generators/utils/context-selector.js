@@ -29,6 +29,15 @@ export function selectContext(context, selections) {
       })
     }
   }, (span) => {
+    // Emit initial request metrics for context selection analysis
+    const requestAttrs = OTEL.attrs.utils.contextSelect({
+      selectionsRequested: selections.length
+    });
+    Object.entries(requestAttrs).forEach(([name, value]) => {
+      if (typeof value === 'number') {
+        OTEL.metrics.gauge(name, value);
+      }
+    });
     const logger = createNarrativeLogger('utils.select_context');
 
     try {
@@ -77,12 +86,20 @@ export function selectContext(context, selections) {
       }
 
       // Track completion metrics
-      span.setAttributes(OTEL.attrs.utils.contextSelect({
+      const completionAttrs = OTEL.attrs.utils.contextSelect({
         selectionsFound: descriptions.length,
         descriptionLength: description.length,
         dataKeys: Object.keys(selectedData).join(','),
         processingDuration: Date.now() - startTime
-      }));
+      });
+      span.setAttributes(completionAttrs);
+
+      // Emit completion metrics for utility performance analysis
+      Object.entries(completionAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       span.setStatus({ code: SpanStatusCode.OK });
       return result;

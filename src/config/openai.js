@@ -19,6 +19,18 @@ export function createOpenAIClient() {
       initDuration: 0
     })
   }, (span) => {
+    // Emit initial config metrics for OpenAI client analysis
+    const requestAttrs = OTEL.attrs.config.openai({
+      apiKeyValid: !!process.env.OPENAI_API_KEY,
+      model: DEFAULT_MODEL,
+      provider: getProviderFromModel(DEFAULT_MODEL),
+      initDuration: 0
+    });
+    Object.entries(requestAttrs).forEach(([name, value]) => {
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        OTEL.metrics.gauge(name, typeof value === 'boolean' ? (value ? 1 : 0) : value);
+      }
+    });
     const startTime = Date.now();
 
     try {
@@ -37,8 +49,16 @@ export function createOpenAIClient() {
       });
 
       // Update span with final metrics
-      span.setAttributes({
+      const finalAttrs = {
         [`${OTEL.NAMESPACE}.config.init_duration_ms`]: Date.now() - startTime
+      };
+      span.setAttributes(finalAttrs);
+
+      // Emit final metrics for config initialization analysis
+      Object.entries(finalAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
       });
       span.setStatus({ code: SpanStatusCode.OK, message: 'OpenAI client initialized successfully' });
 

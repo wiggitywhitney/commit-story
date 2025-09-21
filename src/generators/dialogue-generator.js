@@ -93,11 +93,19 @@ ${dialoguePrompt}
       };
 
       // Add request payload attributes to span
-      span.setAttributes(OTEL.attrs.genAI.request(
+      const requestAttrs = OTEL.attrs.genAI.request(
         requestPayload.model,
         requestPayload.temperature,
         requestPayload.messages.length
-      ));
+      );
+      span.setAttributes(requestAttrs);
+
+      // Emit request metrics for AI performance analysis
+      Object.entries(requestAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number' || typeof value === 'string') {
+          OTEL.metrics.gauge(name, typeof value === 'string' ? 1 : value);
+        }
+      });
 
       // Add timeout wrapper (30 seconds)
       const completion = await Promise.race([
@@ -110,11 +118,19 @@ ${dialoguePrompt}
       const dialogue = completion.choices[0].message.content.trim();
 
       // Add response attributes to span
-      span.setAttributes(OTEL.attrs.genAI.usage({
+      const usageAttrs = OTEL.attrs.genAI.usage({
         model: completion.model,
         content: dialogue,
         usage: completion.usage
-      }));
+      });
+      span.setAttributes(usageAttrs);
+
+      // Emit usage metrics for cost analysis and performance monitoring
+      Object.entries(usageAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       // Clean up formatting in assistant quotes for readability
       const cleanedDialogue = dialogue

@@ -59,6 +59,19 @@ export async function generateJournalEntry(context) {
       })
     }
   }, async (span) => {
+    // Emit initial request metrics for journal generation analysis
+    const requestAttrs = {
+      ...OTEL.attrs.commit(context.commit.data),
+      ...OTEL.attrs.chat({
+        count: context.chatMessages.data.length,
+        total: context.chatMetadata.data.totalMessages
+      })
+    };
+    Object.entries(requestAttrs).forEach(([name, value]) => {
+      if (typeof value === 'number') {
+        OTEL.metrics.gauge(name, value);
+      }
+    });
     try {
       debugLog('Started journal generation');
       
@@ -76,10 +89,18 @@ export async function generateJournalEntry(context) {
       span.addEvent('phase2.start', { phase: 'waiting-for-summary' });
       const summary = await summaryPromise;
       
-      span.setAttributes(OTEL.attrs.sections({
+      const sectionAttrs = OTEL.attrs.sections({
         summary: summary.length,
         details: commitDetails.length
-      }));
+      });
+      span.setAttributes(sectionAttrs);
+
+      // Emit section metrics for journal composition analysis
+      Object.entries(sectionAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
       
       // Phase 3: Start dialogue with summary result
       span.addEvent('phase3.start', { phase: 'dialogue-generation' });
@@ -93,13 +114,21 @@ export async function generateJournalEntry(context) {
       ]);
       
       // Add final section lengths to span
-      span.setAttributes({
+      const finalAttrs = {
         ...OTEL.attrs.sections({
           dialogue: dialogue.length,
           technical: technicalDecisions.length
         }),
         [`${OTEL.NAMESPACE}.sections.total_count`]: 4,
         [`${OTEL.NAMESPACE}.generation.completed`]: true
+      };
+      span.setAttributes(finalAttrs);
+
+      // Emit final metrics for journal completion analysis
+      Object.entries(finalAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number' || typeof value === 'boolean') {
+          OTEL.metrics.gauge(name, typeof value === 'boolean' ? (value ? 1 : 0) : value);
+        }
       });
       
       // Return sections object for journal-manager to format
