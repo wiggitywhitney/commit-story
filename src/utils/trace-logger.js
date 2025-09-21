@@ -89,8 +89,7 @@ function narrativeLog(level, operation, message, context = {}) {
     });
   }
 
-  // Keep console output for backward compatibility and immediate feedback
-  console.log(JSON.stringify(logEntry));
+  // Only show console output during explicit debug sessions, not normal commits
 }
 
 
