@@ -141,10 +141,15 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
       
       // Add raw message data to span
-      span.setAttributes(OTEL.attrs.chat({
+      const rawChatData = {
         raw: rawChatMessages?.length || 0,
         count: cleanChatMessages.length
-      }));
+      };
+      span.setAttributes(OTEL.attrs.chat(rawChatData));
+
+      // Dual emission: emit metrics alongside span attributes
+      OTEL.metrics.gauge('commit_story.chat.raw_messages_count', rawChatData.raw);
+      OTEL.metrics.gauge('commit_story.chat.messages_count', rawChatData.count);
       
       // Apply complete context preparation (consolidate all filtering and token management)
       const rawContext = {
@@ -157,13 +162,20 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       const metadata = calculateChatMetadata(cleanChatMessages);
       
       // Add final metadata to span
-      span.setAttributes(OTEL.attrs.chat({
+      const finalChatData = {
         total: metadata.totalMessages,
         userMessages: metadata.userMessageCount,
         assistantMessages: metadata.assistantMessageCount,
         userMessagesOverTwenty: metadata.userMessages.overTwentyCharacters,
         filtered: filteredContext.chatMessages.length
-      }));
+      };
+      span.setAttributes(OTEL.attrs.chat(finalChatData));
+
+      // Dual emission: emit key business metrics
+      OTEL.metrics.gauge('commit_story.chat.total_messages', finalChatData.total);
+      OTEL.metrics.gauge('commit_story.chat.user_messages', finalChatData.userMessages);
+      OTEL.metrics.gauge('commit_story.chat.assistant_messages', finalChatData.assistantMessages);
+      OTEL.metrics.gauge('commit_story.chat.user_messages_over_twenty', finalChatData.userMessagesOverTwenty);
       
       // Return self-documenting context object for journal generation
       const result = {

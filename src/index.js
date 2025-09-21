@@ -121,12 +121,20 @@ export default async function main(commitRef = 'HEAD') {
       const sections = await generateJournalEntry(context);
       
       // Add sections metadata to span
-      span.setAttributes(OTEL.attrs.sections({
+      const sectionsData = {
         summary: sections.summary?.length || 0,
         dialogue: sections.dialogue?.length || 0,
         technical: sections.technicalDecisions?.length || 0,
         details: sections.commitDetails?.length || 0
-      }));
+      };
+      span.setAttributes(OTEL.attrs.sections(sectionsData));
+
+      // Dual emission: emit section length metrics
+      OTEL.metrics.gauge('commit_story.sections.summary_length', sectionsData.summary);
+      OTEL.metrics.gauge('commit_story.sections.dialogue_length', sectionsData.dialogue);
+      OTEL.metrics.gauge('commit_story.sections.technical_decisions_length', sectionsData.technical);
+      OTEL.metrics.gauge('commit_story.sections.commit_details_length', sectionsData.details);
+      OTEL.metrics.gauge('commit_story.sections.total_count', 4); // Always 4 sections
       
       // Save the complete journal entry to daily file
       const filePath = await saveJournalEntry(

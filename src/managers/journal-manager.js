@@ -87,12 +87,18 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       await fs.appendFile(filePath, formattedEntry, 'utf8');
 
       // Record successful save metrics
-      span.setAttributes(OTEL.attrs.journal.save({
+      const saveData = {
         filePath: filePath,
         entrySize: formattedEntry.length,
         dirCreated: dirCreated,
         writeDuration: Date.now() - startTime
-      }));
+      };
+      span.setAttributes(OTEL.attrs.journal.save(saveData));
+
+      // Dual emission: emit key journal metrics
+      OTEL.metrics.gauge('commit_story.journal.entry_size', saveData.entrySize);
+      OTEL.metrics.histogram('commit_story.journal.write_duration_ms', saveData.writeDuration);
+      OTEL.metrics.counter('commit_story.journal.entries_saved', 1);
 
       logger.complete('journal entry save', `Journal entry saved successfully to ${fileName}`);
 

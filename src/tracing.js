@@ -2,6 +2,8 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
+import { PeriodicExportingMetricReader, ConsoleMetricExporter, AggregationTemporality } from '@opentelemetry/sdk-metrics';
 import resourcePkg from '@opentelemetry/resources';
 const { resourceFromAttributes, defaultResource } = resourcePkg;
 import pkg from '@opentelemetry/semantic-conventions';
@@ -18,6 +20,18 @@ const otlpExporter = new OTLPTraceExporter({
   },
 });
 
+// Create console metric exporter for development feedback
+const consoleMetricExporter = new ConsoleMetricExporter();
+
+// Create OTLP metric exporter for Datadog Agent (localhost:4318)
+const otlpMetricExporter = new OTLPMetricExporter({
+  url: 'http://localhost:4318/v1/metrics',
+  temporalityPreference: AggregationTemporality.DELTA, // Required for Datadog OTLP ingest
+  headers: {
+    // Add any required headers for Datadog OTLP ingestion
+  },
+});
+
 // Configure resource attributes for service identification - using default resource with merge
 const resourceAttributes = {
   [SEMATTRS_SERVICE_NAME]: 'commit-story-dev',
@@ -27,7 +41,7 @@ const resourceAttributes = {
 
 const resource = defaultResource().merge(resourceFromAttributes(resourceAttributes));
 
-// Initialize Node SDK with dual span processors
+// Initialize Node SDK with dual span processors and metrics
 const sdk = new NodeSDK({
   resource: resource,
   spanProcessors: [
@@ -42,6 +56,11 @@ const sdk = new NodeSDK({
       scheduledDelayMillis: 1000, // 1 second delay for network calls
     }),
   ],
+  // Configure dual metric readers
+  metricReader: new PeriodicExportingMetricReader({
+    exporter: otlpMetricExporter,
+    exportIntervalMillis: 60000, // Export every 60 seconds (OpenTelemetry best practice)
+  }),
   instrumentations: [
     // Auto-instrument common libraries
     getNodeAutoInstrumentations({
@@ -55,9 +74,9 @@ const sdk = new NodeSDK({
 // Initialize tracing
 sdk.start();
 
-console.log('🔭 OpenTelemetry dual exporters initialized:');
-console.log('  ✅ Console exporter - immediate terminal feedback');
-console.log('  ✅ OTLP exporter - Datadog Agent (localhost:4318)');
+console.log('🔭 OpenTelemetry observability stack initialized:');
+console.log('  ✅ Traces: Console + OTLP to Datadog Agent (localhost:4318)');
+console.log('  ✅ Metrics: OTLP to Datadog Agent (localhost:4318)');
 console.log('  📊 Service: commit-story-dev');
 
 export default sdk;

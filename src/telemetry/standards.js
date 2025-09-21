@@ -2,13 +2,22 @@
  * OpenTelemetry Standards Module
  *
  * Centralizes OpenTelemetry semantic conventions and provides builders to enforce
- * correct attribute naming and span patterns. Prevents instrumentation errors
- * and ensures consistency across the entire codebase.
+ * correct attribute naming, span patterns, and metric emission. Prevents instrumentation
+ * errors and ensures consistency across the entire codebase.
  *
  * Semantic Namespace Guidelines:
  * - gen_ai.*: Direct AI operation characteristics (model params, tokens, response metrics)
  * - commit_story.*: Application-specific attributes (business logic, infrastructure)
+ *
+ * Metric Conventions:
+ * - Use hierarchical naming: commit_story.category.metric_name
+ * - Follow OpenTelemetry units: milliseconds for duration, dimensionless "1" for counts
+ * - Gauge: Point-in-time values (message counts, current state)
+ * - Counter: Incrementing values (total operations, cumulative errors)
+ * - Histogram: Distribution data (durations, payload sizes)
  */
+
+import { metrics } from '@opentelemetry/api';
 
 /**
  * Detects AI provider from model name for telemetry
@@ -23,6 +32,14 @@ export function getProviderFromModel(modelName) {
   if (model.includes('gemini')) return 'google';
   if (model.includes('llama')) return 'meta';
   return 'unknown';
+}
+
+/**
+ * Get OpenTelemetry Meter instance for commit-story metrics
+ * Follows OpenTelemetry best practices for meter naming and versioning
+ */
+function getMeter() {
+  return metrics.getMeter('commit-story', '1.0.0');
 }
 
 /**
@@ -304,6 +321,84 @@ export const OTEL = {
         'gen_ai.usage.prompt_tokens': response.usage?.prompt_tokens || 0,
         'gen_ai.usage.completion_tokens': response.usage?.completion_tokens || 0
       })
+    }
+  },
+
+  // Metrics builders for dual emission (span attributes + queryable metrics)
+  metrics: {
+    /**
+     * Emit a gauge metric (point-in-time value)
+     * @param {string} name - Metric name (should match span attribute name)
+     * @param {number} value - Metric value
+     * @param {Object} attributes - Metric attributes (tags)
+     */
+    gauge: (name, value, attributes = {}) => {
+      try {
+        const meter = getMeter();
+        const gauge = meter.createGauge(name, {
+          description: `Gauge metric: ${name}`,
+          unit: name.includes('_ms') || name.includes('duration') ? 'ms' : '1'
+        });
+
+        const defaultAttributes = {
+          'service.name': 'commit-story-dev',
+          'environment': 'development'
+        };
+
+        gauge.record(value, { ...defaultAttributes, ...attributes });
+      } catch (error) {
+        console.warn(`Failed to emit gauge metric ${name}:`, error.message);
+      }
+    },
+
+    /**
+     * Emit a counter metric (incrementing value)
+     * @param {string} name - Metric name
+     * @param {number} value - Increment value (default 1)
+     * @param {Object} attributes - Metric attributes (tags)
+     */
+    counter: (name, value = 1, attributes = {}) => {
+      try {
+        const meter = getMeter();
+        const counter = meter.createCounter(name, {
+          description: `Counter metric: ${name}`,
+          unit: '1'
+        });
+
+        const defaultAttributes = {
+          'service.name': 'commit-story-dev',
+          'environment': 'development'
+        };
+
+        counter.add(value, { ...defaultAttributes, ...attributes });
+      } catch (error) {
+        console.warn(`Failed to emit counter metric ${name}:`, error.message);
+      }
+    },
+
+    /**
+     * Emit a histogram metric (distribution data)
+     * @param {string} name - Metric name
+     * @param {number} value - Measurement value
+     * @param {Object} attributes - Metric attributes (tags)
+     */
+    histogram: (name, value, attributes = {}) => {
+      try {
+        const meter = getMeter();
+        const histogram = meter.createHistogram(name, {
+          description: `Histogram metric: ${name}`,
+          unit: name.includes('_ms') || name.includes('duration') ? 'ms' : '1'
+        });
+
+        const defaultAttributes = {
+          'service.name': 'commit-story-dev',
+          'environment': 'development'
+        };
+
+        histogram.record(value, { ...defaultAttributes, ...attributes });
+      } catch (error) {
+        console.warn(`Failed to emit histogram metric ${name}:`, error.message);
+      }
     }
   }
 };

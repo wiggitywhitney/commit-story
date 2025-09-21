@@ -21,19 +21,22 @@ Current telemetry implementation only emits data as span attributes, preventing 
 
 ## Success Criteria
 
-1. **Dual Emission**: Key span attributes also emitted as queryable metrics
+1. **Complete Dual Emission**: ALL span attributes emitted as queryable metrics (100% coverage)
 2. **API Queryable**: Metrics accessible via `avg:commit_story.chat.user_messages_over_twenty{*}`
-3. **Documentation**: TELEMETRY.md updated with metric emission patterns
-4. **Statistical Analysis**: Can calculate averages, percentiles, and trends
-5. **Dashboard Ready**: Metrics suitable for operational dashboards
+3. **OTel Compliance**: All metrics follow OpenTelemetry semantic conventions
+4. **Documentation**: TELEMETRY.md updated with metric emission patterns
+5. **Statistical Analysis**: Can calculate averages, percentiles, and trends
+6. **Dashboard Ready**: Metrics suitable for operational dashboards
 
 ## Scope
 
 ### In Scope
-- Emit key business metrics alongside existing span attributes
+- Emit ALL span attributes as queryable metrics (100% coverage)
 - Update telemetry standards module with metric patterns
 - Document metric emission guidelines in TELEMETRY.md
 - Validate metrics appear in Datadog UI
+- OpenTelemetry semantic convention compliance verification
+- Datadog MCP server verification for each implementation phase
 
 ### Out of Scope
 - Removing existing span attributes (maintain dual emission)
@@ -89,29 +92,70 @@ OTEL.metrics.gauge('commit_story.chat.user_messages_over_twenty', userMessagesOv
 
 ## Implementation Plan
 
-### Phase 1: Infrastructure Setup
-- [ ] Research OpenTelemetry metrics SDK for Node.js
-- [ ] Extend `src/telemetry/standards.js` with metrics patterns
-- [ ] Create metrics emission utilities
-- [ ] Test metric export to Datadog
+Based on trace analysis showing ~85% of span attributes are not emitted as metrics, this plan ensures 100% coverage across all instrumented files.
 
-### Phase 2: Core Metrics Implementation
-- [ ] Add dual emission to context-integrator.js (chat metrics)
-- [ ] Add dual emission to journal-generator.js (business metrics)
-- [ ] Add dual emission to AI generators (performance metrics)
-- [ ] Validate metrics appear in Datadog UI
+### Infrastructure Setup (COMPLETED ✅)
+**Foundation for metrics emission - all items complete**
+- [x] Research OpenTelemetry metrics SDK for Node.js
+- [x] Install @opentelemetry/sdk-metrics and @opentelemetry/exporter-metrics-otlp-http packages
+- [x] Configure OTLPMetricExporter with delta temporality (required for Datadog OTLP ingestion)
+- [x] Set up PeriodicExportingMetricReader with 60-second export intervals (OTel best practice)
+- [x] Extend `src/telemetry/standards.js` with OTEL.metrics.gauge(), .counter(), .histogram() builders
+- [x] Add 'dev' flag to config.json for narrative logging control (separate from 'debug')
+- [x] Update trace-logger.js to use 'dev' flag instead of 'debug' flag
+- [x] Test and verify metrics export to Datadog via OTLP (localhost:4318)
 
-### Phase 3: Documentation & Validation
-- [ ] Update TELEMETRY.md with metric emission patterns
-- [ ] Create validation queries for key metrics
-- [ ] Document best practices for future development
-- [ ] Test aggregation queries work correctly
+### Initial Dual Emission Implementation (COMPLETED ✅)
+**Proof of concept with ~15% span attribute coverage**
+- [x] Add dual emission to context-integrator.js (chat metrics: user_messages_over_twenty, total_messages)
+- [x] Add dual emission to journal-manager.js (business metrics: entry_size, write_duration_ms, entries_saved)
+- [x] Add dual emission to index.js (section metrics: summary_length, dialogue_length, etc.)
+- [x] Verify production metrics appearing in Datadog UI
 
-### Phase 4: Verification
-- [ ] Verify statistical queries work: `avg:commit_story.chat.user_messages_over_twenty{*}`
-- [ ] Confirm metrics correlation with span attributes
-- [ ] Validate metric retention and historical data
-- [ ] Document operational runbook for metrics
+### Phase 1: Data Collectors (git-collector.js, claude-collector.js)
+**Target Attributes**: Repository, commit, chat data collection metrics
+- [ ] Add dual emission for `commit_story.repository.*` attributes
+- [ ] Add dual emission for `commit_story.commit.*` attributes
+- [ ] Add dual emission for `commit_story.chat.raw.*` attributes
+- [ ] **OTel Verification**: Verify metric names follow semantic conventions for git/repository data
+- [ ] **Datadog MCP Verification**: Query new collector metrics via MCP server
+
+### Phase 2: Context Processing (context-filter.js)
+**Target Attributes**: Context filtering and token optimization metrics
+- [ ] Add dual emission for `commit_story.context.*` attributes
+- [ ] Add dual emission for token reduction and filtering metrics
+- [ ] Add dual emission for message processing statistics
+- [ ] **OTel Verification**: Verify processing metrics follow performance semantic conventions
+- [ ] **Datadog MCP Verification**: Query context processing metrics via MCP server
+
+### Phase 3: AI Generation (journal-generator.js, summary-generator.js, etc.)
+**Target Attributes**: AI operation performance and GenAI semantic convention compliance
+- [ ] Add dual emission for `gen_ai.*` attributes (model, tokens, temperature)
+- [ ] Add dual emission for `commit_story.generation.*` attributes
+- [ ] Add dual emission for AI response timing and quality metrics
+- [ ] **OTel Verification**: Verify GenAI metrics comply with OpenTelemetry semantic conventions
+- [ ] **Datadog MCP Verification**: Query AI performance metrics via MCP server
+
+### Phase 4: Utilities and Support (trace-logger.js, etc.)
+**Target Attributes**: Logging, debugging, and utility metrics
+- [ ] Add dual emission for narrative logging statistics
+- [ ] Add dual emission for error and debugging metrics
+- [ ] Add dual emission for utility function performance
+- [ ] **OTel Verification**: Verify utility metrics follow appropriate semantic conventions
+- [ ] **Datadog MCP Verification**: Query utility and logging metrics via MCP server
+
+### Phase 5: Main Execution Flow (index.js, journal-manager.js)
+**Target Attributes**: Overall operation and business metrics
+- [ ] Add dual emission for end-to-end operation metrics
+- [ ] Add dual emission for journal file operations
+- [ ] Add dual emission for main execution flow timing
+- [ ] **OTel Verification**: Verify business metrics follow service/application conventions
+- [ ] **Datadog MCP Verification**: Query main execution metrics via MCP server
+
+### Final Verification
+- [ ] **Complete Coverage Check**: Verify 100% of span attributes are emitted as metrics
+- [ ] **OTel Compliance**: All metrics follow OpenTelemetry semantic conventions
+- [ ] **Datadog MCP Full Test**: Query all metric namespaces via MCP server
 
 ## Key Technical Decisions
 
@@ -226,3 +270,42 @@ OTEL.metrics.gauge('commit_story.metric.name', value, {
 - Researched OpenTelemetry Metrics SDK options
 - Identified priority metrics for dual emission
 - Created implementation phases and validation criteria
+
+### 2025-09-20: Infrastructure Implementation (COMPLETED)
+- ✅ Installed @opentelemetry/sdk-metrics and @opentelemetry/exporter-metrics-otlp-http
+- ✅ Configured OTLPMetricExporter with delta temporality (required for Datadog)
+- ✅ Extended OTEL standards with metrics.gauge(), .counter(), .histogram() builders
+- ✅ Added 'dev' flag to config.json for narrative logging (separate from 'debug')
+- ✅ Updated trace-logger.js to use 'dev' flag instead of 'debug'
+- ✅ Verified metrics export to Datadog via OTLP (localhost:4318)
+
+### 2025-09-20: Initial Dual Emission (COMPLETED)
+- ✅ Added dual emission to context-integrator.js (chat metrics)
+- ✅ Added dual emission to journal-manager.js (journal metrics)
+- ✅ Added dual emission to index.js (section length metrics)
+- ✅ Verified production metrics appearing in Datadog
+- ✅ Current metric coverage: ~15% of span attributes
+
+### 2025-09-20: Comprehensive Plan Creation & Progress Update
+- ✅ Updated PRD with comprehensive dual emission plan for 100% coverage
+- ✅ Added OpenTelemetry semantic convention verification to each phase
+- ✅ Added Datadog MCP server verification steps for each phase
+- ✅ **Progress Assessment**: Infrastructure 100% complete, Initial implementation 100% complete (~15% coverage)
+- ✅ **Scope Expansion**: Identified need for 100% span attribute coverage (was ~85% missing)
+- 📋 **Next Priority**: Implement Phase 1 (Data Collectors) for comprehensive coverage
+
+### 2025-09-20: Current Status Summary
+**✅ COMPLETED WORK**:
+- Complete OpenTelemetry metrics infrastructure setup
+- Proof-of-concept dual emission in 3 core files
+- Delta temporality configuration for Datadog compatibility
+- Narrative logging 'dev' flag separation from 'debug'
+- Verified metrics appearing in Datadog production environment
+
+**📊 CURRENT METRICS COVERAGE**: ~15% of span attributes (need 85% more)
+- ✅ Chat metrics: user_messages_over_twenty, total_messages, raw_messages_count
+- ✅ Journal metrics: entry_size, write_duration_ms, entries_saved
+- ✅ Section metrics: summary_length, dialogue_length, technical_decisions_length, commit_details_length
+- ❌ Missing: All collector attributes, context processing, AI generation, utilities
+
+**🎯 PHASE 1 READY**: Infrastructure complete, moving to comprehensive collector instrumentation

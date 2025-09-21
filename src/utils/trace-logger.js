@@ -16,15 +16,15 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Detect if we're in debug mode by checking the config file
- * This follows the same pattern used in other modules
+ * Detect if we're in dev mode by checking the config file
+ * Dev mode controls narrative logging output to Datadog
  */
-function isDebugMode() {
+function isDevMode() {
   try {
     const configPath = path.join(process.cwd(), 'commit-story.config.json');
     if (fs.existsSync(configPath)) {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      return config.debug === true;
+      return config.dev === true;
     }
   } catch (error) {
     // If config can't be read, default to false
@@ -41,8 +41,8 @@ function isDebugMode() {
  * @param {Object} context - Additional context data (optional)
  */
 function narrativeLog(level, operation, message, context = {}) {
-  // Only output in debug mode (when logs are visible to users)
-  if (!isDebugMode()) {
+  // Only output in dev mode (when narrative logs should go to Datadog)
+  if (!isDevMode()) {
     return;
   }
 
@@ -89,7 +89,7 @@ function narrativeLog(level, operation, message, context = {}) {
     });
   }
 
-  // Only show console output during explicit debug sessions, not normal commits
+  // Narrative logs only emit to OpenTelemetry/Datadog, no console output
 }
 
 
