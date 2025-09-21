@@ -13,12 +13,8 @@ const logExporter = new OTLPLogExporter({
 // Add error handler to catch silent export failures
 const originalExport = logExporter.export.bind(logExporter);
 logExporter.export = function(logs, resultCallback) {
-  console.log('🚀 OTLP Log Export: Attempting to export', logs.length, 'log records');
-
   return originalExport(logs, (result) => {
-    if (result.code === 0) {
-      console.log('✅ OTLP Log Export: SUCCESS');
-    } else {
+    if (result.code !== 0) {
       console.error('❌ OTLP Log Export: FAILED', result);
     }
     resultCallback(result);
@@ -69,6 +65,3 @@ process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 process.on('beforeExit', gracefulShutdown);
 
-console.log('📝 OpenTelemetry Logs SDK initialized:');
-console.log('  ✅ OTLP log exporter - Datadog Agent (localhost:4318)');
-console.log('  📊 Logger: commit-story-narrative');
