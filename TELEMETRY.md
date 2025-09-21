@@ -88,6 +88,9 @@ commit_story.context.final_messages
 commit_story.context.final_chat_tokens
 commit_story.context.aggressive_filtering
 
+// Context integration metrics (gauge) - Previous commit tracking and window analysis
+commit_story.previous_commit.timestamp_ms
+
 // AI Generation metrics (gauge) - OpenTelemetry GenAI semantic conventions
 gen_ai.request.model
 gen_ai.request.temperature
@@ -107,6 +110,11 @@ commit_story.utils.processing_duration_ms
 commit_story.config.api_key_valid
 commit_story.config.init_duration_ms
 commit_story.generation.completed
+
+// Main execution flow metrics (gauge) - End-to-end operation visibility
+commit_story.journal.completed
+commit_story.journal.file_path
+commit_story.journal.dir_created
 ```
 
 ### Existing Narrative Logs

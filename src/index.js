@@ -58,12 +58,20 @@ export default async function main(commitRef = 'HEAD') {
       const context = await gatherContextForCommit(commitRef);
       
       // Add context attributes to the span
-      span.setAttributes({
+      const contextAttrs = {
         ...OTEL.attrs.commit(context.commit.data),
         ...OTEL.attrs.chat({
           count: context.chatMessages.data.length,
           total: context.chatMetadata.data.totalMessages
         })
+      };
+      span.setAttributes(contextAttrs);
+
+      // Emit context metrics for main execution analysis
+      Object.entries(contextAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
       });
       
       // Validate repository-specific chat data availability (DD-068)
@@ -145,10 +153,18 @@ export default async function main(commitRef = 'HEAD') {
       );
       
       // Add final attributes
-      span.setAttributes(OTEL.attrs.journal.completion({
+      const completionAttrs = OTEL.attrs.journal.completion({
         filePath: filePath,
         completed: true
-      }));
+      });
+      span.setAttributes(completionAttrs);
+
+      // Emit completion metrics for main execution success tracking
+      Object.entries(completionAttrs).forEach(([name, value]) => {
+        if (typeof value === 'boolean') {
+          OTEL.metrics.gauge(name, value ? 1 : 0);
+        }
+      });
       
       debugLog(`✅ Journal saved to: ${filePath}`);
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });

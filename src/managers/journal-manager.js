@@ -107,12 +107,22 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
 
     } catch (error) {
       // Record error metrics
-      span.setAttributes(OTEL.attrs.journal.save({
+      const errorAttrs = OTEL.attrs.journal.save({
         filePath: 'stdout (file write failed)',
         entrySize: 0,
         dirCreated: false,
         writeDuration: Date.now() - startTime
-      }));
+      });
+      span.setAttributes(errorAttrs);
+
+      // Emit error metrics for journal failure analysis
+      Object.entries(errorAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        } else if (typeof value === 'boolean') {
+          OTEL.metrics.gauge(name, value ? 1 : 0);
+        }
+      });
 
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });

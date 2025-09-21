@@ -117,15 +117,33 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       }
       
       // Add commit data to span
-      span.setAttributes(OTEL.attrs.commit(currentCommit));
+      const commitAttrs = OTEL.attrs.commit(currentCommit);
+      span.setAttributes(commitAttrs);
+
+      // Emit commit metrics for context integration analysis
+      Object.entries(commitAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       // Get previous commit data for time window
       const previousCommit = await getPreviousCommitData(commitRef);
       
       if (previousCommit) {
-        span.setAttributes({
+        const prevCommitAttrs = {
           [`${OTEL.NAMESPACE}.previous_commit.hash`]: previousCommit.hash,
           [`${OTEL.NAMESPACE}.previous_commit.timestamp`]: previousCommit.timestamp.toISOString()
+        };
+        span.setAttributes(prevCommitAttrs);
+
+        // Emit previous commit metrics for context window analysis
+        Object.entries(prevCommitAttrs).forEach(([name, value]) => {
+          if (typeof value === 'string' && name.includes('timestamp')) {
+            // Convert timestamp to numeric metric (epoch milliseconds)
+            const timestampMs = new Date(value).getTime();
+            OTEL.metrics.gauge(name.replace('timestamp', 'timestamp_ms'), timestampMs);
+          }
         });
       }
       
