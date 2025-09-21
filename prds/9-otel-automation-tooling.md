@@ -8,7 +8,9 @@
 
 ## Executive Summary
 
-This PRD defines automated tooling to simplify OpenTelemetry instrumentation in the Commit Story project. The primary deliverable is a **`/add-telemetry` slash command** (AI prompt) that automatically adds correct instrumentation following OTEL semantic conventions. The system extends PRD-7's standards module with dynamic convention discovery and enhances the validation script to support newly discovered conventions.
+This PRD defines automated tooling to simplify OpenTelemetry instrumentation in the Commit Story project. The primary deliverable is an **AI-powered telemetry automation tool** that can be invoked as either a manual slash command (`/add-telemetry`) or an automatic agent that proactively instruments new code. The system extends PRD-7's standards module with dynamic convention discovery and enhances the validation script to support newly discovered conventions.
+
+**Note**: This tooling supports the conference demo described in [Cloud Native Denmark 2025 Talk Outline](../docs/talks/cloud-native-denmark-2025-outline.md), specifically the auto-instrumentation agent demonstration.
 
 ## Context & Motivation
 
@@ -41,12 +43,43 @@ Create an AI-powered slash command that:
 5. **Developer Velocity**: < 1 minute to add full instrumentation to a function
 6. **Documentation Trail**: Clear record of which OTEL conventions are used where
 
+## Implementation Approach: Agent vs Slash Command
+
+### Context
+In Claude Code, both "agents" and "slash commands" are AI-powered tools - the distinction is primarily in their invocation pattern and scope:
+
+**Slash Command Pattern** (`/add-telemetry`)
+- **Manual trigger**: Developer explicitly invokes the command
+- **Targeted scope**: Instruments specific files or functions
+- **Interactive**: Can ask questions and show options
+- **Point-in-time**: Runs once when called
+
+**Agent Pattern** (automatic instrumentation)
+- **Automatic trigger**: Runs on file save, commit, or schedule
+- **Comprehensive scope**: Finds and instruments all uninstrumented code
+- **Proactive**: Makes decisions based on project patterns
+- **Continuous**: Can monitor for changes and act on them
+
+### Implementation Options
+Both patterns can use the same underlying implementation with different invocation modes:
+1. **Manual mode**: `/add-telemetry --file src/example.js`
+2. **Auto mode**: `/add-telemetry --auto` (instruments all new code since last commit)
+3. **Watch mode**: Could run automatically on triggers (file save, pre-commit, etc.)
+
+### Decision Point
+**To be decided during implementation**: Which invocation pattern(s) best fit the developer workflow?
+- Option A: Start with manual slash command, add automatic mode later
+- Option B: Build both modes simultaneously
+- Option C: Focus entirely on automatic agent behavior
+
+See Architecture Decision AD-005 (below) for tracking this decision.
+
 ## Technical Requirements
 
 ### Functional Requirements
 
-#### 1. `/add-telemetry` Slash Command (AI Prompt)
-**Main Deliverable**: Multi-step AI prompt that automates telemetry addition
+#### 1. Telemetry Automation Tool (Slash Command and/or Agent)
+**Main Deliverable**: AI-powered tool that automates telemetry addition via multiple invocation patterns
 
 **Process Steps**:
 1. **Discovery Phase**: Auto-detect target functions (like `/prd-update-progress` does)
@@ -203,11 +236,19 @@ const OPERATION_TYPES = {
 /add-telemetry [options]
 
 Options:
-  --file <path>      Target specific file
-  --function <name>  Target specific function
-  --auto             Auto-detect from recent git changes
+  --file <path>      Target specific file (manual mode)
+  --function <name>  Target specific function (manual mode)
+  --auto             Auto-detect from recent git changes (agent mode)
+  --watch            Monitor for changes and auto-instrument (agent mode)
+  --since <commit>   Instrument all changes since specified commit
   --dry-run          Show changes without applying
 ```
+
+**Agent Mode Triggers** (when implemented):
+- On file save (if --watch enabled)
+- Pre-commit hook
+- Post-merge instrumentation
+- Manual trigger via --auto flag
 
 #### Multi-Step Process (AI Prompt Logic)
 
@@ -353,6 +394,21 @@ Summary:
 - Easy to expand categories later
 - Clear success criteria
 
+### AD-005: Invocation Pattern - Manual Command vs Automatic Agent
+**Decision**: [TO BE DETERMINED DURING IMPLEMENTATION]
+**Options Under Consideration**:
+1. **Manual-first approach**: Start with slash command, add automation later based on usage patterns
+2. **Dual-mode approach**: Support both manual and automatic from the start
+3. **Agent-first approach**: Focus on automatic instrumentation for conference demo impact
+
+**Factors to Consider**:
+- Developer workflow preferences
+- Conference demo requirements (see [Cloud Native Denmark talk outline](../docs/talks/cloud-native-denmark-2025-outline.md))
+- Ease of implementation and testing
+- Risk of over-automation vs under-automation
+
+**Decision Date**: To be decided during Phase 3 implementation
+
 ## Dependencies
 
 ### Hard Dependencies (Required)
@@ -405,6 +461,14 @@ Summary:
 3. **Standard Compliance**: Adherence to OTEL conventions
 4. **Knowledge Transfer**: Team understanding of OTEL patterns
 
+## Open Questions for Implementation
+
+1. **Invocation Pattern**: Should this be a manual slash command, automatic agent, or both?
+2. **Automatic Triggers**: What events should trigger automatic instrumentation?
+3. **Developer Control**: How to balance automation with explicit developer control?
+4. **Performance Impact**: Will automatic instrumentation slow down the development flow?
+5. **Scope Management**: How to prevent over-instrumentation in automatic mode?
+
 ## Future Enhancements
 
 ### Potential Extensions
@@ -413,6 +477,7 @@ Summary:
 - **CI/CD integration**: Automatic validation in pull requests
 - **Dashboard generation**: Auto-create monitoring views from telemetry
 - **Multi-language support**: Extend patterns to other languages
+- **IDE integration**: Real-time instrumentation hints in the editor
 
 ## Work Log
 
@@ -433,5 +498,9 @@ Summary:
 ---
 
 **PRD Created**: September 18, 2025
-**Last Updated**: September 18, 2025
-**Document Version**: 1.0
+**Last Updated**: September 21, 2025
+**Document Version**: 1.1
+
+### Version History
+- v1.1 (Sept 21): Added agent vs slash command discussion, referenced conference talk outline
+- v1.0 (Sept 18): Initial PRD creation
