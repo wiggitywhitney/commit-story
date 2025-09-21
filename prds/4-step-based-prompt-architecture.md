@@ -118,6 +118,14 @@ Based on analysis of `/prd-create`, `/prd-next`, and `/prd-update-decisions`:
 - [ ] Select bug fix or refactoring commit
 - [ ] Select complex multi-file change
 
+#### M4.1.1 Case Study: 2025-09-20 Journal Signal vs Noise
+- [ ] Review @journal/entries/2025-09/2025-09-20.md - 21 commits in one day
+- [ ] Key question: The narrative logger implementation and 3-hour debugging session (commit 5b69636a) were major accomplishments but are they lost in the volume of content?
+- [ ] How can prompts better surface the day's most significant work?
+- [ ] Should summaries prioritize by time spent, code impact, or technical complexity?
+- [ ] Test improved prompts against this day to ensure major accomplishments are immediately obvious
+- [ ] Note: Debugging session journal shows recency bias - emphasizes final timestamp fix over earlier agent config discovery
+
 #### M4.2 Before/After Testing
 - [ ] Run current Technical Decisions prompt on test commits → save outputs
 - [ ] Run restructured Technical Decisions prompt on same commits → compare

@@ -16,6 +16,12 @@ The dialogue generator currently hard-caps quotes at 8 maximum, regardless of se
   - Complex sessions: 36+ substantial user messages → only 8 quotes (22% coverage)
   - 3-hour debugging sessions losing 28+ valuable quotes
 
+### Case Study: Why 2025-09-20 Tests Adaptive Scaling
+- **Data**: 21 commits with extreme variance in dialogue volume
+- **Current Problem**: All commits capped at 8 quotes regardless of content
+- **Test Scenario**: Algorithm must handle both extremes in single day
+- **Reference**: @journal/entries/2025-09/2025-09-20.md - ideal test for scaling algorithms
+
 ### Impact on Journal Quality
 - **Incomplete Stories**: Complex sessions appear artificially simple
 - **Lost Context**: Key debugging insights and decision points missing
