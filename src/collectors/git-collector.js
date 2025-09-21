@@ -70,13 +70,28 @@ export function getLatestCommitData(commitRef = 'HEAD') {
       };
 
       // Add commit attributes using OTEL builder
-      span.setAttributes(OTEL.attrs.commit(commitData));
+      const commitAttrs = OTEL.attrs.commit(commitData);
+      span.setAttributes(commitAttrs);
+
+      // Also emit commit attributes as metrics for statistical analysis
+      Object.entries(commitAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number' || typeof value === 'boolean') {
+          OTEL.metrics.gauge(name, typeof value === 'boolean' ? (value ? 1 : 0) : value);
+        }
+      });
 
       // Add git-specific collection metrics
-      span.setAttributes({
+      const collectorMetrics = {
         [`${OTEL.NAMESPACE}.collector.diff_size_chars`]: diff.length,
         [`${OTEL.NAMESPACE}.collector.diff_size_lines`]: diff.split('\n').length,
-        [`${OTEL.NAMESPACE}.collector.message_redacted`]: message.includes('[REDACTED]')
+        [`${OTEL.NAMESPACE}.collector.message_redacted`]: message.includes('[REDACTED]') ? 1 : 0
+      };
+
+      span.setAttributes(collectorMetrics);
+
+      // Emit collector metrics as queryable metrics
+      Object.entries(collectorMetrics).forEach(([name, value]) => {
+        OTEL.metrics.gauge(name, value);
       });
 
       logger.complete('git data collection', `Git data collected successfully: ${hash.slice(0, 8)}`);

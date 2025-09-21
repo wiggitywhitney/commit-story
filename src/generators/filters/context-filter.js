@@ -199,9 +199,17 @@ export function filterContext(context) {
       logger.start('context filtering', `Starting intelligent token filtering with ${chatMessages.length} messages`);
 
       // Add initial metrics to span
-      span.setAttributes(OTEL.attrs.context({
+      const initialAttrs = OTEL.attrs.context({
         originalCount: chatMessages.length
-      }));
+      });
+      span.setAttributes(initialAttrs);
+
+      // Emit initial metrics for statistical analysis
+      Object.entries(initialAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       // Filter chat messages
       const filteredChatMessages = filterChatMessages(chatMessages);
@@ -210,10 +218,18 @@ export function filterContext(context) {
       logger.progress('context filtering', `Filtered out ${removedMessages} noisy messages (tool calls, system messages, empty content)`);
 
       // Add filtering metrics to span
-      span.setAttributes(OTEL.attrs.context({
+      const filteringAttrs = OTEL.attrs.context({
         filteredCount: filteredChatMessages.length,
         removedCount: removedMessages
-      }));
+      });
+      span.setAttributes(filteringAttrs);
+
+      // Emit filtering metrics for statistical analysis
+      Object.entries(filteringAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       // Filter git diff if needed
       const filteredDiff = filterGitDiff(commit?.diff);
@@ -240,12 +256,20 @@ export function filterContext(context) {
       logger.progress('context filtering', `Token usage: ${chatTokens} chat + ${diffTokens} diff + ${systemPromptTokens} system = ${totalTokens} tokens`);
 
       // Add token metrics to span
-      span.setAttributes(OTEL.attrs.context({
+      const tokenAttrs = OTEL.attrs.context({
         originalChatTokens: originalChatTokens,
         filteredChatTokens: chatTokens,
         diffTokens: diffTokens,
         totalTokens: totalTokens
-      }));
+      });
+      span.setAttributes(tokenAttrs);
+
+      // Emit token metrics for statistical analysis
+      Object.entries(tokenAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       // If still too large, apply more aggressive filtering (keep most recent)
       let finalChatMessages = filteredChatMessages;
@@ -274,15 +298,31 @@ export function filterContext(context) {
         logger.progress('context filtering', `Aggressive filtering: kept ${finalChatMessages.length} of ${filteredChatMessages.length} most recent messages`);
 
         // Add aggressive filtering metrics
-        span.setAttributes(OTEL.attrs.context({
+        const aggressiveAttrs = OTEL.attrs.context({
           finalMessages: finalChatMessages.length,
           aggressiveFiltering: true
-        }));
+        });
+        span.setAttributes(aggressiveAttrs);
+
+        // Emit aggressive filtering metrics for analysis
+        Object.entries(aggressiveAttrs).forEach(([name, value]) => {
+          if (typeof value === 'number' || typeof value === 'boolean') {
+            OTEL.metrics.gauge(name, typeof value === 'boolean' ? (value ? 1 : 0) : value);
+          }
+        });
       } else {
         logger.decision('context filtering', `Within ${MAX_TOKENS} token limit - no aggressive filtering needed`);
-        span.setAttributes(OTEL.attrs.context({
+        const nonAggressiveAttrs = OTEL.attrs.context({
           aggressiveFiltering: false
-        }));
+        });
+        span.setAttributes(nonAggressiveAttrs);
+
+        // Emit non-aggressive filtering metric
+        Object.entries(nonAggressiveAttrs).forEach(([name, value]) => {
+          if (typeof value === 'boolean') {
+            OTEL.metrics.gauge(name, value ? 1 : 0);
+          }
+        });
       }
 
       // Final metrics
@@ -295,10 +335,19 @@ export function filterContext(context) {
 
       logger.complete('context filtering', `Context filtered successfully: ${originalChatTokens} → ${finalChatTokens} tokens (${reductionPercent}% reduction)`);
 
-      span.setAttributes(OTEL.attrs.context({
+      const finalAttrs = OTEL.attrs.context({
         finalChatTokens: finalChatTokens,
-        tokenReduction: tokenReduction
-      }));
+        tokenReduction: tokenReduction,
+        reductionPercent: reductionPercent
+      });
+      span.setAttributes(finalAttrs);
+
+      // Emit final metrics for statistical analysis
+      Object.entries(finalAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
 
       span.setStatus({ code: SpanStatusCode.OK, message: 'Context filtered successfully' });
 

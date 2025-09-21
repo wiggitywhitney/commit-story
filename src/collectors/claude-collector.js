@@ -39,9 +39,14 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
 
       // 1. Find all Claude JSONL files
       const files = findClaudeFiles();
+      const filesFoundMetric = files.length;
+
       span.setAttributes({
-        [`${OTEL.NAMESPACE}.collector.files_found`]: files.length
+        [`${OTEL.NAMESPACE}.collector.files_found`]: filesFoundMetric
       });
+
+      // Emit files_found as queryable metric
+      OTEL.metrics.gauge(`${OTEL.NAMESPACE}.collector.files_found`, filesFoundMetric);
 
       logger.progress('chat message collection', `Found ${files.length} Claude JSONL files in ~/.claude/projects directories`);
 
@@ -106,12 +111,19 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
       }
 
       // Add final processing metrics
-      span.setAttributes({
+      const finalMetrics = {
         [`${OTEL.NAMESPACE}.collector.files_processed`]: processedFiles,
         [`${OTEL.NAMESPACE}.collector.files_skipped`]: skippedFiles,
         [`${OTEL.NAMESPACE}.collector.total_lines`]: totalLines,
         [`${OTEL.NAMESPACE}.collector.messages_collected`]: validMessages,
         [`${OTEL.NAMESPACE}.collector.messages_filtered`]: messages.length
+      };
+
+      span.setAttributes(finalMetrics);
+
+      // Emit processing metrics as queryable metrics
+      Object.entries(finalMetrics).forEach(([name, value]) => {
+        OTEL.metrics.gauge(name, value);
       });
 
       // 5. Sort by timestamp in chronological order

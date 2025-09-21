@@ -62,6 +62,31 @@ commit_story.sections.dialogue_length
 commit_story.sections.technical_decisions_length
 commit_story.sections.commit_details_length
 commit_story.sections.total_count
+
+// Collector metrics (gauge)
+commit_story.collector.diff_size_chars
+commit_story.collector.diff_size_lines
+commit_story.collector.message_redacted
+commit_story.collector.files_found
+commit_story.collector.files_processed
+commit_story.collector.files_skipped
+commit_story.collector.total_lines
+commit_story.collector.messages_collected
+commit_story.collector.messages_filtered
+
+// Context processing metrics (gauge)
+commit_story.context.original_messages
+commit_story.context.filtered_messages
+commit_story.context.removed_messages
+commit_story.context.token_reduction
+commit_story.context.token_reduction_percent
+commit_story.context.original_chat_tokens
+commit_story.context.filtered_chat_tokens
+commit_story.context.diff_tokens
+commit_story.context.total_estimated_tokens
+commit_story.context.final_messages
+commit_story.context.final_chat_tokens
+commit_story.context.aggressive_filtering
 ```
 
 ### Existing Narrative Logs

@@ -92,6 +92,8 @@ OTEL.metrics.gauge('commit_story.chat.user_messages_over_twenty', userMessagesOv
 
 ## Implementation Plan
 
+**🔧 AI Implementation Note**: See `@TELEMETRY.md` for comprehensive reference of existing spans, metrics, and telemetry patterns. Use this file to understand current instrumentation before adding new dual emission.
+
 Based on trace analysis showing ~85% of span attributes are not emitted as metrics, this plan ensures 100% coverage across all instrumented files.
 
 ### Infrastructure Setup (COMPLETED ✅)
@@ -112,50 +114,60 @@ Based on trace analysis showing ~85% of span attributes are not emitted as metri
 - [x] Add dual emission to index.js (section metrics: summary_length, dialogue_length, etc.)
 - [x] Verify production metrics appearing in Datadog UI
 
-### Phase 1: Data Collectors (git-collector.js, claude-collector.js)
+### Phase 1: Data Collectors (git-collector.js, claude-collector.js) ✅ COMPLETED
 **Target Attributes**: Repository, commit, chat data collection metrics
-- [ ] Add dual emission for `commit_story.repository.*` attributes
-- [ ] Add dual emission for `commit_story.commit.*` attributes
-- [ ] Add dual emission for `commit_story.chat.raw.*` attributes
-- [ ] **OTel Verification**: Verify metric names follow semantic conventions for git/repository data
-- [ ] **Datadog MCP Verification**: Query new collector metrics via MCP server
+- [x] Add dual emission for `commit_story.repository.*` attributes
+- [x] Add dual emission for `commit_story.commit.*` attributes
+- [x] Add dual emission for `commit_story.collector.*` attributes (diff_size_chars, diff_size_lines, message_redacted)
+- [x] Add dual emission for `commit_story.collector.*` attributes (files_found, files_processed, files_skipped, total_lines, messages_collected, messages_filtered)
+- [x] **OTel Verification**: Verified metric names follow semantic conventions for git/repository data
+- [x] **Datadog MCP Verification**: Confirmed `commit_story.collector.files_found` queryable in Datadog (value: 106)
 
-### Phase 2: Context Processing (context-filter.js)
+### Phase 2: Context Processing (context-filter.js) ✅ COMPLETED
 **Target Attributes**: Context filtering and token optimization metrics
-- [ ] Add dual emission for `commit_story.context.*` attributes
-- [ ] Add dual emission for token reduction and filtering metrics
-- [ ] Add dual emission for message processing statistics
-- [ ] **OTel Verification**: Verify processing metrics follow performance semantic conventions
-- [ ] **Datadog MCP Verification**: Query context processing metrics via MCP server
+- [x] Add dual emission for all `commit_story.context.*` attributes (13 total)
+- [x] Add dual emission for token reduction and filtering metrics (original_messages, filtered_messages, removed_messages)
+- [x] Add dual emission for token processing statistics (original_chat_tokens, filtered_chat_tokens, diff_tokens, total_estimated_tokens)
+- [x] Add dual emission for aggressive filtering detection (aggressive_filtering boolean, final_messages)
+- [x] Add dual emission for final optimization metrics (final_chat_tokens, token_reduction, token_reduction_percent)
+- [x] **OTel Verification**: All processing metrics follow performance semantic conventions using OTEL.attrs.context() builder
+- [x] **Datadog MCP Verification**: Confirmed context metrics queryable in Datadog (total_estimated_tokens: 26362, diff_tokens, filtered_messages)
 
 ### Phase 3: AI Generation (journal-generator.js, summary-generator.js, etc.)
 **Target Attributes**: AI operation performance and GenAI semantic convention compliance
+- [ ] **Reference @TELEMETRY.md**: Review existing patterns and standards before implementation
 - [ ] Add dual emission for `gen_ai.*` attributes (model, tokens, temperature)
 - [ ] Add dual emission for `commit_story.generation.*` attributes
 - [ ] Add dual emission for AI response timing and quality metrics
-- [ ] **OTel Verification**: Verify GenAI metrics comply with OpenTelemetry semantic conventions
-- [ ] **Datadog MCP Verification**: Query AI performance metrics via MCP server
+- [ ] **OTel Semantic Convention Compliance**: Verify all GenAI metrics follow OpenTelemetry semantic conventions
+- [ ] **TELEMETRY.md Documentation**: Update documentation with new AI generation metrics
+- [ ] **Datadog MCP Verification**: Query AI performance metrics via MCP server to confirm queryability
 
 ### Phase 4: Utilities and Support (trace-logger.js, etc.)
 **Target Attributes**: Logging, debugging, and utility metrics
+- [ ] **Reference @TELEMETRY.md**: Review existing patterns and standards before implementation
 - [ ] Add dual emission for narrative logging statistics
 - [ ] Add dual emission for error and debugging metrics
 - [ ] Add dual emission for utility function performance
-- [ ] **OTel Verification**: Verify utility metrics follow appropriate semantic conventions
-- [ ] **Datadog MCP Verification**: Query utility and logging metrics via MCP server
+- [ ] **OTel Semantic Convention Compliance**: Verify all utility metrics follow OpenTelemetry semantic conventions
+- [ ] **TELEMETRY.md Documentation**: Update documentation with new utility and logging metrics
+- [ ] **Datadog MCP Verification**: Query utility and logging metrics via MCP server to confirm queryability
 
 ### Phase 5: Main Execution Flow (index.js, journal-manager.js)
 **Target Attributes**: Overall operation and business metrics
+- [ ] **Reference @TELEMETRY.md**: Review existing patterns and standards before implementation
 - [ ] Add dual emission for end-to-end operation metrics
 - [ ] Add dual emission for journal file operations
 - [ ] Add dual emission for main execution flow timing
-- [ ] **OTel Verification**: Verify business metrics follow service/application conventions
-- [ ] **Datadog MCP Verification**: Query main execution metrics via MCP server
+- [ ] **OTel Semantic Convention Compliance**: Verify all business metrics follow OpenTelemetry service/application conventions
+- [ ] **TELEMETRY.md Documentation**: Update documentation with new main execution metrics
+- [ ] **Datadog MCP Verification**: Query main execution metrics via MCP server to confirm queryability
 
 ### Final Verification
 - [ ] **Complete Coverage Check**: Verify 100% of span attributes are emitted as metrics
-- [ ] **OTel Compliance**: All metrics follow OpenTelemetry semantic conventions
-- [ ] **Datadog MCP Full Test**: Query all metric namespaces via MCP server
+- [ ] **OTel Semantic Convention Compliance**: All metrics follow OpenTelemetry semantic conventions
+- [ ] **TELEMETRY.md Documentation Complete**: All new metrics documented with usage patterns
+- [ ] **Datadog MCP Full Test**: Query all metric namespaces via MCP server to confirm complete queryability
 
 ## Key Technical Decisions
 
@@ -345,3 +357,33 @@ OTEL.metrics.gauge('commit_story.metric.name', value, {
 - **Phase 1**: Implement dual emission for data collectors (git-collector.js, claude-collector.js)
 - **Coverage Analysis**: Build systematic verification that 100% of span attributes become metrics
 - **Semantic Conventions**: Validate all metric names follow OpenTelemetry standards
+
+### 2025-09-21: Phase 1 & 2 Dual Emission Implementation (COMPLETED)
+**Duration**: ~2 hours
+**Commits**: Phase 1 and 2 dual emission implementation and verification
+**Primary Focus**: Complete dual emission for data collectors and context processing
+
+**Completed PRD Items**:
+- [x] **Phase 1 Complete**: Dual emission for git-collector.js and claude-collector.js - Evidence: All collector span attributes now emit as metrics
+- [x] **Phase 2 Complete**: Dual emission for context-filter.js - Evidence: All 13 context processing attributes now emit as metrics
+- [x] **Datadog Verification**: Confirmed collector metrics queryable - Evidence: commit_story.collector.files_found (106), diff_size_lines (778)
+- [x] **Context Metrics Verified**: Confirmed context processing metrics queryable - Evidence: commit_story.context.total_estimated_tokens (26362)
+- [x] **TELEMETRY.md Updates**: Added 21 new metrics to documentation - Evidence: Complete collector and context metrics documented
+- [x] **AI Implementation Guidance**: Added @TELEMETRY.md reference to PRD for future AI assistance
+
+**Technical Achievements**:
+- **Dual Emission Pattern**: Successfully applied to 6 setAttributes calls in context-filter.js
+- **Token Optimization Visibility**: 53% token reduction now trackable through commit_story.context.token_reduction_percent
+- **Trace-Metric Correlation**: Same metric names enable seamless debugging from dashboards to traces
+- **TELEMETRY.md Compliance**: All new metrics follow established naming conventions and use proper builders
+
+**Current Coverage Status**:
+- **Infrastructure**: 100% complete ✅
+- **Phase 1 (Data Collectors)**: 100% complete ✅
+- **Phase 2 (Context Processing)**: 100% complete ✅
+- **Total Progress**: ~40% of planned span attribute coverage achieved
+
+**Next Session Priorities**:
+- **Phase 3**: AI Generation dual emission (GenAI semantic conventions)
+- **Coverage Verification**: Systematic check that all implemented attributes emit metrics
+- **Dashboard Planning**: Design operational dashboards using new context metrics
