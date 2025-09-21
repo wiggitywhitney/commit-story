@@ -1,6 +1,6 @@
 # PRD-15: Telemetry Spans to Queryable Metrics
 
-**Status**: Planning
+**Status**: Implementation (Infrastructure Complete)
 **Created**: 2025-09-20
 **GitHub Issue**: [#15](https://github.com/wiggitywhitney/commit-story/issues/15)
 
@@ -182,9 +182,11 @@ Based on trace analysis showing ~85% of span attributes are not emitted as metri
 
 ## Documentation Updates Required
 
-### TELEMETRY.md Additions
+### TELEMETRY.md Additions (COMPLETED ✅)
 
-New sections to add:
+**Status**: Complete reorganization completed 2025-09-21 with comprehensive reference structure
+
+Completed sections added:
 
 **Metrics Emission Patterns**:
 ```markdown
@@ -309,3 +311,37 @@ OTEL.metrics.gauge('commit_story.metric.name', value, {
 - ❌ Missing: All collector attributes, context processing, AI generation, utilities
 
 **🎯 PHASE 1 READY**: Infrastructure complete, moving to comprehensive collector instrumentation
+
+### 2025-09-21: Telemetry Infrastructure Consolidation & Documentation (COMPLETED)
+**Duration**: ~3 hours
+**Commits**: Consolidated tracing infrastructure, cleaned validation commands, updated documentation
+**Primary Focus**: Infrastructure cleanup, consolidation, and comprehensive documentation
+
+**Completed PRD Items**:
+- [x] **Infrastructure Stability & Cleanup** - Evidence: Consolidated tracing-simple.js and tracing.js into single working file with both traces and metrics
+- [x] **Documentation Comprehensiveness** - Evidence: Complete TELEMETRY.md reorganization with existing spans/metrics/logs lists, patterns, validation
+- [x] **Validation Command Cleanup** - Evidence: Removed duplicate validate:trace from package.json, kept test:trace
+- [x] **Traces and Metrics Verification** - Evidence: Both confirmed working in Datadog after consolidation
+
+**Infrastructure Improvements Completed**:
+- ✅ **Tracing File Consolidation**: Merged duplicate tracing files, eliminated confusion between tracing.js vs tracing-simple.js
+- ✅ **Service Name Fix**: Fixed "unknown_service:node" issue by using simple serviceName config instead of broken semantic-conventions import
+- ✅ **Comprehensive Documentation**: Reorganized TELEMETRY.md with complete lists of existing spans, metrics, and narrative logs for AI guidance
+- ✅ **Clean Validation Commands**: Consolidated duplicate test:trace/validate:trace commands
+- ✅ **Journal Maintenance**: Removed 6 duplicate journal entries, cleaned up 414 lines of duplicate content
+
+**Technical Discoveries**:
+- **Root Cause Found**: Real commits were using tracing-simple.js (no metrics) while broken tracing.js had undefined service names
+- **Manual vs OTel Standards**: Current approach of manually following semantic conventions in standards.js is cleaner than importing @opentelemetry/semantic-conventions package
+- **Test vs Real Metrics**: All previous "successful" metrics were from test scripts, not actual commits - fixed by consolidation
+
+**Infrastructure Status**:
+- 🔧 **Tracing**: Single consolidated file with both traces and metrics working
+- 📊 **Metrics**: 23 commit_story metrics confirmed in Datadog
+- 📚 **Documentation**: TELEMETRY.md now provides complete reference for future AI instrumentation
+- ✅ **Validation**: Clean command structure with test:trace and validate:telemetry
+
+**Next Session Priorities**:
+- **Phase 1**: Implement dual emission for data collectors (git-collector.js, claude-collector.js)
+- **Coverage Analysis**: Build systematic verification that 100% of span attributes become metrics
+- **Semantic Conventions**: Validate all metric names follow OpenTelemetry standards

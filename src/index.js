@@ -6,7 +6,7 @@
  */
 
 // Initialize tracing BEFORE any other imports to ensure auto-instrumentation works
-import './tracing-simple.js';
+import './tracing.js';
 
 import { config } from 'dotenv';
 import fs from 'fs';
