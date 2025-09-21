@@ -39,7 +39,7 @@ What other dev-related questions can I ask? Perhaps about figuring out max quote
 What is another way that correlated telemetry can improve a developer's AI-assisted coding experience?
 
 ### The Problem: Static Analysis Limitations (2 mins)
-Explain: Right now when AI helps change code in your project, it uses static analysis to figure out what to change. And it gets it wrong. A lot.
+Explain: Right now when AI helps change code in your project, it greps for guessed keywords then uses static analysis to figure out what to change. And it gets it wrong. A lot.
 
 **Real Example:**
 - `tracing-simple.js` held my tracing and logging functionality
