@@ -7,6 +7,8 @@ Quick reference for telemetry patterns in the Commit Story application.
 import { OTEL } from './src/telemetry/standards.js';
 ```
 
+**Note**: OpenTelemetry logs are automatically configured via `src/logging.js` and sent to Datadog with trace correlation.
+
 ## Basic Usage
 ```javascript
 return await tracer.startActiveSpan(OTEL.span.ai.summary(), {
@@ -26,6 +28,19 @@ return await tracer.startActiveSpan(OTEL.span.ai.summary(), {
   }
 });
 ```
+
+## Narrative Logging
+```javascript
+import { createNarrativeLogger } from './src/utils/trace-logger.js';
+const logger = createNarrativeLogger('operation.name');
+
+logger.start('operation description', 'Starting process', { context });
+logger.progress('operation description', 'Status update', { context });
+logger.complete('operation description', 'Process finished', { context });
+logger.error('operation description', 'Error occurred', error, { context });
+```
+
+Logs automatically sent to Datadog with trace correlation. Only outputs in debug mode.
 
 ## Attribute Namespaces
 
@@ -80,6 +95,7 @@ npm run validate:trace
 2. **Use underscores** - Span names and attribute suffixes use underscores, not hyphens
 3. **Consistent naming** - Same logical attribute must have same name across files
 4. **Proper namespaces** - `gen_ai.*` for AI, `commit_story.*` for application logic
+5. **Debug mode control** - Narrative logs respect `commit-story.config.json` debug setting
 
 ## Migration Pattern
 

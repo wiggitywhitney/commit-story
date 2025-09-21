@@ -2,8 +2,10 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { defaultResource } from '@opentelemetry/resources';
-import { SEMATTRS_SERVICE_NAME, SEMATTRS_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import resourcePkg from '@opentelemetry/resources';
+const { resourceFromAttributes, defaultResource } = resourcePkg;
+import pkg from '@opentelemetry/semantic-conventions';
+const { SEMATTRS_SERVICE_NAME, SEMATTRS_SERVICE_VERSION } = pkg;
 
 // Create console exporter for immediate development feedback
 const consoleExporter = new ConsoleSpanExporter();
@@ -23,9 +25,7 @@ const resourceAttributes = {
   environment: 'development',
 };
 
-const resource = defaultResource.merge({
-  attributes: resourceAttributes,
-});
+const resource = defaultResource().merge(resourceFromAttributes(resourceAttributes));
 
 // Initialize Node SDK with dual span processors
 const sdk = new NodeSDK({

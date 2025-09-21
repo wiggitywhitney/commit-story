@@ -10,6 +10,8 @@
  */
 
 import { trace } from '@opentelemetry/api';
+import { logger } from '../logging.js';
+import { SeverityNumber } from '@opentelemetry/api-logs';
 import fs from 'fs';
 import path from 'path';
 
@@ -44,11 +46,14 @@ function narrativeLog(level, operation, message, context = {}) {
     return;
   }
 
+  // Capture timestamp at start for consistency
+  const timestamp = Date.now();
   const span = trace.getActiveSpan();
   const spanContext = span?.spanContext();
 
+  // Create structured log entry for console
   const logEntry = {
-    timestamp: new Date().toISOString(),
+    timestamp: new Date(timestamp).toISOString(),
     level: level,
     service: 'commit-story',
     operation: operation,
@@ -58,7 +63,33 @@ function narrativeLog(level, operation, message, context = {}) {
     ...context
   };
 
-  // Output structured JSON for AI consumption
+  // Emit to OpenTelemetry Logs SDK (goes to Datadog)
+  if (spanContext?.traceId && spanContext?.spanId) {
+    const severityMap = {
+      'debug': SeverityNumber.DEBUG,
+      'info': SeverityNumber.INFO,
+      'warn': SeverityNumber.WARN,
+      'error': SeverityNumber.ERROR
+    };
+
+    logger.emit({
+      severityNumber: severityMap[level] || SeverityNumber.INFO,
+      severityText: level.toUpperCase(),
+      body: message,
+      attributes: {
+        'operation': operation,
+        'service.name': 'commit-story',
+        'trace_id': spanContext.traceId,
+        'span_id': spanContext.spanId,
+        'dd.trace_id': spanContext.traceId,  // Datadog format
+        'dd.span_id': spanContext.spanId,    // Datadog format
+        ...context
+      },
+      timestamp: timestamp, // Milliseconds - SDK converts to nanoseconds
+    });
+  }
+
+  // Keep console output for backward compatibility and immediate feedback
   console.log(JSON.stringify(logEntry));
 }
 

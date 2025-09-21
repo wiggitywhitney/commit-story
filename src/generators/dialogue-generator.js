@@ -69,8 +69,8 @@ ${dialoguePrompt}
 
       // Prepare the context for AI processing
       // Calculate maximum quotes based on available content - prevents AI from fabricating
-      // quotes when few meaningful user messages exist. Cap at 8 to maintain quality focus.
-      const maxQuotes = Math.min(context.chatMetadata.data.userMessages.overTwentyCharacters, 8);
+      // quotes when few meaningful user messages exist. Cap at 25 to maintain quality focus.
+      const maxQuotes = Math.min(context.chatMetadata.data.userMessages.overTwentyCharacters, 25);
       const contextForAI = {
         summary: summary,
         chat: cleanMessages,
