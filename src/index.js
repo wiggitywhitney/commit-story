@@ -82,7 +82,7 @@ export default async function main(commitRef = 'HEAD') {
         });
         debugLog(`❌ ERROR: No chat data found for this repository and time window`);
         span.setStatus({ code: SpanStatusCode.OK, message: 'No chat data found - graceful exit' });
-        span.end();
+
         process.exit(0); // Graceful exit, not an error
       }
     
@@ -94,7 +94,6 @@ export default async function main(commitRef = 'HEAD') {
         span.recordException(new Error('OPENAI_API_KEY not found in environment'));
         span.setStatus({ code: SpanStatusCode.ERROR, message: 'Missing OpenAI API key' });
         debugLog(`❌ ERROR: OPENAI_API_KEY not configured`);
-        span.end();
         process.exit(1);
       }
     
@@ -121,7 +120,6 @@ export default async function main(commitRef = 'HEAD') {
         span.recordException(error);
         span.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
         debugLog(`❌ ERROR: OpenAI connectivity failed: ${error.message}`);
-        span.end();
         process.exit(1);
       }
     
@@ -169,17 +167,16 @@ export default async function main(commitRef = 'HEAD') {
       debugLog(`✅ Journal saved to: ${filePath}`);
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });
 
-      // Import graceful shutdown to flush logs and metrics
-      const { gracefulShutdown } = await import('./logging.js');
-      await gracefulShutdown();
-
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
       console.error('❌ Error generating journal entry:', error.message);
       process.exit(1);
     } finally {
+      // End span first, then flush spans and metrics
       span.end();
+      const { gracefulShutdown } = await import('./logging.js');
+      await gracefulShutdown();
     }
   });
 }
