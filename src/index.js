@@ -152,7 +152,11 @@ export default async function main(commitRef = 'HEAD') {
       
       debugLog(`✅ Journal saved to: ${filePath}`);
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });
-      
+
+      // Import graceful shutdown to flush logs and metrics
+      const { gracefulShutdown } = await import('./logging.js');
+      await gracefulShutdown();
+
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });

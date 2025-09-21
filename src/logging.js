@@ -45,14 +45,24 @@ const loggerProvider = new LoggerProvider({
 // Export logger instance for narrative logging
 export const logger = loggerProvider.getLogger('commit-story-narrative', '1.0.0');
 
-// Add graceful shutdown handler to flush logs
-function gracefulShutdown() {
+// Add graceful shutdown handler to flush logs and metrics
+export async function gracefulShutdown() {
   console.log('🔄 Shutting down logger, flushing logs...');
   return new Promise((resolve) => {
     // Force flush any remaining logs
     batchProcessor.forceFlush().then(() => {
       console.log('✅ Logs flushed successfully');
-      resolve();
+
+      // Import and shutdown OpenTelemetry SDK to flush metrics
+      import('./tracing.js').then(({ default: sdk }) => {
+        return sdk.shutdown();
+      }).then(() => {
+        console.log('✅ OpenTelemetry SDK shutdown, metrics flushed');
+        resolve();
+      }).catch((err) => {
+        console.error('❌ Error shutting down SDK:', err);
+        resolve();
+      });
     }).catch((err) => {
       console.error('❌ Error flushing logs:', err);
       resolve();
