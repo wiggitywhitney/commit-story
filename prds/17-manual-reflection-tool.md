@@ -1,9 +1,9 @@
 # PRD-17: Manual Reflection Tool for Real-Time Journal Entries
 
 **GitHub Issue**: [#17](https://github.com/wiggitywhitney/commit-story/issues/17)
-**Status**: Planning
+**Status**: Planning - Milestone 1
 **Created**: 2025-09-21
-**Last Updated**: 2025-09-21
+**Last Updated**: 2025-09-22
 
 ## Summary
 
@@ -104,25 +104,138 @@ journal_add_reflection({
 - Provides precise sequencing for multiple reflections per day
 - Matches existing automated entry format
 
+### DD-004: Phased Implementation Approach
+**Decision**: Split implementation into three independent milestones with separate planning stages
+
+**Rationale**:
+- **Complexity Management**: Each milestone focuses on a single concern (infrastructure, core functionality, integration)
+- **Incremental Validation**: Allows testing and validation between phases before proceeding
+- **Risk Reduction**: Prevents attempting too much at once, reducing likelihood of implementation issues
+- **Clear Dependencies**: Each milestone has explicit prerequisites and success criteria
+- **Independent Planning**: Each phase gets its own detailed planning session when ready to begin
+
+**Status**: ✅ Implemented in PRD structure below
+
+### DD-005: Telemetry-First Development
+**Decision**: All new code must include comprehensive telemetry from day one, validated with Datadog MCP tools
+
+**Rationale**:
+- Retrofitting telemetry creates technical debt and debugging blind spots in production
+- Production issues need immediate observability, not future promises of instrumentation
+- Following TELEMETRY.md patterns is part of "definition of done" for any feature
+- Telemetry overhead is minimal when built-in from start vs retrofitted later
+- Datadog MCP tools provide immediate validation that telemetry is flowing correctly
+
+**Requirements**:
+- Follow patterns in TELEMETRY.md for spans, metrics, and narrative logs
+- Update TELEMETRY.md documentation with new span names and metrics
+- Each feature must be observable before considered complete
+- Validate telemetry using Datadog MCP tools to confirm data collection
+- All refactored code gets telemetry improvements and TELEMETRY.md updates
+
+**Status**: Outstanding - applies to all milestones
+
+### DD-006: Code Reuse for Directory Management
+**Decision**: Extract and reuse existing journal directory patterns instead of reimplementing
+
+**Rationale**:
+- journal-manager.js already has robust directory/date logic for `journal/entries/YYYY-MM/` structure
+- Code duplication creates maintenance burden and inconsistencies in date formatting
+- Established patterns for timezone handling, directory creation already exist and work
+- Refactoring promotes DRY principle and reduces bugs from duplicate implementations
+- Consistent user experience across entries and reflections directories
+
+**Implementation**:
+- Extract directory utilities from journal-manager.js to `src/utils/journal-paths.js`
+- Reuse extracted utilities for both entries and reflections directories
+- Maintain consistent date formats, error handling, and directory creation patterns
+- Add telemetry to refactored utilities per TELEMETRY.md standards
+
+**Status**: Outstanding - required for Milestone 1
+
 ## Implementation Plan
 
-### Phase 1: MCP Tool Core Implementation
-- [ ] Create MCP server tool `journal_add_reflection`
-- [ ] Implement reflections directory management (`journal/reflections/YYYY-MM/`)
-- [ ] Add reflection file creation and appending logic
-- [ ] Implement basic error handling and validation
+### Milestone 1: MCP Server Foundation
+**Status**: Planning
+**Focus**: Establish MCP server infrastructure and basic tool interface
+**Dependencies**: None
 
-### Phase 2: Enhanced Integration
+**Success Criteria**:
+- MCP server runs without errors
+- Claude Code can connect to MCP server
+- `journal_add_reflection` tool is discoverable in Claude interface
+- Basic tool execution works (even with stub implementation)
+- ✅ **Telemetry Validation**: `mcp__datadog__search_datadog_spans query:"service:commit-story-dev @resource_name:mcp.tool_invocation"` returns spans
+- ✅ **Metrics Validation**: `mcp__datadog__search_datadog_metrics name_filter:"commit_story.mcp"` shows tool invocation counter
+
+**Tasks**:
+- [ ] Extract directory/date utilities from journal-manager.js to `src/utils/journal-paths.js` (per DD-006)
+- [ ] Add telemetry to extracted utilities following TELEMETRY.md patterns
+- [ ] Create MCP server setup (`src/mcp/server.js`) with full telemetry instrumentation
+- [ ] Implement basic MCP protocol handling and tool registration
+- [ ] Add MCP server configuration to package.json
+- [ ] Create `journal_add_reflection` tool stub with parameter validation and telemetry
+- [ ] Test MCP connection and tool discovery with Claude Code
+- [ ] Add basic error handling for MCP protocol compliance
+- [ ] Create metrics: `commit_story.mcp.tool_invocations` (counter), `commit_story.mcp.connection_attempts` (counter)
+- [ ] Add new span names to TELEMETRY.md: `mcp.tool_invocation`, `mcp.server_startup`, `utils.journal_paths.*`
+- [ ] **Validate telemetry with Datadog MCP queries confirming spans and metrics are collected**
+
+**Planning Stage**: Detailed technical planning will occur when ready to begin this milestone
+
+---
+
+### Milestone 2: Reflection Tool Core
+**Status**: Not Started
+**Focus**: Implement reflection functionality and storage
+**Dependencies**: Milestone 1 complete
+
+**Success Criteria**:
+- Reflections are saved to correct directory structure
+- Consistent formatting matches design specifications
+- Error handling works for edge cases
+- Multiple reflections per day are handled correctly
+- ✅ **Telemetry Validation**: `mcp__datadog__search_datadog_spans query:"service:commit-story-dev @resource_name:reflection.*"` returns reflection spans
+- ✅ **Metrics Validation**: `mcp__datadog__search_datadog_metrics name_filter:"commit_story.reflections"` shows reflection counter and size metrics
+
+**Tasks**:
+- [ ] Create reflections-manager.js using refactored journal-paths utilities (from Milestone 1)
+- [ ] Implement reflection storage reusing extracted directory management patterns
+- [ ] Add reflection formatting logic matching DD-001 specifications
+- [ ] Implement reflection file creation and appending logic with full telemetry
+- [ ] Add comprehensive error handling and input validation
+- [ ] Test reflection creation, storage, and formatting
+- [ ] Add telemetry: spans (`reflection.create`, `reflection.append`), metrics, narrative logs per TELEMETRY.md
+- [ ] Create metrics: `commit_story.reflections.added` (counter), `commit_story.reflections.size` (gauge), `commit_story.reflections.daily_count` (gauge)
+- [ ] Update TELEMETRY.md with new reflection telemetry patterns
+- [ ] **Validate telemetry with Datadog MCP queries confirming reflection operations are fully traced**
+
+**Planning Stage**: Detailed technical planning will occur when Milestone 1 is complete
+
+---
+
+### Milestone 3: Integration & Polish
+**Status**: Not Started
+**Focus**: Full system integration and documentation
+**Dependencies**: Milestone 2 complete
+
+**Success Criteria**:
+- Journal generator can discover and reference reflections
+- Configuration system properly controls reflection tool behavior
+- Complete documentation enables easy setup and troubleshooting
+- ✅ **End-to-end Telemetry Validation**: Trace shows full flow from MCP invocation → reflection save → journal cross-reference using `mcp__datadog__get_datadog_trace`
+
+**Tasks**:
 - [ ] Add reflection discovery to journal generator (for cross-referencing)
 - [ ] Implement configuration integration (respect enabled/debug flags)
-- [ ] Add telemetry instrumentation for reflection usage tracking
-- [ ] Create reflection browsing utilities if needed
-
-### Phase 3: Documentation and Polish
 - [ ] Update README.md with reflection tool documentation
 - [ ] Document MCP tool interface and setup requirements
 - [ ] Add examples and usage patterns
 - [ ] Create troubleshooting section for reflection tool
+- [ ] Create reflection browsing utilities if needed
+- [ ] **Validate end-to-end telemetry**: Use Datadog MCP tools to trace complete reflection workflow
+
+**Planning Stage**: Detailed technical planning will occur when Milestone 2 is complete
 
 ## Technical Architecture
 
