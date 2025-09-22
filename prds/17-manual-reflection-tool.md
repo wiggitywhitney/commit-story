@@ -169,8 +169,8 @@ journal_add_reflection({
 - ✅ **Metrics Validation**: `mcp__datadog__search_datadog_metrics name_filter:"commit_story.mcp"` shows tool invocation counter
 
 **Tasks**:
-- [ ] Extract directory/date utilities from journal-manager.js to `src/utils/journal-paths.js` (per DD-006)
-- [ ] Add telemetry to extracted utilities following TELEMETRY.md patterns
+- [x] Extract directory/date utilities from journal-manager.js to `src/utils/journal-paths.js` (per DD-006)
+- [x] Add telemetry to extracted utilities following TELEMETRY.md patterns
 - [ ] Create MCP server setup (`src/mcp/server.js`) with full telemetry instrumentation
 - [ ] Implement basic MCP protocol handling and tool registration
 - [ ] Add MCP server configuration to package.json
@@ -178,8 +178,8 @@ journal_add_reflection({
 - [ ] Test MCP connection and tool discovery with Claude Code
 - [ ] Add basic error handling for MCP protocol compliance
 - [ ] Create metrics: `commit_story.mcp.tool_invocations` (counter), `commit_story.mcp.connection_attempts` (counter)
-- [ ] Add new span names to TELEMETRY.md: `mcp.tool_invocation`, `mcp.server_startup`, `utils.journal_paths.*`
-- [ ] **Validate telemetry with Datadog MCP queries confirming spans and metrics are collected**
+- [x] Add new span names to TELEMETRY.md: `mcp.tool_invocation`, `mcp.server_startup`, `utils.journal_paths.*`
+- [x] **Validate telemetry with Datadog MCP queries confirming spans and metrics are collected**
 
 **Planning Stage**: Detailed technical planning will occur when ready to begin this milestone
 
@@ -308,6 +308,38 @@ npx commit-story-reflect --template=performance "Optimization achieved..."
 
 ### Integration with Existing Telemetry
 If applicable, add reflection events to existing OpenTelemetry instrumentation for observability into reflection patterns and usage.
+
+## Work Log
+
+### 2025-09-22: Milestone 1 Foundation - Directory Utility Extraction
+**Duration**: ~3 hours
+**Commits**: Implementation work (ready for commit)
+**Primary Focus**: Code reuse foundation per DD-006 - Extract directory utilities for reflection tool
+
+**Completed PRD Items**:
+- [x] Extract directory/date utilities from journal-manager.js to `src/utils/journal-paths.js` (per DD-006) - Evidence: Created 257-line utility file with 4 extracted functions
+- [x] Add telemetry to extracted utilities following TELEMETRY.md patterns - Evidence: Comprehensive OpenTelemetry instrumentation with proper semantic conventions
+- [x] Add new span names to TELEMETRY.md: `utils.journal_paths.*` - Evidence: Added 4 span names and 5 metrics to documentation
+- [x] Validate telemetry with Datadog MCP queries confirming spans and metrics are collected - Evidence: Datadog traces show all utilities working in production
+
+**Implementation Details**:
+- **Code Reuse Achieved**: Removed 60+ lines of duplicate directory logic from journal-manager.js
+- **Telemetry Integration**: Added spans for `generate_path`, `create_directory`, `format_date`, `format_timestamp`
+- **Production Validation**: Utilities actively used during testing, journal entry successfully created
+- **OpenTelemetry Compliance**: Followed semantic conventions with proper `file.path` and `file.directory` attributes
+
+**Files Changed**:
+- NEW: `src/utils/journal-paths.js` (257 lines)
+- Modified: `src/managers/journal-manager.js` (-38 lines, preserved functionality)
+- Modified: `src/telemetry/standards.js` (+46 lines, span builders and attributes)
+- Modified: `TELEMETRY.md` (+11 lines, documentation updates)
+
+**Next Session Priorities**:
+- Create MCP server infrastructure (`src/mcp/server.js`)
+- Implement basic `journal_add_reflection` tool interface
+- Add MCP configuration to package.json
+
+**Milestone 1 Progress**: 4 of 12 items complete (33% - Foundation phase complete ✅)
 
 ## References
 

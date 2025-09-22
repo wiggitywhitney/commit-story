@@ -93,7 +93,13 @@ export const OTEL = {
 
     // Utility operations
     utils: {
-      contextSelect: () => 'utils.select_context'
+      contextSelect: () => 'utils.select_context',
+      journal_paths: {
+        generate_path: () => 'utils.journal_paths.generate_path',
+        create_directory: () => 'utils.journal_paths.create_directory',
+        format_date: () => 'utils.journal_paths.format_date',
+        format_timestamp: () => 'utils.journal_paths.format_timestamp'
+      }
     }
   },
 
@@ -291,7 +297,43 @@ export const OTEL = {
         [`${OTEL.NAMESPACE}.utils.description_length`]: selectionData.descriptionLength,
         [`${OTEL.NAMESPACE}.utils.data_keys`]: selectionData.dataKeys,
         [`${OTEL.NAMESPACE}.utils.processing_duration_ms`]: selectionData.processingDuration
-      })
+      }),
+
+      /**
+       * Journal paths operation attributes
+       * @param {Object} pathData - Path operation data
+       * @returns {Object} Journal paths attributes
+       */
+      journalPaths: {
+        generatePath: (pathData) => ({
+          [`${OTEL.NAMESPACE}.journal.type`]: pathData.type,
+          [`${OTEL.NAMESPACE}.path.month_dir`]: pathData.monthDir,
+          [`${OTEL.NAMESPACE}.path.file_name`]: pathData.fileName,
+          [`${OTEL.NAMESPACE}.path.full_path`]: pathData.fullPath,
+          'file.path': pathData.fullPath // OpenTelemetry semantic convention
+        }),
+
+        createDirectory: (directoryData) => ({
+          [`${OTEL.NAMESPACE}.directory.path`]: directoryData.path,
+          [`${OTEL.NAMESPACE}.directory.type`]: directoryData.type,
+          [`${OTEL.NAMESPACE}.directory.created`]: directoryData.created,
+          [`${OTEL.NAMESPACE}.directory.operation_duration_ms`]: directoryData.operationDuration,
+          'file.directory': directoryData.path // OpenTelemetry semantic convention
+        }),
+
+        formatDate: (dateData) => ({
+          [`${OTEL.NAMESPACE}.date.year`]: dateData.year,
+          [`${OTEL.NAMESPACE}.date.month`]: dateData.month,
+          [`${OTEL.NAMESPACE}.date.day`]: dateData.day,
+          [`${OTEL.NAMESPACE}.path.month_dir`]: dateData.monthDir,
+          [`${OTEL.NAMESPACE}.path.file_name`]: dateData.fileName
+        }),
+
+        formatTimestamp: (timestampData) => ({
+          [`${OTEL.NAMESPACE}.timestamp.formatted`]: timestampData.formatted,
+          [`${OTEL.NAMESPACE}.timestamp.timezone`]: timestampData.timezone
+        })
+      }
     }
   },
 

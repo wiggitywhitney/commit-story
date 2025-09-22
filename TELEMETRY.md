@@ -37,6 +37,10 @@ journal.save_entry
 
 // Utilities
 utils.select_context
+utils.journal_paths.generate_path
+utils.journal_paths.create_directory
+utils.journal_paths.format_date
+utils.journal_paths.format_timestamp
 config.openai
 filters.redact_sensitive_data
 ```
@@ -107,6 +111,11 @@ commit_story.utils.selections_found
 commit_story.utils.selections_requested
 commit_story.utils.description_length
 commit_story.utils.processing_duration_ms
+commit_story.utils.path_generated (counter)
+commit_story.utils.directory_operations (counter)
+commit_story.utils.directory_operation_duration_ms (histogram)
+commit_story.utils.directories_created (counter)
+commit_story.utils.directory_errors (counter)
 commit_story.config.api_key_valid
 commit_story.config.init_duration_ms
 commit_story.generation.completed
@@ -127,6 +136,8 @@ commit_story.journal.dir_created
 'summary generation'
 'dialogue generation'
 'journal entry save'
+'journal.path_generation'
+'journal.directory_creation'
 ```
 
 ## Adding New Telemetry

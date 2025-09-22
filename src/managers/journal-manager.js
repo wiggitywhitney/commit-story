@@ -1,9 +1,9 @@
 import { promises as fs } from 'fs';
 import fsSync from 'fs';
-import { dirname, join } from 'path';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
 import { createNarrativeLogger } from '../utils/trace-logger.js';
+import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } from '../utils/journal-paths.js';
 
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
@@ -51,34 +51,20 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       logger.start('journal entry save', `Saving journal entry for commit: ${commitHash.slice(0, 8)}`);
 
       const date = new Date(timestamp);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
 
-      // Build file path: journal/entries/YYYY-MM/YYYY-MM-DD.md
-      const monthDir = `${year}-${month}`;
-      const fileName = `${year}-${month}-${day}.md`;
-      const filePath = join(process.cwd(), 'journal', 'entries', monthDir, fileName);
+      // Use extracted utilities for path generation and directory creation
+      const filePath = generateJournalPath('entries', date);
+      const pathParts = filePath.split('/');
+      const monthDir = pathParts[pathParts.length - 2];
+      const fileName = pathParts[pathParts.length - 1];
 
       logger.progress('journal entry save', `Target file: ${monthDir}/${fileName}`);
 
       // Format entry for file or stdout
       const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
 
-      // Create directory structure if it doesn't exist
-      const dirPath = dirname(filePath);
-      let dirCreated = false;
-      try {
-        await fs.mkdir(dirPath, { recursive: true });
-        dirCreated = true;
-        if (dirCreated) {
-          logger.progress('journal entry save', `Created directory structure: ${monthDir}`);
-        }
-      } catch (dirError) {
-        // Directory creation failed, but continue to try file write
-        dirCreated = false;
-        logger.progress('journal entry save', 'Directory already exists');
-      }
+      // Create directory structure if it doesn't exist using extracted utility
+      const dirCreated = await ensureJournalDirectory(filePath);
 
       const entrySizeKB = Math.round(formattedEntry.length / 1024);
       logger.progress('journal entry save', `Writing ${entrySizeKB}KB journal entry to daily file`);
@@ -150,12 +136,9 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
  */
 function formatJournalEntry(timestamp, commitHash, commitMessage, sections) {
   const date = new Date(timestamp);
-  
-  // Format time with user's local timezone
-  const timeString = date.toLocaleTimeString('en-US', {
-    hour12: true,
-    timeZoneName: 'short'
-  });
+
+  // Format time with user's local timezone using extracted utility
+  const timeString = getTimezonedTimestamp(date);
   
   const shortHash = commitHash.substring(0, 8);
   
@@ -194,12 +177,6 @@ function formatJournalEntry(timestamp, commitHash, commitMessage, sections) {
  * @returns {string} - File path for that date's journal
  */
 export function getJournalFilePath(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
-  const monthDir = `${year}-${month}`;
-  const fileName = `${year}-${month}-${day}.md`;
-  
-  return join(process.cwd(), 'journal', 'entries', monthDir, fileName);
+  // Use extracted utility for path generation
+  return generateJournalPath('entries', date);
 }
