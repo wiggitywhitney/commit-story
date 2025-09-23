@@ -1,6 +1,6 @@
 ---
 name: prd-next-telemetry-powered
-description: Analyze existing PRD with runtime telemetry insights to identify and recommend the single highest-priority task to work on next
+description: Analyze existing PRD with telemetry data to identify and recommend the single highest-priority task to work on next
 category: project-management
 ---
 
@@ -127,6 +127,7 @@ For PRDs using the documentation-first approach:
 For each discovered module or service, query telemetry data to understand runtime behavior:
 
 ```
+# Note: Traces, logs, and metrics are correlated - use trace IDs to connect them
 # Example queries to run for discovered modules:
 mcp__datadog__search_datadog_spans query:"service:* @operation:*[module-name]*"
 mcp__datadog__search_datadog_logs query:"service:* @file:*[filename]*"
@@ -134,7 +135,7 @@ mcp__datadog__search_datadog_services query:"name:*[service-name]*"
 ```
 
 **Share telemetry insights discovered:**
-After completing telemetry queries, describe what you learned about the actual runtime behavior and architecture that static analysis wouldn't have revealed. Be specific about:
+After completing telemetry queries, describe what you learned about runtime behavior and patterns. Be specific about:
 - Which modules are actively running vs dormant
 - Actual service dependencies and communication patterns
 - Error patterns or reliability issues
@@ -279,7 +280,7 @@ If the user confirms they want to work on the recommended task, then dive into:
 This command should:
 - ✅ Identify the single highest-value task to work on next based on current PRD state and runtime telemetry
 - ✅ Provide clear, compelling rationale for why this specific task should be prioritized
-- ✅ Include insights from telemetry that reveal actual system behavior vs static analysis
+- ✅ Include insights from telemetry about runtime behavior and patterns
 - ✅ Wait for user confirmation before proceeding
 - ✅ If confirmed, provide detailed implementation design guidance
 - ✅ Keep teams focused on the most important work rather than overwhelming them with options
