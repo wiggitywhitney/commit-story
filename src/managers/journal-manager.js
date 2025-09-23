@@ -41,7 +41,8 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
   return await tracer.startActiveSpan(OTEL.span.journal.save(), {
     attributes: {
       [`${OTEL.NAMESPACE}.commit.hash`]: commitHash,
-      [`${OTEL.NAMESPACE}.commit.message`]: commitMessage?.split('\n')[0]
+      [`${OTEL.NAMESPACE}.commit.message`]: commitMessage?.split('\n')[0],
+      'code.function': 'saveJournalEntry'
     }
   }, async (span) => {
     const logger = createNarrativeLogger('journal.save_entry');

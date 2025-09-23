@@ -35,13 +35,44 @@ const OFFICIAL_GENAI_PATTERNS = new Set([
 // Custom extensions to gen_ai namespace (allowed by design)
 const CUSTOM_GENAI_EXTENSIONS = new Set([
   'gen_ai.request.messages_count',
-  'gen_ai.response.message_length'
+  'gen_ai.response.message_length',
+  'gen_ai.usage.prompt_tokens',
+  'gen_ai.usage.completion_tokens'
 ]);
 
 // Expected attribute namespaces
 const VALID_NAMESPACES = new Set([
-  'gen_ai',          // Official OpenTelemetry + our extensions
-  'commit_story'     // Application-specific attributes
+  'gen_ai',          // Official OpenTelemetry GenAI semantic conventions + our extensions
+  'commit_story',    // Application-specific attributes
+  'rpc',             // OpenTelemetry RPC semantic conventions (rpc.system, rpc.service, rpc.method)
+  'code',            // OpenTelemetry code semantic conventions (code.function.name, code.file.path, etc.)
+  'file',            // OpenTelemetry file semantic conventions (file.path, file.directory, etc.)
+  'service',         // OpenTelemetry service semantic conventions (service.name, etc.)
+  'error',           // OpenTelemetry error semantic conventions (error.type, etc.)
+  'dd',              // Datadog-specific attributes (trace correlation)
+  'mcp',             // MCP protocol attributes (for metrics tags)
+  'reflection'       // Reflection-specific attributes (for metrics tags)
+]);
+
+// Official OpenTelemetry semantic conventions
+const OFFICIAL_OTEL_ATTRIBUTES = new Set([
+  'rpc.system',
+  'rpc.service',
+  'rpc.method',
+  'code.function.name',
+  'code.file.path',
+  'code.line.number',
+  'code.column.number',
+  'code.stacktrace',
+  'file.path',
+  'file.directory',
+  'file.name',
+  'file.extension',
+  'service.name',
+  'service.namespace',
+  'service.version',
+  'service.instance.id',
+  'error.type'
 ]);
 
 // Deprecated patterns that should not exist

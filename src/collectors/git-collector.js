@@ -21,7 +21,8 @@ const tracer = trace.getTracer('commit-story-git-collector', '1.0.0');
 export function getLatestCommitData(commitRef = 'HEAD') {
   return tracer.startActiveSpan(OTEL.span.collectors.git(), {
     attributes: {
-      [`${OTEL.NAMESPACE}.collector.commit_ref`]: commitRef
+      [`${OTEL.NAMESPACE}.collector.commit_ref`]: commitRef,
+      'code.function': 'getLatestCommitData'
     }
   }, (span) => {
     const logger = createNarrativeLogger('git.collect_data');

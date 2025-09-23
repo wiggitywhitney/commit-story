@@ -22,8 +22,7 @@ export function formatDateComponents(date) {
   return tracer.startActiveSpan(OTEL.span.utils.journal_paths.format_date(), {
     attributes: {
       [`${OTEL.NAMESPACE}.date.input`]: date.toISOString(),
-      'code.function': 'formatDateComponents',
-      'code.namespace': 'journal-paths'
+      'code.function': 'formatDateComponents'
     }
   }, (span) => {
     try {
@@ -67,8 +66,7 @@ export function generateJournalPath(type, date) {
     attributes: {
       [`${OTEL.NAMESPACE}.journal.type`]: type,
       [`${OTEL.NAMESPACE}.date.input`]: date.toISOString(),
-      'code.function': 'generateJournalPath',
-      'code.namespace': 'journal-paths'
+      'code.function': 'generateJournalPath'
     }
   }, (span) => {
     const logger = createNarrativeLogger('journal.path_generation');
@@ -122,8 +120,7 @@ export async function ensureJournalDirectory(filePath) {
     attributes: {
       [`${OTEL.NAMESPACE}.path.target`]: filePath,
       'code.function': 'ensureJournalDirectory',
-      'code.namespace': 'journal-paths',
-      'file.path': filePath // OpenTelemetry semantic convention
+      'code.filepath': filePath // OpenTelemetry semantic convention
     }
   }, async (span) => {
     const logger = createNarrativeLogger('journal.directory_creation');
@@ -221,8 +218,7 @@ export function getTimezonedTimestamp(date) {
   return tracer.startActiveSpan(OTEL.span.utils.journal_paths.format_timestamp(), {
     attributes: {
       [`${OTEL.NAMESPACE}.date.input`]: date.toISOString(),
-      'code.function': 'getTimezonedTimestamp',
-      'code.namespace': 'journal-paths'
+      'code.function': 'getTimezonedTimestamp'
     }
   }, (span) => {
     try {

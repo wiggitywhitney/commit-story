@@ -26,7 +26,8 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
     attributes: {
       [`${OTEL.NAMESPACE}.collector.repo_path`]: repoPath,
       [`${OTEL.NAMESPACE}.collector.time_window_start`]: previousCommitTime.toISOString(),
-      [`${OTEL.NAMESPACE}.collector.time_window_end`]: commitTime.toISOString()
+      [`${OTEL.NAMESPACE}.collector.time_window_end`]: commitTime.toISOString(),
+      'code.function': 'extractChatForCommit'
     }
   }, (span) => {
     const logger = createNarrativeLogger('claude.collect_messages');

@@ -48,7 +48,8 @@ export default async function main(commitRef = 'HEAD') {
   return await tracer.startActiveSpan(OTEL.span.main(), {
     attributes: {
       ...OTEL.attrs.repository({ path: process.cwd() }),
-      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef
+      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef,
+      'code.function': 'main'
     }
   }, async (span) => {
     try {
@@ -99,7 +100,11 @@ export default async function main(commitRef = 'HEAD') {
     
       try {
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        await tracer.startActiveSpan(OTEL.span.connectivity(), async (connectivitySpan) => {
+        await tracer.startActiveSpan(OTEL.span.connectivity(), {
+          attributes: {
+            'code.function': 'connectivity_test'
+          }
+        }, async (connectivitySpan) => {
           try {
             await client.chat.completions.create({
               model: 'gpt-4o-mini',

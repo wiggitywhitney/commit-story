@@ -186,7 +186,8 @@ function filterGitDiff(diff) {
 export function filterContext(context) {
   return tracer.startActiveSpan(OTEL.span.context.filter(), {
     attributes: {
-      [`${OTEL.NAMESPACE}.commit.hash`]: context.commit?.data?.hash || context.commit?.hash || 'unknown',
+      'code.function': 'filterContext',
+      [`${OTEL.NAMESPACE}.commit.hash`]: context.commit?.data?.hash || context.commit?.hash || 'unknown'
     }
   }, (span) => {
     const logger = createNarrativeLogger('context.filter_messages');

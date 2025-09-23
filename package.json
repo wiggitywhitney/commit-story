@@ -16,7 +16,9 @@
     "commit-story:remove-hook": "bash scripts/uninstall-commit-journal-hook.sh",
     "secrets:pull": "teller env",
     "test:trace": "node scripts/test-otel.js",
-    "validate:telemetry": "node scripts/validate-telemetry.js"
+    "validate:telemetry": "node scripts/validate-telemetry.js",
+    "mcp:test": "npx @modelcontextprotocol/inspector node src/mcp/server.js",
+    "mcp:start": "node src/mcp/server.js"
   },
   "repository": {
     "type": "git",
@@ -45,6 +47,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.1",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.63.0",
     "@opentelemetry/exporter-logs-otlp-http": "^0.205.0",

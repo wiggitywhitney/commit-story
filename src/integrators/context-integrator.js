@@ -106,7 +106,8 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
   return await tracer.startActiveSpan(OTEL.span.context.gather(), {
     attributes: {
       ...OTEL.attrs.repository({ path: process.cwd() }),
-      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef
+      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef,
+      'code.function': 'gatherContextForCommit'
     }
   }, async (span) => {
     try {

@@ -32,7 +32,8 @@ export async function generateSummary(context) {
     attributes: {
       ...OTEL.attrs.commit(context.commit.data),
       ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatMessages.data.length),
-      ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
+      ...OTEL.attrs.chat({ count: context.chatMessages.data.length }),
+      'code.function': 'generateSummary'
     }
   }, async (span) => {
     const logger = createNarrativeLogger('ai.generate_summary');

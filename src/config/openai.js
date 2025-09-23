@@ -12,12 +12,15 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
 
 export function createOpenAIClient() {
   return tracer.startActiveSpan(OTEL.span.config.openai(), {
-    attributes: OTEL.attrs.config.openai({
-      apiKeyValid: !!process.env.OPENAI_API_KEY,
-      model: DEFAULT_MODEL,
-      provider: getProviderFromModel(DEFAULT_MODEL),
-      initDuration: 0
-    })
+    attributes: {
+      ...OTEL.attrs.config.openai({
+        apiKeyValid: !!process.env.OPENAI_API_KEY,
+        model: DEFAULT_MODEL,
+        provider: getProviderFromModel(DEFAULT_MODEL),
+        initDuration: 0
+      }),
+      'code.function': 'createOpenAIClient'
+    }
   }, (span) => {
     // Emit initial config metrics for OpenAI client analysis
     const requestAttrs = OTEL.attrs.config.openai({

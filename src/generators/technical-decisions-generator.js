@@ -32,7 +32,8 @@ export async function generateTechnicalDecisions(context) {
     attributes: {
       ...OTEL.attrs.commit(context.commit.data),
       ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.1, context.chatMessages.data.length),
-      ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
+      ...OTEL.attrs.chat({ count: context.chatMessages.data.length }),
+      'code.function': 'generateTechnicalDecisions'
     }
   }, async (span) => {
     try {

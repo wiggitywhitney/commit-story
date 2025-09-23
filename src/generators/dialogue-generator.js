@@ -31,7 +31,8 @@ export async function generateDevelopmentDialogue(context, summary) {
     attributes: {
       ...OTEL.attrs.commit(context.commit.data),
       ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatMessages.data.length),
-      ...OTEL.attrs.chat({ count: context.chatMessages.data.length })
+      ...OTEL.attrs.chat({ count: context.chatMessages.data.length }),
+      'code.function': 'generateDevelopmentDialogue'
     }
   }, async (span) => {
     const logger = createNarrativeLogger('ai.generate_dialogue');

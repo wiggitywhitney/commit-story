@@ -1,212 +1,358 @@
-# OpenTelemetry Telemetry Standards
+# Telemetry Implementation Guide
 
-Quick reference for adding telemetry to commit-story application.
+AI-friendly reference for adding OpenTelemetry instrumentation to commit-story. All patterns use official semantic conventions and our builder API. Optimized for AI-assisted development.
 
-## Initialization
-
-Import `src/tracing.js` at the start of your application to initialize OpenTelemetry traces and metrics.
+## Quick Start
 
 ```javascript
-import { OTEL } from './src/telemetry/standards.js';
+import { OTEL } from './telemetry/standards.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+
+const tracer = trace.getTracer('commit-story', '1.0.0');
 ```
 
-## What Already Exists
+## Core Patterns
 
-### Existing Spans
+### Pattern 1: Basic Span with Semantic Conventions
+
 ```javascript
-// Main application
-commit_story.main
-commit_story.connectivity_test
+// REQUIRED: Add these imports at top of file
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../telemetry/standards.js';
 
-// Context operations
-context.gather_for_commit
-context.filter_messages
+// REQUIRED: Initialize tracer (add this to your file)
+const tracer = trace.getTracer('commit-story', '1.0.0');
 
-// AI generation
-summary.generate
-dialogue.generate
-technical_decisions.generate
-
-// Data collection
-claude.collect_messages
-git.collect_data
-
-// Journal operations
-journal.generate_entry
-journal.save_entry
-
-// Utilities
-utils.select_context
-utils.journal_paths.generate_path
-utils.journal_paths.create_directory
-utils.journal_paths.format_date
-utils.journal_paths.format_timestamp
-config.openai
-filters.redact_sensitive_data
+export async function myFunction(data) {
+  return tracer.startActiveSpan(OTEL.span.collectors.claude(), { // Use actual span name
+    attributes: {
+      ...OTEL.attrs.commit(data),
+      'code.function': 'myFunction'  // REQUIRED: Function name for APM navigation
+    }
+  }, async (span) => {
+    try {
+      // Your logic here
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    }
+  });
+}
 ```
 
-### Existing Metrics
+### Pattern 2: Dual Emission (Spans + Metrics)
+
 ```javascript
-// Chat metrics (gauge)
-commit_story.chat.assistant_messages
-commit_story.chat.messages_count
-commit_story.chat.raw_messages_count
-commit_story.chat.total_messages
-commit_story.chat.user_messages
-commit_story.chat.user_messages_over_twenty
+// IMPORTS: Already included from Pattern 1 setup
 
-// Journal metrics
-commit_story.journal.entries_saved (counter)
-commit_story.journal.entry_size (gauge)
-commit_story.journal.write_duration_ms (histogram)
+// 1. Span attributes (trace debugging)
+const attrs = OTEL.attrs.chat(chatData);
+span.setAttributes(attrs);
 
-// Section metrics (gauge)
-commit_story.sections.summary_length
-commit_story.sections.dialogue_length
-commit_story.sections.technical_decisions_length
-commit_story.sections.commit_details_length
-commit_story.sections.total_count
-
-// Collector metrics (gauge)
-commit_story.collector.diff_size_chars
-commit_story.collector.diff_size_lines
-commit_story.collector.message_redacted
-commit_story.collector.files_found
-commit_story.collector.files_processed
-commit_story.collector.files_skipped
-commit_story.collector.total_lines
-commit_story.collector.messages_collected
-commit_story.collector.messages_filtered
-
-// Context processing metrics (gauge)
-commit_story.context.original_messages
-commit_story.context.filtered_messages
-commit_story.context.removed_messages
-commit_story.context.token_reduction
-commit_story.context.token_reduction_percent
-commit_story.context.original_chat_tokens
-commit_story.context.filtered_chat_tokens
-commit_story.context.diff_tokens
-commit_story.context.total_estimated_tokens
-commit_story.context.final_messages
-commit_story.context.final_chat_tokens
-commit_story.context.aggressive_filtering
-
-// Context integration metrics (gauge) - Previous commit tracking and window analysis
-commit_story.previous_commit.timestamp_ms
-
-// AI Generation metrics (gauge) - OpenTelemetry GenAI semantic conventions
-gen_ai.request.model
-gen_ai.request.temperature
-gen_ai.request.messages_count
-gen_ai.operation.name
-gen_ai.provider.name
-gen_ai.response.model
-gen_ai.response.message_length
-gen_ai.usage.prompt_tokens
-gen_ai.usage.completion_tokens
-
-// Utility metrics (gauge) - Utility function performance and behavior
-commit_story.utils.selections_found
-commit_story.utils.selections_requested
-commit_story.utils.description_length
-commit_story.utils.processing_duration_ms
-commit_story.utils.path_generated (counter)
-commit_story.utils.directory_operations (counter)
-commit_story.utils.directory_operation_duration_ms (histogram)
-commit_story.utils.directories_created (counter)
-commit_story.utils.directory_errors (counter)
-commit_story.config.api_key_valid
-commit_story.config.init_duration_ms
-commit_story.generation.completed
-
-// Main execution flow metrics (gauge) - End-to-end operation visibility
-commit_story.journal.completed
-commit_story.journal.file_path
-commit_story.journal.dir_created
+// 2. Metrics (dashboards/alerting) - use OTEL.metrics builders
+OTEL.metrics.gauge('commit_story.chat.messages_count', chatData.count);
+OTEL.metrics.counter('commit_story.operations.completed', 1);
+OTEL.metrics.histogram('commit_story.operation.duration_ms', executionTime);
 ```
 
-### Existing Narrative Logs
-```javascript
-// Operations with narrative logging
-'git data collection'
-'chat message collection'
-'context filtering'
-'context selection'
-'summary generation'
-'dialogue generation'
-'journal entry save'
-'journal.path_generation'
-'journal.directory_creation'
-```
+### Pattern 3: AI Operations (GenAI Conventions)
 
-## Adding New Telemetry
-
-### Adding Spans
 ```javascript
-return await tracer.startActiveSpan(OTEL.span.category.operation(), {
+return tracer.startActiveSpan(OTEL.span.ai.summary(), {
   attributes: {
-    ...OTEL.attrs.genAI.request(model, temperature, messageCount),
-    ...OTEL.attrs.commit(commitData)
+    ...OTEL.attrs.genAI.request(model, temperature, messages.length),
+    'code.function': 'generateSummary'
   }
 }, async (span) => {
-  try {
-    // Your logic here
-    span.setAttributes(OTEL.attrs.genAI.usage(response));
-    span.setStatus({ code: SpanStatusCode.OK });
-    return result;
-  } catch (error) {
-    span.recordException(error);
-    span.setStatus({ code: SpanStatusCode.ERROR });
-    throw error;
-  } finally {
-    span.end();
-  }
+  const response = await openai.chat.completions.create(request);
+
+  // Add response metrics
+  span.setAttributes(OTEL.attrs.genAI.usage(response));
+  return response;
 });
 ```
 
-### Adding Metrics
-Emit important data as both span attributes AND metrics:
-```javascript
-// 1. Set span attributes (for trace debugging)
-span.setAttributes(OTEL.attrs.chat(chatData));
+### Pattern 4: File Operations (Semantic Conventions)
 
-// 2. Emit metrics (for dashboards/alerting)
-OTEL.metrics.gauge('commit_story.chat.total_messages', messageCount);
-OTEL.metrics.counter('commit_story.operations.completed', 1);
-OTEL.metrics.histogram('commit_story.operation.duration_ms', duration);
+```javascript
+return tracer.startActiveSpan(OTEL.span.utils.journal_paths.create_directory(), {
+  attributes: {
+    'code.function': 'createDirectory',
+    'code.filepath': dirPath  // File semantic convention
+  }
+}, async (span) => {
+  // File operation logic
+});
 ```
 
-### Adding Narrative Logs
-```javascript
-import { createNarrativeLogger } from './src/utils/trace-logger.js';
-const logger = createNarrativeLogger('operation.name');
+### Pattern 5: MCP Context Propagation
 
-logger.start('operation description', 'Starting process', { context });
-logger.progress('operation description', 'Status update', { context });
-logger.complete('operation description', 'Process finished', { context });
-logger.error('operation description', 'Error occurred', error, { context });
+```javascript
+// Extract context from MCP request
+extractTraceContext(request) {
+  try {
+    const headers = request.meta?.headers || request.headers || {};
+    return propagation.extract(context.active(), headers);
+  } catch (error) {
+    return context.active();
+  }
+}
+
+// Use in MCP handlers
+this.server.setRequestHandler(Schema, async (request) => {
+  const extractedContext = this.extractTraceContext(request);
+
+  return context.with(extractedContext, () => {
+    return tracer.startActiveSpan(OTEL.span.mcp.tool_invocation(), {
+      attributes: {
+        ...OTEL.attrs.mcp.server({ method: toolName }),
+        'code.function': 'handleTool'
+      }
+    }, async (span) => {
+      // Tool logic
+    });
+  });
+});
 ```
+
+## Semantic Convention Standards
+
+### Official OpenTelemetry Attributes (Always Use These)
+
+```javascript
+// Code attributes (enables APM navigation)
+'code.function': 'functionName'     // REQUIRED for all spans
+'code.filepath': '/path/to/file.js' // For file operations
+
+// GenAI attributes (official AI semantic conventions)
+'gen_ai.request.model': 'gpt-4o-mini'
+'gen_ai.provider.name': 'openai'
+'gen_ai.usage.prompt_tokens': 150
+
+// RPC attributes (for MCP operations)
+'rpc.system': 'jsonrpc'
+'rpc.service': 'mcp_server'
+'rpc.method': 'journal_add_reflection'
+```
+
+### Custom Application Attributes
+
+```javascript
+// Use commit_story.* namespace for application-specific data
+'commit_story.commit.hash': 'abc123'
+'commit_story.chat.messages_count': 42
+'commit_story.journal.file_path': '/path/to/journal.md'
+```
+
+## Builder Reference
+
+### Span Names (Always use builders)
+```javascript
+// Application operations
+OTEL.span.main()                    // commit_story.main
+OTEL.span.connectivity()            // commit_story.connectivity_test
+
+// AI operations
+OTEL.span.ai.summary()             // summary.generate
+OTEL.span.ai.dialogue()            // dialogue.generate
+
+// Data operations
+OTEL.span.collectors.claude()      // claude.collect_messages
+OTEL.span.collectors.git()         // git.collect_data
+
+// Utilities
+OTEL.span.utils.journal_paths.generate_path()  // utils.journal_paths.generate_path
+OTEL.span.config.openai()          // config.openai
+```
+
+### Attribute Builders
+```javascript
+// AI operations
+OTEL.attrs.genAI.request(model, temperature, msgCount)
+OTEL.attrs.genAI.usage(response)
+
+// Application data
+OTEL.attrs.commit(commitData)       // Git commit attributes
+OTEL.attrs.chat(chatData)          // Chat message metrics
+OTEL.attrs.context(contextData)     // Context processing stats
+
+// MCP operations
+OTEL.attrs.mcp.server(serverData)   // MCP server attributes
+OTEL.attrs.mcp.tool(toolData)       // Tool execution attributes
+```
+
+### Metrics
+```javascript
+OTEL.metrics.gauge(name, value, attributes)     // Point-in-time values
+OTEL.metrics.counter(name, value, attributes)   // Incrementing counts
+OTEL.metrics.histogram(name, value, attributes) // Distribution data
+```
+
+## Implementation Checklist
+
+For every new span, ensure it has:
+
+- ✅ **Semantic span name** using `OTEL.span.*` builder
+- ✅ **code.function attribute** for APM navigation
+- ✅ **Proper error handling** with `recordException()` and status
+- ✅ **Relevant attributes** using `OTEL.attrs.*` builders
+- ✅ **Metrics emission** for key performance indicators
+
+## Finding Existing Metrics & Spans
+
+Before creating new telemetry, check what already exists to avoid duplication:
+
+### Discovery Commands
+```bash
+# Find existing metrics in code
+grep -r "OTEL.metrics" src/
+grep -r "commit_story\." src/telemetry/standards.js
+
+# Find existing spans
+grep -r "OTEL.span" src/
+grep -r "startActiveSpan" src/
+
+# Query Datadog for active metrics (use in Datadog UI)
+service:commit-story-dev
+```
+
+### Existing Metric Categories
+- `commit_story.journal.*` - Journal operations (entries_saved, entry_size, write_duration_ms)
+- `commit_story.chat.*` - Chat processing (messages_count, total_messages, user_messages)
+- `commit_story.collector.*` - Data collection (files_found, messages_collected, diff_size_chars)
+- `commit_story.context.*` - Context processing (token_reduction, filtered_messages)
+- `commit_story.utils.*` - Utility functions (processing_duration_ms, selections_found)
+- `commit_story.mcp.*` - MCP operations (tool_invocations, server_errors)
+- `gen_ai.*` - AI operations (official OpenTelemetry semantic conventions)
+
+### Existing Span Categories
+- `commit_story.main`, `commit_story.connectivity_test` - Application lifecycle
+- `summary.generate`, `dialogue.generate`, `technical_decisions.generate` - AI generation
+- `claude.collect_messages`, `git.collect_data` - Data collection
+- `journal.generate_entry`, `journal.save_entry` - Journal operations
+- `utils.journal_paths.*`, `config.openai` - Utilities
+- `mcp.server_*`, `mcp.tool_*` - MCP operations
 
 ## Validation
 
-After adding telemetry, validate your work:
-
 ```bash
-# Test that traces and metrics are emitted correctly
-npm run test:trace
+# Validate telemetry standards compliance
+node scripts/validate-telemetry.js
 
-# Check for standards violations and consistency
-npm run validate:telemetry
+# Generate test traces
+npm run trace:test
 ```
 
-## Core Rules
+## Copy-Paste Examples (Real Working Code)
 
-- **Use builders**: Always use `OTEL.span.*` and `OTEL.attrs.*` - no hardcoded strings
-- **Underscores**: Use underscores in names (`operation_name`), not hyphens (`operation-name`)
-- **Consistency**: Follow existing patterns - check lists above before creating new metrics/spans
-- **Namespaces**: `gen_ai.*` for AI operations, `commit_story.*` for application logic
-- **Emit both**: For important data, set span attributes AND emit metrics
-- **GenAI standard**: Use official OpenTelemetry GenAI semantic conventions for AI operations
+### File Template - Complete Setup
+```javascript
+// 1. REQUIRED IMPORTS (top of file)
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js'; // Optional
 
-For new patterns not covered above, extend `src/telemetry/standards.js` first, then use the builders.
+// 2. REQUIRED TRACER (after imports)
+const tracer = trace.getTracer('commit-story', '1.0.0');
+
+// 3. FUNCTION WITH SPAN (copy this pattern)
+export async function yourFunction(data) {
+  return await tracer.startActiveSpan(OTEL.span.collectors.claude(), {
+    attributes: {
+      'code.function': 'yourFunction', // REQUIRED: Exact function name
+      ...OTEL.attrs.commit(data)       // Optional: Add relevant attributes
+    }
+  }, async (span) => {
+    try {
+      // Your business logic here
+      const result = await doWork(data);
+
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    }
+  });
+}
+```
+
+### Real Examples from Codebase
+
+**Git Collector Pattern:**
+```javascript
+export function getLatestCommitData(commitRef = 'HEAD') {
+  return tracer.startActiveSpan(OTEL.span.collectors.git(), {
+    attributes: {
+      'code.function': 'getLatestCommitData',
+      [`${OTEL.NAMESPACE}.collector.commit_ref`]: commitRef
+    }
+  }, (span) => {
+    // Git collection logic
+  });
+}
+```
+
+**Journal Manager Pattern:**
+```javascript
+export async function saveJournalEntry(commitHash, timestamp, commitMessage, sections) {
+  return await tracer.startActiveSpan(OTEL.span.journal.save(), {
+    attributes: {
+      'code.function': 'saveJournalEntry',
+      [`${OTEL.NAMESPACE}.commit.hash`]: commitHash,
+      [`${OTEL.NAMESPACE}.commit.message`]: commitMessage?.split('\n')[0]
+    }
+  }, async (span) => {
+    // Save logic with dual metrics emission
+    const attrs = OTEL.attrs.journal.save(saveData);
+    span.setAttributes(attrs);
+    OTEL.metrics.counter('commit_story.journal.entries_saved', 1);
+  });
+}
+```
+
+**File Utilities Pattern:**
+```javascript
+export async function ensureJournalDirectory(filePath) {
+  return await tracer.startActiveSpan(OTEL.span.utils.journal_paths.create_directory(), {
+    attributes: {
+      'code.function': 'ensureJournalDirectory',
+      'code.filepath': filePath  // File semantic convention
+    }
+  }, async (span) => {
+    // Directory creation logic
+  });
+}
+```
+
+## Standards Summary
+
+1. **Always use builders** - No hardcoded strings
+2. **Always add code.function** - Enables APM code navigation
+3. **Use official semantic conventions** - OpenTelemetry standard attributes
+4. **Dual emission pattern** - Span attributes + metrics for key data
+5. **Proper error handling** - Record exceptions and set error status
+6. **Consistent naming** - Use underscores, follow existing patterns
+
+## Common Queries for AI Assistants
+
+```javascript
+// Find spans by function
+service:commit-story-dev @code.function:"generateSummary"
+
+// Find AI operations
+service:commit-story-dev @gen_ai.provider.name:"openai"
+
+// Find MCP operations
+service:commit-story-dev @rpc.service:"mcp_server"
+
+// Find file operations
+service:commit-story-dev @code.filepath:*
+
+// Find errors
+service:commit-story-dev status:error
+```

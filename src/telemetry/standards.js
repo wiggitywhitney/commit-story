@@ -18,6 +18,14 @@
  */
 
 import { metrics } from '@opentelemetry/api';
+import {
+  SEMATTRS_CODE_FUNCTION,
+  SEMATTRS_CODE_FILEPATH,
+  SEMATTRS_CODE_LINENO,
+  SEMATTRS_RPC_SYSTEM,
+  SEMATTRS_RPC_SERVICE,
+  SEMATTRS_RPC_METHOD
+} from '@opentelemetry/semantic-conventions';
 
 /**
  * Detects AI provider from model name for telemetry
@@ -99,6 +107,16 @@ export const OTEL = {
         create_directory: () => 'utils.journal_paths.create_directory',
         format_date: () => 'utils.journal_paths.format_date',
         format_timestamp: () => 'utils.journal_paths.format_timestamp'
+      }
+    },
+
+    // MCP (Model Context Protocol) operations
+    mcp: {
+      server_startup: () => 'mcp.server_startup',
+      server_shutdown: () => 'mcp.server_shutdown',
+      tool_invocation: () => 'mcp.tool_invocation',
+      tool: {
+        journal_add_reflection: () => 'mcp.tool.journal_add_reflection'
       }
     }
   },
@@ -310,7 +328,7 @@ export const OTEL = {
           [`${OTEL.NAMESPACE}.path.month_dir`]: pathData.monthDir,
           [`${OTEL.NAMESPACE}.path.file_name`]: pathData.fileName,
           [`${OTEL.NAMESPACE}.path.full_path`]: pathData.fullPath,
-          'file.path': pathData.fullPath // OpenTelemetry semantic convention
+          [SEMATTRS_CODE_FILEPATH]: pathData.fullPath // OpenTelemetry semantic convention
         }),
 
         createDirectory: (directoryData) => ({
@@ -318,7 +336,7 @@ export const OTEL = {
           [`${OTEL.NAMESPACE}.directory.type`]: directoryData.type,
           [`${OTEL.NAMESPACE}.directory.created`]: directoryData.created,
           [`${OTEL.NAMESPACE}.directory.operation_duration_ms`]: directoryData.operationDuration,
-          'file.directory': directoryData.path // OpenTelemetry semantic convention
+          [SEMATTRS_CODE_FILEPATH]: directoryData.path // OpenTelemetry semantic convention (directory)
         }),
 
         formatDate: (dateData) => ({
@@ -334,6 +352,52 @@ export const OTEL = {
           [`${OTEL.NAMESPACE}.timestamp.timezone`]: timestampData.timezone
         })
       }
+    },
+
+    /**
+     * MCP (Model Context Protocol) operation attributes
+     */
+    mcp: {
+      /**
+       * MCP server attributes following RPC semantic conventions
+       * @param {Object} serverData - Server operation data
+       * @param {Object} serverData.transport - Transport type (e.g., 'stdio')
+       * @param {Object} serverData.version - MCP version
+       * @param {Object} serverData.method - RPC method name (for JSON-RPC semantic conventions)
+       * @returns {Object} MCP server attributes with proper semantic conventions
+       */
+      server: (serverData) => ({
+        [`${OTEL.NAMESPACE}.mcp.transport`]: serverData.transport,
+        [`${OTEL.NAMESPACE}.mcp.version`]: serverData.version,
+        [SEMATTRS_RPC_SYSTEM]: 'jsonrpc', // OpenTelemetry RPC semantic convention
+        [SEMATTRS_RPC_SERVICE]: 'mcp_server',
+        [SEMATTRS_RPC_METHOD]: serverData.method // Tool-specific method name for better AI assistant querying
+      }),
+
+      /**
+       * MCP tool invocation attributes
+       * @param {Object} toolData - Tool operation data
+       * @returns {Object} Tool attributes with function semantic conventions
+       */
+      tool: (toolData) => ({
+        [`${OTEL.NAMESPACE}.mcp.tool_name`]: toolData.name,
+        [`${OTEL.NAMESPACE}.mcp.tool_parameters_count`]: toolData.paramCount,
+        [`${OTEL.NAMESPACE}.mcp.tool_execution_duration_ms`]: toolData.executionDuration,
+        [SEMATTRS_CODE_FUNCTION]: toolData.name // OpenTelemetry code semantic convention
+      }),
+
+      /**
+       * Reflection-specific attributes
+       * @param {Object} reflectionData - Reflection operation data
+       * @returns {Object} Reflection attributes with file semantic conventions
+       */
+      reflection: (reflectionData) => ({
+        [`${OTEL.NAMESPACE}.reflection.text_length`]: reflectionData.textLength,
+        [`${OTEL.NAMESPACE}.reflection.timestamp`]: reflectionData.timestamp,
+        [`${OTEL.NAMESPACE}.reflection.file_created`]: reflectionData.fileCreated,
+        [SEMATTRS_CODE_FILEPATH]: reflectionData.filePath, // OpenTelemetry file semantic convention
+        [`${OTEL.NAMESPACE}.reflection.directory`]: reflectionData.directory
+      })
     }
   },
 

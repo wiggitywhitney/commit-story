@@ -56,7 +56,8 @@ export async function generateJournalEntry(context) {
       ...OTEL.attrs.chat({
         count: context.chatMessages.data.length,
         total: context.chatMetadata.data.totalMessages
-      })
+      }),
+      'code.function': 'generateJournalEntry'
     }
   }, async (span) => {
     // Emit initial request metrics for journal generation analysis
