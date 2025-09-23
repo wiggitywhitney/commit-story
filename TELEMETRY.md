@@ -1,5 +1,9 @@
 # Telemetry Implementation Guide
 
+## Goals
+- **Primary**: Enable future AI instances to instrument code according to our established patterns and standards
+- **Secondary**: Provide concise, copy-paste patterns without bloat - focus on what works
+
 AI-friendly reference for adding OpenTelemetry instrumentation to commit-story. All patterns use official semantic conventions and our builder API. Optimized for AI-assisted development.
 
 ## Quick Start
@@ -90,29 +94,37 @@ return tracer.startActiveSpan(OTEL.span.utils.journal_paths.create_directory(), 
 
 ### Pattern 5: MCP Context Propagation
 
+**Challenge**: MCP requests don't have standard W3C trace headers by default
+**Solution**: Use fallback chain to extract context from available headers
+
 ```javascript
-// Extract context from MCP request
+// Extract context from MCP request with fallback chain
 extractTraceContext(request) {
   try {
+    // Try multiple header locations - MCP clients may vary
     const headers = request.meta?.headers || request.headers || {};
     return propagation.extract(context.active(), headers);
   } catch (error) {
-    return context.active();
+    return context.active(); // Fallback to current context
   }
 }
 
-// Use in MCP handlers
+// Use tool-specific span naming for AI assistant queryability
 this.server.setRequestHandler(Schema, async (request) => {
   const extractedContext = this.extractTraceContext(request);
+  const toolName = request.params?.name || 'unknown_tool';
 
   return context.with(extractedContext, () => {
-    return tracer.startActiveSpan(OTEL.span.mcp.tool_invocation(), {
+    // Use tool name in resource_name for better Datadog queries
+    return tracer.startActiveSpan(`${toolName} mcp_server`, {
       attributes: {
         ...OTEL.attrs.mcp.server({ method: toolName }),
-        'code.function': 'handleTool'
+        'code.function': 'handleMcpTool',
+        'rpc.method': toolName  // Enables filtering by specific tool
       }
     }, async (span) => {
-      // Tool logic
+      // Tool logic here
+      return await toolHandler(request.params, span);
     });
   });
 });
@@ -166,6 +178,8 @@ OTEL.span.collectors.git()         // git.collect_data
 // Utilities
 OTEL.span.utils.journal_paths.generate_path()  // utils.journal_paths.generate_path
 OTEL.span.config.openai()          // config.openai
+// MCP Tools
+journal_add_reflection mcp_server   // MCP reflection tool (tool-specific naming)
 ```
 
 ### Attribute Builders
@@ -189,6 +203,14 @@ OTEL.attrs.mcp.tool(toolData)       // Tool execution attributes
 OTEL.metrics.gauge(name, value, attributes)     // Point-in-time values
 OTEL.metrics.counter(name, value, attributes)   // Incrementing counts
 OTEL.metrics.histogram(name, value, attributes) // Distribution data
+```
+
+**Application Metrics (commit_story.*)**:
+```javascript
+// Reflection Tool Metrics
+commit_story.reflections.added        // Counter: reflection creation events
+commit_story.reflections.size         // Gauge: reflection text size in characters
+commit_story.reflections.daily_count  // Gauge: daily reflection count per date
 ```
 
 ## Implementation Checklist
