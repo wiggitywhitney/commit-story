@@ -1,8 +1,8 @@
 # PRD-13: Narrative Logging Control & Effectiveness Evaluation
 
-**Status**: Active
+**Status**: Closed - Superseded
 **Created**: 2025-09-20
-**Last Updated**: 2025-09-20
+**Last Updated**: 2025-09-23
 **Version**: 1.0
 **GitHub Issue**: [#13](https://github.com/wiggitywhitney/commit-story/issues/13)
 
@@ -199,6 +199,13 @@ Each dimension receives a binary evaluation:
 - GitHub issue #13 created
 - Phase structure and deliverables defined
 - Ready for Phase 1 implementation
+
+### 2025-09-23 - PRD Closed (Superseded)
+- Confirmed narrative logs are working and flowing to Datadog
+- Analysis revealed PRD-13's evaluation framework is redundant with PRDs 19-21
+- PRDs 19-21 (Discovery, Debugging, Validation agents) will naturally validate logging effectiveness through implementation
+- Decision: Close PRD-13 to focus on building agents that will prove logging value through actual usage
+- Avoids 6 weeks of abstract evaluation in favor of concrete implementation feedback
 
 ## Related Documents
 
