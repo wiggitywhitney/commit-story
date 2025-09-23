@@ -104,13 +104,13 @@ class CommitStoryMCPServer {
           const tools = [
             {
               name: 'journal_add_reflection',
-              description: 'Add a timestamped reflection to your development journal',
+              description: 'Add a timestamped reflection to your development journal. IMPORTANT: Pass the reflection text exactly as provided by the user, verbatim, without any AI interpretation, elaboration, or additions.',
               inputSchema: {
                 type: 'object',
                 properties: {
                   text: {
                     type: 'string',
-                    description: 'The reflection content to add to the journal'
+                    description: 'The reflection content to add to the journal (must be passed verbatim from user input)'
                   },
                   timestamp: {
                     type: 'string',
