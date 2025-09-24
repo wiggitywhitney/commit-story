@@ -93,8 +93,27 @@ ${reflectionText}
         });
       }
 
-      // Write reflection to file
-      await fs.appendFile(filePath, reflectionEntry, 'utf8');
+      // Write reflection to file with telemetry
+      await tracer.startActiveSpan(OTEL.span.utils.journal_paths.write_file(), {
+        attributes: {
+          'code.function': 'writeReflectionFile',
+          'code.filepath': filePath,
+          'file.operation': 'append',
+          [`${OTEL.NAMESPACE}.reflection.file_created`]: fileCreated,
+          [`${OTEL.NAMESPACE}.reflection.content_size`]: reflectionEntry.length
+        }
+      }, async (writeSpan) => {
+        try {
+          await fs.appendFile(filePath, reflectionEntry, 'utf8');
+          writeSpan.setStatus({ code: SpanStatusCode.OK });
+        } catch (error) {
+          writeSpan.recordException(error);
+          writeSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+          throw error;
+        } finally {
+          writeSpan.end();
+        }
+      });
 
       const processingDuration = Date.now() - startTime;
 
@@ -151,13 +170,10 @@ ${reflectionText}
 
       span.setStatus({ code: SpanStatusCode.OK });
 
-      // Return MCP response
-      const successMessage = `✅ Reflection added successfully!\n\n📁 **File**: \`${filePath}\`\n⏰ **Timestamp**: ${formattedTimestamp}\n📝 **Length**: ${reflectionText.length} characters\n${fileCreated ? '🆕 **New file created**' : '📝 **Appended to existing file**'}`;
-
       return {
         content: [{
           type: 'text',
-          text: successMessage
+          text: '✅ Reflection added successfully!'
         }],
         isError: false
       };

@@ -177,6 +177,7 @@ OTEL.span.collectors.git()         // git.collect_data
 
 // Utilities
 OTEL.span.utils.journal_paths.generate_path()  // utils.journal_paths.generate_path
+OTEL.span.utils.journal_paths.write_file()     // utils.journal_paths.write_file
 OTEL.span.config.openai()          // config.openai
 // MCP Tools
 journal_add_reflection mcp_server   // MCP reflection tool (tool-specific naming)

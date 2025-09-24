@@ -106,7 +106,8 @@ export const OTEL = {
         generate_path: () => 'utils.journal_paths.generate_path',
         create_directory: () => 'utils.journal_paths.create_directory',
         format_date: () => 'utils.journal_paths.format_date',
-        format_timestamp: () => 'utils.journal_paths.format_timestamp'
+        format_timestamp: () => 'utils.journal_paths.format_timestamp',
+        write_file: () => 'utils.journal_paths.write_file'
       }
     },
 
