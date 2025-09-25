@@ -332,6 +332,48 @@ Summary:
 - Ready for testing with npm run trace:test
 ```
 
+#### Real-World Test Case (PRD-17 Code)
+```
+User: /add-telemetry --file src/managers/journal-manager.js
+
+AI: Found 3 uninstrumented functions in journal-manager.js:
+    1. discoverReflections() - File I/O, async processing, time filtering
+    2. parseReflectionFile() - String processing, file parsing
+    3. parseReflectionTimestamp() - Date parsing, timezone handling
+
+Analyzing operations...
+✓ File I/O operations detected → file.* conventions needed
+✓ Time-sensitive logic detected → performance metrics needed
+✓ Async processing detected → proper span lifecycle required
+
+Checking OTEL conventions for file operations...
+✓ Found: file.path (stable)
+✓ Found: file.operation (stable)
+✓ Found: file.size (experimental)
+
+Adding to standards module:
++ OTEL.span.journal.discover_reflections()
++ OTEL.span.reflection.parse_file()
++ OTEL.span.reflection.parse_timestamp()
++ OTEL.attrs.reflection.timeWindow()
++ OTEL.metrics for reflection discovery duration and counts
+
+Instrumenting functions:
++ discoverReflections(): Added file I/O span with time window attributes
++ parseReflectionFile(): Added parsing span with file attributes
++ parseReflectionTimestamp(): Added timestamp parsing span
++ Added proper metrics for discovery performance tracking
+
+Running validation... ✅ All checks passed
+Testing against PRD-17 requirements... ✅ Matches TELEMETRY.md patterns
+
+Summary:
+- 3 functions instrumented (real production code from PRD-17)
+- 4 new conventions added
+- 5 metrics added for reflection system observability
+- Validates agent can handle authentic uninstrumented code
+```
+
 ### Phase 4: Enhanced Validation & Testing
 **Timeline**: 30 minutes
 **Priority**: Low
@@ -343,6 +385,7 @@ Summary:
 - [ ] Create coverage analysis for standards module usage
 - [ ] Update npm scripts for enhanced validation
 - [ ] Document validation process
+- [ ] **Validate PRD-17 test case**: Ensure agent successfully instruments all reflection system functions per DD-001
 
 #### Enhanced Validation Features
 **Extends**: `scripts/validate-telemetry.js` from PRD-7 Phase 2.4
@@ -446,6 +489,91 @@ Summary:
 2. **Maintenance Burden**
    - **Risk**: Complex system becomes hard to maintain
    - **Mitigation**: Clean architecture, comprehensive tests, good docs
+
+## Design Decisions
+
+### DD-001: Real-World Training Dataset from PRD-17 Implementation
+**Decision**: Use the uninstrumented reflection system code from PRD-17 as authentic training/testing material for the telemetry agent
+
+**Context**: During PRD-17 (Manual Reflection Tool) implementation, significant functionality was added without telemetry instrumentation, creating a perfect real-world scenario for testing the auto-instrumentation agent.
+
+**Uninstrumented Code Created (Perfect Test Cases)**:
+- **`src/managers/journal-manager.js`**:
+  - `discoverReflections()` function - File I/O operations, async processing, time window logic
+  - `parseReflectionFile()` function - File parsing, string processing, time filtering
+  - `parseReflectionTimestamp()` function - Date parsing, timezone handling
+  - Modified `saveJournalEntry()` - Added reflection discovery without tracing the call
+  - Modified `formatJournalEntry()` - Added reflection formatting without spans
+
+- **`src/integrators/context-integrator.js`**:
+  - Added `previousCommit` context integration without instrumentation
+  - Context object enhancement lacks telemetry tracking
+
+**Required Instrumentation (Agent Test Output)**:
+
+**File I/O Operations**:
+```javascript
+// src/managers/journal-manager.js - discoverReflections()
+return await tracer.startActiveSpan(OTEL.span.journal.discover_reflections(), {
+  attributes: {
+    [`${OTEL.NAMESPACE}.reflection.time_window_start`]: startTime.toISOString(),
+    [`${OTEL.NAMESPACE}.reflection.time_window_end`]: commitTime.toISOString(),
+    [`${OTEL.NAMESPACE}.reflection.days_to_check`]: daysToCheck,
+    'file.operation': 'read'
+  }
+}, async (span) => {
+  // Add metrics for reflection discovery
+  OTEL.metrics.histogram('commit_story.reflection.discovery_duration_ms', Date.now() - startTime);
+  OTEL.metrics.gauge('commit_story.reflection.files_checked', daysToCheck);
+  OTEL.metrics.gauge('commit_story.reflection.reflections_found', reflections.length);
+});
+```
+
+**String Processing Operations**:
+```javascript
+// parseReflectionFile() needs span for file parsing
+OTEL.span.reflection.parse_file(), {
+  attributes: {
+    'file.path': filePath,
+    'file.size': content.length,
+    [`${OTEL.NAMESPACE}.reflection.time_window_duration_ms`]: endTime - startTime
+  }
+}
+
+// parseReflectionTimestamp() needs span for date parsing
+OTEL.span.reflection.parse_timestamp(), {
+  attributes: {
+    [`${OTEL.NAMESPACE}.reflection.time_string`]: timeString,
+    [`${OTEL.NAMESPACE}.reflection.timezone`]: timezone
+  }
+}
+```
+
+**Context Operations**:
+```javascript
+// src/integrators/context-integrator.js - previousCommit addition
+span.setAttributes({
+  [`${OTEL.NAMESPACE}.context.has_previous_commit`]: !!previousCommit,
+  [`${OTEL.NAMESPACE}.context.time_window_duration_ms`]: previousCommit ?
+    currentCommit.timestamp - previousCommit.timestamp : null
+});
+```
+
+**Why This Is Valuable**:
+- **Authentic Test Case**: Real production code that should be instrumented but isn't
+- **System Context Available**: Existing telemetry patterns in codebase for agent to learn from
+- **Complexity Variety**: Simple parsing functions to complex file I/O with time logic
+- **Quality Benchmark**: Agent output can be validated against established TELEMETRY.md standards
+- **Before/After Evidence**: Current uninstrumented state vs expected instrumented output
+
+**Implementation Requirements**:
+- Agent must detect file I/O operations and add appropriate `file.*` semantic attributes
+- Time-sensitive operations need duration metrics and timing spans
+- Context modifications require attribute tracking
+- All instrumentation must follow existing TELEMETRY.md patterns
+- Generated code must pass PRD-7's validation script
+
+**Status**: Outstanding - requires Phase 3 agent implementation
 
 ## Success Metrics
 
