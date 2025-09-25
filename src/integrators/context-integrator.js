@@ -202,6 +202,10 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
           data: filteredContext.commit,     // Filtered git data (hash, message, author, timestamp, diff)
           description: "Git commit: code changes (unified diff), commit message, and technical details of what files were modified"
         },
+        previousCommit: {
+          data: previousCommit,             // Previous commit data for time window calculation
+          description: "Previous commit data used for calculating development time window"
+        },
         chatMessages: {
           data: filteredContext.chatMessages, // Filtered chat messages with token optimization
           description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"

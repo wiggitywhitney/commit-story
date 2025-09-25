@@ -35,9 +35,10 @@ try {
  * @param {string} sections.dialogue - Generated dialogue content
  * @param {string} sections.technicalDecisions - Generated technical decisions content
  * @param {string} sections.commitDetails - Generated commit details content
+ * @param {Date|null} previousCommitTime - Previous commit timestamp for reflection window calculation
  * @returns {Promise<string>} - Path to the file where entry was saved
  */
-export async function saveJournalEntry(commitHash, timestamp, commitMessage, sections) {
+export async function saveJournalEntry(commitHash, timestamp, commitMessage, sections, previousCommitTime = null) {
   return await tracer.startActiveSpan(OTEL.span.journal.save(), {
     attributes: {
       [`${OTEL.NAMESPACE}.commit.hash`]: commitHash,
@@ -61,8 +62,12 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
 
       logger.progress('journal entry save', `Target file: ${monthDir}/${fileName}`);
 
+      // Discover reflections within commit development window
+      const reflections = await discoverReflections(date, previousCommitTime);
+      logger.progress('journal entry save', `Found ${reflections.length} reflections for commit window`);
+
       // Format entry for file or stdout
-      const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections);
+      const formattedEntry = formatJournalEntry(timestamp, commitHash, commitMessage, sections, reflections);
 
       // Create directory structure if it doesn't exist using extracted utility
       const dirCreated = await ensureJournalDirectory(filePath);
@@ -133,9 +138,10 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
  * @param {string} commitHash - Git commit hash
  * @param {string} commitMessage - First line of commit message
  * @param {Object} sections - All journal sections
+ * @param {Array} reflections - Array of reflection objects
  * @returns {string} Complete formatted journal entry
  */
-function formatJournalEntry(timestamp, commitHash, commitMessage, sections) {
+function formatJournalEntry(timestamp, commitHash, commitMessage, sections, reflections = []) {
   const date = new Date(timestamp);
 
   // Format time with user's local timezone using extracted utility
@@ -157,10 +163,20 @@ function formatJournalEntry(timestamp, commitHash, commitMessage, sections) {
   entry += `### Development Dialogue - ${shortHash}\n\n`;
   entry += sections.dialogue + '\n\n';
   
-  // Technical Decisions section  
+  // Technical Decisions section
   entry += `### Technical Decisions - ${shortHash}\n\n`;
   entry += sections.technicalDecisions + '\n\n';
-  
+
+  // Developer Reflections section (only if reflections exist)
+  if (reflections.length > 0) {
+    entry += `### Developer Reflections - ${shortHash}\n\n`;
+
+    for (const reflection of reflections) {
+      entry += `**${reflection.timeString}**\n\n`;
+      entry += reflection.content.join('\n') + '\n\n';
+    }
+  }
+
   // Commit Details section
   entry += `### Commit Details - ${shortHash}\n\n`;
   entry += sections.commitDetails + '\n\n';
@@ -169,6 +185,114 @@ function formatJournalEntry(timestamp, commitHash, commitMessage, sections) {
   entry += '═══════════════════════════════════════\n\n';
   
   return entry;
+}
+
+/**
+ * Discover reflections within a commit development window
+ * @param {Date} commitTime - End time of the commit window
+ * @param {Date|null} previousCommitTime - Start time of the commit window (or null for first commit)
+ * @returns {Promise<Array>} Array of reflection objects with timestamp and content
+ */
+export async function discoverReflections(commitTime, previousCommitTime) {
+  const reflections = [];
+  // Use previous commit time as start, or default to 24 hours before if no previous commit
+  const startTime = previousCommitTime || new Date(commitTime.getTime() - (24 * 60 * 60 * 1000));
+
+  // Generate date range to check for reflection files
+  const daysToCheck = Math.ceil((commitTime.getTime() - startTime.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+  for (let i = 0; i < daysToCheck; i++) {
+    const checkDate = new Date(startTime.getTime() + (i * 24 * 60 * 60 * 1000));
+    const reflectionPath = generateJournalPath('reflections', checkDate);
+
+    try {
+      if (fsSync.existsSync(reflectionPath)) {
+        const content = await fs.readFile(reflectionPath, 'utf8');
+        const reflectionEntries = parseReflectionFile(content, checkDate, startTime, commitTime);
+        reflections.push(...reflectionEntries);
+      }
+    } catch (error) {
+      // Silently ignore file read errors
+    }
+  }
+
+  return reflections.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+}
+
+/**
+ * Parse reflection file content and extract entries within time window
+ * @param {string} content - File content
+ * @param {Date} fileDate - Date of the reflection file
+ * @param {Date} startTime - Start of search window
+ * @param {Date} endTime - End of search window
+ * @returns {Array} Array of reflection objects
+ */
+function parseReflectionFile(content, fileDate, startTime, endTime) {
+  const reflections = [];
+  const lines = content.split('\n');
+  let currentReflection = null;
+
+  for (const line of lines) {
+    // Look for timestamp headers (## HH:MM:SS [TIMEZONE])
+    const timestampMatch = line.match(/^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{3,4})$/);
+
+    if (timestampMatch) {
+      // Save previous reflection if it exists
+      if (currentReflection) {
+        reflections.push(currentReflection);
+      }
+
+      // Parse timestamp and create full datetime
+      const timeString = timestampMatch[1];
+      const reflectionTime = parseReflectionTimestamp(fileDate, timeString);
+
+      // Check if reflection falls within time window
+      if (reflectionTime >= startTime && reflectionTime <= endTime) {
+        currentReflection = {
+          timestamp: reflectionTime,
+          timeString: timeString,
+          content: []
+        };
+      } else {
+        currentReflection = null;
+      }
+    } else if (currentReflection && line.trim() && !line.match(/^═+$/)) {
+      // Add content lines (skip empty lines and separators)
+      currentReflection.content.push(line);
+    }
+  }
+
+  // Don't forget the last reflection
+  if (currentReflection) {
+    reflections.push(currentReflection);
+  }
+
+  return reflections;
+}
+
+/**
+ * Parse reflection timestamp string into Date object
+ * @param {Date} fileDate - Date of the file containing the reflection
+ * @param {string} timeString - Time string like "9:36:37 PM EDT"
+ * @returns {Date} Full datetime object
+ */
+function parseReflectionTimestamp(fileDate, timeString) {
+  // Simple parsing - assumes same date as file
+  // Could be enhanced to handle timezone conversion if needed
+  const [time, period, timezone] = timeString.split(' ');
+  const [hours, minutes, seconds] = time.split(':').map(Number);
+
+  let hour24 = hours;
+  if (period === 'PM' && hours !== 12) {
+    hour24 += 12;
+  } else if (period === 'AM' && hours === 12) {
+    hour24 = 0;
+  }
+
+  const reflectionDate = new Date(fileDate);
+  reflectionDate.setHours(hour24, minutes, seconds, 0);
+
+  return reflectionDate;
 }
 
 /**

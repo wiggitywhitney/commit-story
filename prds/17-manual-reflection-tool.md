@@ -168,7 +168,31 @@ journal_add_reflection({
 - Display only reflections captured during the specific commit's development window
 - Format as simple, chronological list with timestamps
 
-**Status**: Outstanding - requires Milestone 3.1 implementation
+**Status**: ✅ Implemented - reflection display working in journal entries
+
+### DD-008: UTC-First Timezone Handling for Time Window Processing
+**Decision**: Convert all timestamp processing to UTC internally while preserving display timezone for user-facing output
+
+**Rationale**:
+- **Timezone Travel Bug Prevention**: Developers who change timezones after capturing reflections but before committing would experience reflection time window miscalculations
+- **Consistent Processing**: Git commits are stored in UTC, so reflection time window calculations should also use UTC for accuracy
+- **Display vs Processing Separation**: User-facing timestamps can remain in local timezone for readability, while all time window logic uses UTC
+- **Cross-Date Boundary Safety**: Timezone changes that cross date boundaries won't cause reflections to be looked for in wrong date files
+- **Future-Proof Architecture**: Eliminates subtle timezone bugs that could cause reflections to mysteriously disappear from journal entries
+
+**Current Issue Identified**:
+- `parseReflectionTimestamp()` ignores the timezone component ("EDT") in stored reflection timestamps
+- Time window comparisons assume same timezone as file date, not original capture timezone
+- 3-4 hour offsets possible when developer travels between EST/PST after capturing reflections
+
+**Implementation Requirements**:
+- Parse and respect actual timezone information from reflection timestamps ("2:44:13 PM EDT")
+- Convert reflection timestamps to UTC for time window boundary checking
+- Maintain display timezone in journal output for user readability
+- Follow git's pattern of storing both UTC and local timezone offset
+- Add timezone validation/warnings when parsing reflections with timezone mismatches
+
+**Status**: Outstanding - critical fix needed for Milestone 3.1
 
 ## Implementation Plan
 
@@ -233,7 +257,7 @@ journal_add_reflection({
 ---
 
 ### Milestone 3.1: Reflection Display in Journal Entries
-**Status**: Planning
+**Status**: Complete ✅
 **Focus**: Display reflections as dedicated section in journal entries
 **Dependencies**: Milestone 2 complete
 
@@ -241,16 +265,22 @@ journal_add_reflection({
 - Journal entries include "Developer Reflections" section when reflections exist
 - Reflections captured during commit development window are displayed
 - Reflections maintain their authentic format and timestamps
-- Telemetry tracks reflection discovery and inclusion
+- ~~Telemetry tracks reflection discovery and inclusion~~ (omitted per user request)
 
 **Tasks**:
-- [ ] Add reflection discovery to context gathering
-- [ ] Include reflections in journal entry context
-- [ ] Update journal formatter to add reflection section
-- [ ] Add telemetry for reflection discovery
-- [ ] Test reflection display in journal entries
+- [x] Add reflection discovery to context gathering → **Implemented in journal-manager.js**
+- [x] Include reflections in journal entry context → **Context integration complete**
+- [x] Update journal formatter to add reflection section → **"Developer Reflections" section working**
+- [x] ~~Add telemetry for reflection discovery~~ → **Omitted per user request**
+- [x] Test reflection display in journal entries → **Tested and working with proper time windows**
+- [ ] **Fix timezone handling per DD-008** → **Critical issue identified**
+  - [ ] Modify `parseReflectionTimestamp()` to parse and respect timezone component ("EDT", "PST", etc.)
+  - [ ] Convert all reflection timestamps to UTC for time window boundary checking
+  - [ ] Update reflection time window logic in `discoverReflections()` to use UTC comparisons
+  - [ ] Maintain original display timezone in journal output for readability
+  - [ ] Add timezone validation warnings when reflection timezone differs from system timezone
 
-**Planning Stage**: Ready for implementation per DD-007
+**Planning Stage**: ✅ Complete - Timezone fix needed for production readiness
 
 ---
 
@@ -450,6 +480,50 @@ If applicable, add reflection events to existing OpenTelemetry instrumentation f
 - **Milestone 2**: COMPLETE ✅ (10/10 items, 100%)
 - **Milestone 3**: IN PROGRESS ✅ (1/8 items, 12.5%)
 - **Overall PRD Progress**: ~87% complete (21 of 24 items, integration & polish remaining)
+
+### 2025-09-25: Milestone 3.1 Complete - Reflection Display Implementation
+**Duration**: ~2-3 hours
+**Commits**: Multiple implementation commits
+**Primary Focus**: Complete reflection display in journal entries with proper time window integration
+
+**Completed PRD Items**:
+- [x] **Add reflection discovery to context gathering** - Evidence: Implemented `discoverReflections()` function in journal-manager.js
+- [x] **Include reflections in journal entry context** - Evidence: Modified context-integrator.js to pass previousCommit data and updated saveJournalEntry() to use proper time windows
+- [x] **Update journal formatter to add reflection section** - Evidence: Added "Developer Reflections" section to formatJournalEntry() function
+- [x] **Test reflection display in journal entries** - Evidence: Tested and validated time window logic with actual reflection data
+
+**Key Implementation Details**:
+- **Proper Time Window Logic**: Replaced arbitrary 24-hour windows with actual git commit time boundaries (previousCommitTime → commitTime)
+- **Context Integration**: Added previousCommit data to context object, reusing existing time window calculation patterns from claude-collector
+- **Reflection Parser**: Implemented timestamp parsing and time window filtering with chronological sorting
+- **Journal Integration**: Reflections display between Technical Decisions and Commit Details sections
+
+**Testing Results**:
+- ✅ Time window filtering works correctly (1 reflection found in 2:00-3:00 PM Sept 23 window)
+- ✅ Reflections outside time window properly excluded (0 reflections for other test periods)
+- ✅ Reflection content displays with original timestamps and formatting
+- ✅ Integration with existing git commit time calculation seamless
+
+**Critical Issue Identified**:
+- ❌ **Timezone handling bug discovered**: Developers who change timezones between capturing reflections and making commits could experience 3-4 hour time window miscalculations
+- 📝 **Design Decision Added**: DD-008 documents UTC-first timezone handling approach as production readiness requirement
+
+**Architecture Improvements**:
+- **No Code Duplication**: Reused existing journal-paths utilities and time window patterns
+- **Consistent Processing**: Follows same time boundary logic as chat message collection
+- **Proper Separation**: Display timezone preserved for users, processing logic uses proper time boundaries
+
+**Next Session Priorities**:
+- **Critical**: Fix timezone handling per DD-008 before production use
+- Begin Milestone 3.2: Configuration integration and documentation
+- Consider adding timezone validation warnings for reflection parsing
+
+**Milestone Status Update**:
+- **Milestone 1**: COMPLETE ✅ (12/12 items, 100%)
+- **Milestone 2**: COMPLETE ✅ (10/10 items, 100%)
+- **Milestone 3.1**: COMPLETE ✅ (5/5 core items, 100%) - *Timezone fix needed for production*
+- **Milestone 3.2**: NOT STARTED (0/5 items, 0%)
+- **Overall PRD Progress**: ~92% complete (Core functionality complete, timezone fix + polish remaining)
 
 ## References
 

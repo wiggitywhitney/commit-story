@@ -152,7 +152,8 @@ export default async function main(commitRef = 'HEAD') {
         context.commit.data.hash,
         context.commit.data.timestamp,
         context.commit.data.message,
-        sections
+        sections,
+        context.previousCommit.data?.timestamp || null
       );
       
       // Add final attributes
