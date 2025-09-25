@@ -153,6 +153,23 @@ journal_add_reflection({
 
 **Status**: Outstanding - required for Milestone 1
 
+### DD-007: Reflection Display as Dedicated Journal Section
+**Decision**: Display reflections in their own dedicated section within journal entries rather than integrating them into AI-generated content
+
+**Rationale**:
+- **Avoids redundancy**: Prevents the same reflection appearing in multiple sections (summary, dialogue, technical decisions)
+- **Preserves authenticity**: Keeps human-written reflections distinct from AI-generated content
+- **Simpler implementation**: No complex prompt engineering or risk of AI misinterpretation
+- **Clear attribution**: Makes it obvious what's developer insight vs AI analysis
+- **Reduces hallucination risk**: AI won't incorrectly connect unrelated reflections to specific commits
+
+**Implementation Approach**:
+- Add "Developer Reflections" section to journal entries
+- Display only reflections captured during the specific commit's development window
+- Format as simple, chronological list with timestamps
+
+**Status**: Outstanding - requires Milestone 3.1 implementation
+
 ## Implementation Plan
 
 ### Milestone 1: MCP Server Foundation
@@ -215,19 +232,39 @@ journal_add_reflection({
 
 ---
 
-### Milestone 3: Integration & Polish
-**Status**: In Progress (1/8 items ✅)
-**Focus**: Full system integration and documentation
+### Milestone 3.1: Reflection Display in Journal Entries
+**Status**: Planning
+**Focus**: Display reflections as dedicated section in journal entries
 **Dependencies**: Milestone 2 complete
 
 **Success Criteria**:
-- Journal generator can discover and reference reflections
+- Journal entries include "Developer Reflections" section when reflections exist
+- Reflections captured during commit development window are displayed
+- Reflections maintain their authentic format and timestamps
+- Telemetry tracks reflection discovery and inclusion
+
+**Tasks**:
+- [ ] Add reflection discovery to context gathering
+- [ ] Include reflections in journal entry context
+- [ ] Update journal formatter to add reflection section
+- [ ] Add telemetry for reflection discovery
+- [ ] Test reflection display in journal entries
+
+**Planning Stage**: Ready for implementation per DD-007
+
+---
+
+### Milestone 3.2: Integration & Polish
+**Status**: Not Started
+**Focus**: Configuration and documentation
+**Dependencies**: Milestone 3.1 complete
+
+**Success Criteria**:
 - Configuration system properly controls reflection tool behavior
 - Complete documentation enables easy setup and troubleshooting
 - ✅ **End-to-end Telemetry Validation**: Trace shows full flow from MCP invocation → reflection save → journal cross-reference using `mcp__datadog__get_datadog_trace`
 
 **Tasks**:
-- [ ] Add reflection discovery to journal generator (for cross-referencing)
 - [ ] Implement configuration integration (respect enabled/debug flags)
 - [ ] Update README.md with reflection tool documentation
 - [ ] Document MCP tool interface and setup requirements
@@ -236,7 +273,7 @@ journal_add_reflection({
 - [ ] Create reflection browsing utilities if needed
 - [x] **Validate end-to-end telemetry**: Use Datadog MCP tools to trace complete reflection workflow → **COMPLETED: Verified metrics, logs, and tool functionality**
 
-**Planning Stage**: Detailed technical planning will occur when Milestone 2 is complete
+**Planning Stage**: Will begin after Milestone 3.1 completion
 
 ## Technical Architecture
 
