@@ -193,4 +193,4 @@ npx commit-story-remove
 npm uninstall commit-story
 ```
 
-This removes the git hook, optionally removes the configuration file, and uninstalls the package. Your existing journal entries are preserved.
+This removes the git hook, optionally removes the configuration file, and uninstalls the package. Your existing journal entries are preserved.Testing hook with exit code handling
