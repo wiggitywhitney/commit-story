@@ -42,6 +42,8 @@ Create an AI-powered slash command that:
 4. **Validation Success**: All generated telemetry passes PRD-7's validation script
 5. **Developer Velocity**: < 1 minute to add full instrumentation to a function
 6. **Documentation Trail**: Clear record of which OTEL conventions are used where
+7. **Enhanced Coverage**: Existing instrumented functions gain telemetry for new operations
+8. **Git-Aware Discovery**: Automatically finds files needing instrumentation from recent commits when no target specified
 
 ## Implementation Approach: Agent vs Slash Command
 
@@ -198,34 +200,42 @@ file: {
 **File**: `prompts/add-telemetry.md` (or similar)
 
 **Command Usage**:
-```bash
-/add-telemetry [options]
+The `/add-telemetry` command uses natural language understanding rather than formal CLI flags. Examples:
 
-Options:
-  --file <path>      Target specific file (manual mode)
-  --function <name>  Target specific function (manual mode)
-  --auto             Auto-detect from recent git changes (agent mode)
-  --watch            Monitor for changes and auto-instrument (agent mode)
-  --since <commit>   Instrument all changes since specified commit
-  --dry-run          Show changes without applying
+```bash
+/add-telemetry                                    # Uses git to analyze recent changes
+/add-telemetry src/managers/journal-manager.js   # Analyze specific file
+/add-telemetry check that journal file            # Natural language file reference
+/add-telemetry what changed recently              # Git-based discovery
+/add-telemetry show me what needs instrumentation # Preview mode
 ```
 
-**Agent Mode Triggers** (when implemented):
-- On file save (if --watch enabled)
-- Pre-commit hook
-- Post-merge instrumentation
-- Manual trigger via --auto flag
+**Default Behavior** (when called without specifics):
+- Runs `git diff HEAD~1 --name-only` or similar to find recently modified files
+- Analyzes all modified files for telemetry gaps
+- Reports findings and proceeds with instrumentation
+
+**Smart Analysis**:
+- **New functions**: Adds complete telemetry instrumentation
+- **Updated functions**: Detects new operations needing telemetry in already-instrumented functions
+- **Mixed scenarios**: Handles files with both new and enhanced functions
+
+**Legacy Options Note**: Traditional CLI flags like `--file`, `--auto`, `--dry-run` represent examples of user intent that the AI naturally understands through conversation.
 
 #### Multi-Step Process (AI Prompt Logic)
 
 **Step 1: Discovery**
 ```markdown
 ## Step 1: Target Discovery
-1. If --auto: analyze recent git commits for new/modified functions
-2. If --file specified: scan file for uninstrumented functions
-3. If --function specified: locate specific function
+1. If no target specified: analyze recent git commits (`git diff HEAD~1`) for modified files
+2. If file/path specified: scan that file for telemetry gaps
+3. If natural language used: interpret intent and locate appropriate files
 4. Cross-reference with PRD tasks (like /prd-update-progress does)
-5. Present options to user for confirmation
+5. For each target file, identify:
+   - **New functions**: Completely uninstrumented functions
+   - **Updated functions**: Functions with existing telemetry but new operations
+   - **Mixed scenarios**: Files containing both cases
+6. Present options to user for confirmation
 ```
 
 **Step 2: Convention Research**
@@ -338,6 +348,43 @@ Summary:
 - 4 new conventions added
 - 5 metrics added for reflection system observability
 - Validates agent can handle authentic uninstrumented code
+```
+
+#### Natural Language Example Session
+```
+User: /add-telemetry
+
+AI: No target specified. Checking recent changes...
+    Found changes in last commit: src/managers/journal-manager.js
+
+    Analyzing journal-manager.js...
+    ✓ Found 3 NEW functions needing instrumentation:
+      - discoverReflections() - File I/O, async processing, time filtering
+      - parseReflectionFile() - File parsing, string processing
+      - parseReflectionTimestamp() - Date parsing, timezone handling
+
+    ✓ Found 1 ENHANCED function with new operations:
+      - saveJournalEntry() - Has OTEL.span.journal.save() but new discoverReflections() call needs tracing
+
+    Checking OTEL conventions for file operations...
+    ✓ Found: file.operation, file.path, file.size
+    ✓ Adding missing conventions to standards module
+
+    Proceeding with instrumentation...
+
+    Summary:
+    - 3 new functions fully instrumented
+    - 1 existing function enhanced with additional spans
+    - 4 new OTEL conventions added to standards module
+    - All validation checks passed
+    - Ready for testing
+```
+
+```
+User: /add-telemetry check that journal file
+
+AI: Interpreting "journal file" as src/managers/journal-manager.js...
+    [same analysis and results as above]
 ```
 
 ### Phase 4: Enhanced Validation & Testing
@@ -476,13 +523,15 @@ Summary:
 
 **Context**: During PRD-17 (Manual Reflection Tool) implementation, significant functionality was added without telemetry instrumentation, creating a perfect real-world scenario for testing the auto-instrumentation agent.
 
-**Uninstrumented Code Created (Perfect Test Cases)**:
+**Test Cases from PRD-17 Implementation**:
 - **`src/managers/journal-manager.js`**:
-  - `discoverReflections()` function - File I/O operations, async processing, time window logic
-  - `parseReflectionFile()` function - File parsing, string processing, time filtering
-  - `parseReflectionTimestamp()` function - Date parsing, timezone handling
-  - Modified `saveJournalEntry()` - Added reflection discovery without tracing the call
-  - Modified `formatJournalEntry()` - Added reflection formatting without spans
+  - **New uninstrumented functions**:
+    - `discoverReflections()` function - File I/O operations, async processing, time window logic
+    - `parseReflectionFile()` function - File parsing, string processing, time filtering
+    - `parseReflectionTimestamp()` function - Date parsing, timezone handling
+  - **Enhanced functions** (already have telemetry but gained new operations):
+    - `saveJournalEntry()` - Already has `OTEL.span.journal.save()` but the new call to `discoverReflections()` at line 66 is not traced
+    - `formatJournalEntry()` - Added reflection formatting without spans for the new reflection processing code
 
 - **`src/integrators/context-integrator.js`**:
   - Added `previousCommit` context integration without instrumentation
