@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This PRD defines automated tooling to simplify OpenTelemetry instrumentation in the Commit Story project. The primary deliverable is an **AI-powered telemetry automation tool** that can be invoked as either a manual slash command (`/add-telemetry`) or an automatic agent that proactively instruments new code. The system extends PRD-7's standards module with dynamic convention discovery and enhances the validation script to support newly discovered conventions.
+This PRD defines automated tooling to simplify OpenTelemetry instrumentation in the Commit Story project. The primary deliverable is an **AI-powered `/add-telemetry` slash command** that analyzes uninstrumented code, queries OpenTelemetry semantic conventions, and generates proper instrumentation using the established standards module patterns. When new conventions are needed, the tool adds them statically to the standards module to maintain the project's "no hardcoded strings" principle.
 
 **Note**: This tooling supports the conference demo described in [Cloud Native Denmark 2025 Talk Outline](../docs/talks/cloud-native-denmark-2025-outline.md), specifically the auto-instrumentation agent demonstration.
 
@@ -19,26 +19,26 @@ PRD-7 established the core infrastructure:
 - **Standards Module** (`src/telemetry/standards.js`) - Static OTEL conventions and builders
 - **Validation Script** (`scripts/validate-telemetry.js`) - Compliance checking
 
-PRD-9 adds **intelligent automation** on top of this foundation.
+PRD-9 adds **intelligent automation** that leverages and extends this foundation when needed.
 
 ### Current Pain Points
 - **Manual Convention Lookup**: Developers must manually search OTEL docs for applicable conventions
 - **Error-Prone**: Easy to use wrong attribute names despite standards module
-- **Static Standards**: Standards module only knows conventions we've manually added
+- **Limited Coverage**: Standards module may be missing some needed OTEL semantic conventions
 - **Repetitive Work**: Same instrumentation patterns repeated across files
 
 ### Opportunity
 Create an AI-powered slash command that:
-- Discovers applicable OTEL conventions automatically
-- Extends the standards module dynamically
-- Generates correct instrumentation code using PRD-7's patterns
+- Discovers applicable OTEL conventions from official documentation
+- Adds missing conventions to the standards module statically when needed
+- Generates correct instrumentation code using PRD-7's established patterns
 - Validates compliance using enhanced validation script
 
 ## Success Criteria
 
 1. **Zero Manual Strings**: Developers never type telemetry attribute strings directly
-2. **Convention Discovery**: Automatically finds and applies relevant OTEL conventions
-3. **Standards Growth**: PRD-7's standards module expands as new conventions are discovered
+2. **Convention Discovery**: Automatically finds and applies relevant OTEL conventions from official docs
+3. **Standards Completeness**: PRD-7's standards module gains any missing conventions through static additions
 4. **Validation Success**: All generated telemetry passes PRD-7's validation script
 5. **Developer Velocity**: < 1 minute to add full instrumentation to a function
 6. **Documentation Trail**: Clear record of which OTEL conventions are used where
@@ -88,14 +88,14 @@ See Architecture Decision AD-005 (below) for tracking this decision.
 4. **Code Generation**: Use PRD-7's OTEL.span.* and OTEL.attrs.* builders
 5. **Validation**: Run PRD-7's validation script on results
 
-#### 2. Standards Module Extensions (builds on PRD-7)
+#### 2. Static Standards Module Additions (builds on PRD-7)
 **Extends**: `src/telemetry/standards.js` from PRD-7 Phase 2.1
 
-**New Features**:
-- Dynamic convention registration
-- Metadata tracking (source, version, stability)
-- Builder function generation for new conventions
-- Convention lookup by operation type
+**New Capabilities**:
+- Missing convention identification through code analysis
+- OTEL semantic convention querying from official documentation
+- Static builder code generation following established patterns
+- Seamless integration with existing builder architecture
 
 #### 3. Convention Discovery System
 **Purpose**: Find applicable OTEL conventions for any operation type
@@ -123,108 +123,74 @@ See Architecture Decision AD-005 (below) for tracking this decision.
 
 ## Implementation Phases
 
-### Phase 1: Standards Module Extensibility
-**Timeline**: 1 hour
+### Phase 1: Convention Analysis and Gap Identification
+**Timeline**: 30 minutes
 **Priority**: High
 **Dependencies**: PRD-7 Phase 2.1 (Standards Module) complete
 
 #### Deliverables
-- [ ] Extend PRD-7's standards module with dynamic convention support
-- [ ] Add convention metadata tracking (source, version, stability)
-- [ ] Create builder function generator for new conventions
-- [ ] Maintain compatibility with existing PRD-7 instrumentation
-- [ ] Test dynamic convention addition
+- [ ] Analyze existing standards.js coverage against PRD-17 uninstrumented code
+- [ ] Identify missing OTEL semantic conventions needed
+- [ ] Create list of builders to add to standards.js
+- [ ] Validate that existing patterns can handle most cases
+- [ ] Document convention addition process
 
-#### Technical Design
-```javascript
-// Enhanced src/telemetry/standards.js (extends PRD-7)
-export const OTEL = {
-  // Existing static conventions from PRD-7
-  NAMESPACE: 'commit_story',
-  span: { /* existing from PRD-7 */ },
-  attrs: { /* existing from PRD-7 */ },
+#### Gap Analysis Focus
+**Target Code**: PRD-17 reflection system functions
+- `discoverReflections()` - File I/O operations
+- `parseReflectionFile()` - File parsing and processing
+- `parseReflectionTimestamp()` - Date/time parsing
 
-  // NEW: Dynamic extension system
-  dynamicConventions: new Map(),
+#### Expected Findings
+**Likely Missing Conventions** (to be verified):
+- `file.operation` - Type of file operation (read, write, parse)
+- `file.size` - File size metrics
+- Additional time-based attributes for reflection processing
 
-  // NEW: Add convention at runtime
-  addConvention(path, builder, metadata) {
-    this.dynamicConventions.set(path, {
-      builder,
-      source: metadata.source || 'otel-docs',
-      version: metadata.version || 'v1.37.0',
-      stability: metadata.stability || 'unknown',
-      addedDate: new Date(),
-      addedBy: 'add-telemetry-command'
-    });
+**Existing Adequate Coverage**:
+- File paths: `'code.filepath'` already documented in TELEMETRY.md
+- Journal operations: `OTEL.span.utils.journal_paths.*` already exists
+- Basic span patterns: Well-established in existing codebase
 
-    // Update JSDoc documentation
-    this._generateJSDoc(path, metadata);
-  },
-
-  // NEW: Get conventions for operation type
-  getConventionsFor(operationType) {
-    // Returns both static (PRD-7) and dynamic conventions
-    const static = this._getStaticConventions(operationType);
-    const dynamic = this._getDynamicConventions(operationType);
-    return { static, dynamic, combined: [...static, ...dynamic] };
-  }
-};
-```
-
-#### Integration with PRD-7
-- **Preserves existing**: All PRD-7 Phase 2 functionality unchanged
-- **Extends cleanly**: New methods don't interfere with existing ones
-- **Maintains patterns**: Uses same OTEL.attrs.* builder approach
-
-### Phase 2: Convention Discovery System
-**Timeline**: 1.5 hours
+### Phase 2: Static Convention Addition System
+**Timeline**: 1 hour
 **Priority**: High
 **Dependencies**: Phase 1 complete, internet access for OTEL docs
 
 #### Deliverables
-- [ ] Create OTEL convention query system
-- [ ] Build operation type detection (file I/O, network, AI, etc.)
-- [ ] Implement convention recommendation engine
-- [ ] Add stability level tracking and warnings
-- [ ] Create local cache for offline usage
+- [ ] Create OTEL semantic convention query capability
+- [ ] Build operation type detection for code analysis
+- [ ] Implement static builder code generation
+- [ ] Add missing conventions to standards.js based on Phase 1 analysis
+- [ ] Test new builders follow existing patterns
 
-#### Convention Categories
+#### Static Addition Process
+1. **Detect Operation Types**: Parse function code for file I/O, network, etc.
+2. **Query OTEL Docs**: Find applicable semantic conventions online
+3. **Generate Builder Code**: Create properly formatted builder functions
+4. **Add to Standards Module**: Insert new builders into standards.js statically
+5. **Validate Integration**: Ensure new builders work with existing patterns
+
+#### Builder Code Generation
+**Example Output for File Operations**:
 ```javascript
-const OPERATION_TYPES = {
-  'file': {
-    patterns: ['fs.', 'readFile', 'writeFile', 'path.'],
-    conventions: ['file.*', 'system.filesystem.*']
-  },
-  'network': {
-    patterns: ['http', 'fetch', 'axios', 'request'],
-    conventions: ['http.*', 'net.*', 'network.*']
-  },
-  'ai': {
-    patterns: ['openai', 'chat.completions', 'anthropic'],
-    conventions: ['gen_ai.*']
-  },
-  'process': {
-    patterns: ['spawn', 'exec', 'git ', 'npm ', 'command'],
-    conventions: ['process.*', 'subprocess.*']
-  },
-  'database': {
-    patterns: ['query', 'SELECT', 'INSERT', 'UPDATE'],
-    conventions: ['db.*', 'sql.*']
-  }
-};
+// Generate this code to add to OTEL.attrs in standards.js:
+file: {
+  operation: (op) => ({ 'file.operation': op }),
+  size: (bytes) => ({ 'file.size': bytes }),
+  path: (path) => ({ 'file.path': path }) // If not covered by code.filepath
+}
 ```
 
-#### Discovery Process
-1. **Analyze Code**: Parse function/file to identify operation types
-2. **Query Cache**: Check local convention cache first
-3. **Fetch Updates**: Get latest from OTEL docs if online
-4. **Filter Applicable**: Return relevant conventions for detected operations
-5. **Generate Builders**: Create new OTEL.attrs.* functions
+#### Integration Points
+- **Preserve existing patterns**: Follow OTEL.attrs.* structure exactly
+- **Maintain builder consistency**: Same parameter patterns as existing builders
+- **Update JSDoc documentation**: Add proper documentation for new builders
+- **Version control**: All additions are explicit commits to standards.js
 
 ### Phase 3: `/add-telemetry` Command Implementation
-**Timeline**: 1.5 hours
-**Priority**: Medium
+**Timeline**: 1 hour
+**Priority**: High
 **Dependencies**: Phase 2 complete, PRD-7 Phase 2.4 (validation script)
 
 #### Command Specification
@@ -272,13 +238,13 @@ Options:
 5. Report stability levels and recommend approach
 ```
 
-**Step 3: Standards Extension**
+**Step 3: Static Standards Addition**
 ```markdown
-## Step 3: Extend Standards Module (if needed)
-1. Add newly discovered conventions to PRD-7 standards module
-2. Generate builder functions following PRD-7 patterns
-3. Document source and stability level
-4. Test new builders generate correct attributes
+## Step 3: Add Missing Builders to Standards Module
+1. Generate builder code for discovered conventions
+2. Add builders to standards.js following existing patterns
+3. Document source and stability level in comments
+4. Commit changes to standards.js with clear commit message
 ```
 
 **Step 4: Code Generation**
@@ -391,17 +357,16 @@ Summary:
 **Extends**: `scripts/validate-telemetry.js` from PRD-7 Phase 2.4
 
 **New Checks**:
-- Validate dynamically added conventions are used correctly
-- Report coverage: static vs dynamic convention usage
-- Suggest OTEL conventions for custom attributes
+- Validate newly added conventions are used correctly
+- Suggest OTEL conventions for any remaining custom attributes
 - Check for experimental convention usage (warn but don't fail)
-- Verify new conventions have proper JSDoc
+- Verify new conventions have proper JSDoc and follow naming patterns
+- Ensure all builders use semantic convention patterns
 
 **New Reports**:
-- Convention discovery success rate
-- Standards module growth over time
-- Validation compliance trends
-- Dynamic vs static attribute usage
+- Convention coverage analysis (what % of operations have proper OTEL conventions)
+- Standards module completeness (gaps in coverage)
+- Validation compliance trends over time
 
 ## Architecture Decisions
 
@@ -438,19 +403,33 @@ Summary:
 - Clear success criteria
 
 ### AD-005: Invocation Pattern - Manual Command vs Automatic Agent
-**Decision**: [TO BE DETERMINED DURING IMPLEMENTATION]
-**Options Under Consideration**:
-1. **Manual-first approach**: Start with slash command, add automation later based on usage patterns
-2. **Dual-mode approach**: Support both manual and automatic from the start
-3. **Agent-first approach**: Focus on automatic instrumentation for conference demo impact
+**Decision**: Manual slash command approach
+**Rationale**:
+- Consistent with project's existing tooling patterns
+- Explicit control over when instrumentation occurs
+- Easier to validate and debug output
+- Reduces complexity compared to automatic triggers
 
-**Factors to Consider**:
-- Developer workflow preferences
-- Conference demo requirements (see [Cloud Native Denmark talk outline](../docs/talks/cloud-native-denmark-2025-outline.md))
-- Ease of implementation and testing
-- Risk of over-automation vs under-automation
+**Status**: ✅ Decided - September 26, 2025
 
-**Decision Date**: To be decided during Phase 3 implementation
+### AD-006: Dynamic vs Static Convention Management
+**Decision**: Static convention addition through `/add-telemetry` command modifications
+**Rationale**:
+- **Maintains "no hardcoded strings" principle**: All telemetry uses builders from standards.js
+- **Preserves AI-friendly architecture**: Future AI instances see all conventions in one static module
+- **Version controlled**: New conventions are explicit, reviewable commits
+- **Simpler maintenance**: No runtime complexity or persistent storage requirements
+- **Query OTEL docs when needed**: But only to generate static code additions, not runtime lookups
+- **Existing coverage**: Analysis shows standards.js already covers most needed operations
+
+**Implementation Approach**:
+1. `/add-telemetry` detects missing conventions
+2. Queries OTEL docs for semantic conventions
+3. Generates builder code for standards.js
+4. Adds builders statically to standards.js
+5. Uses new builders to instrument code
+
+**Status**: ✅ Decided - September 26, 2025
 
 ## Dependencies
 
@@ -469,16 +448,16 @@ Summary:
 ### Technical Risks
 
 1. **OTEL Convention Changes**
-   - **Risk**: Semantic conventions evolve, cached data becomes stale
-   - **Mitigation**: Version tracking, update notifications, stability warnings
+   - **Risk**: Semantic conventions evolve, statically added conventions become outdated
+   - **Mitigation**: Static additions are version-controlled and easy to update, stability level tracking in comments
 
-2. **Standards Module Conflicts**
-   - **Risk**: Dynamic additions conflict with static conventions
-   - **Mitigation**: Namespace separation, conflict detection, validation
+2. **Standards Module Integration**
+   - **Risk**: New static additions break existing instrumentation patterns
+   - **Mitigation**: Code generation follows exact existing patterns, comprehensive testing of new builders
 
-3. **Performance Impact**
-   - **Risk**: Convention discovery slows down instrumentation
-   - **Mitigation**: Caching, async operations, lazy loading
+3. **Convention Query Failures**
+   - **Risk**: OTEL docs unavailable when discovering new conventions
+   - **Mitigation**: Graceful fallback to manual convention specification, offline operation capability
 
 ### Process Risks
 
@@ -487,8 +466,8 @@ Summary:
    - **Mitigation**: Clear documentation, obvious value proposition
 
 2. **Maintenance Burden**
-   - **Risk**: Complex system becomes hard to maintain
-   - **Mitigation**: Clean architecture, comprehensive tests, good docs
+   - **Risk**: Added complexity makes the system harder to maintain
+   - **Mitigation**: Simplified static approach, comprehensive documentation, clear separation of concerns
 
 ## Design Decisions
 
