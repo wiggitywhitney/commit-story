@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs';
+import fsSync from 'fs';
 import { dirname, join } from 'path';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
@@ -6,6 +7,18 @@ import { createNarrativeLogger } from './trace-logger.js';
 
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
+
+// Debug mode detection from config file
+let isDebugMode = false;
+try {
+  const configPath = './commit-story.config.json';
+  if (fsSync.existsSync(configPath)) {
+    const configData = JSON.parse(fsSync.readFileSync(configPath, 'utf8'));
+    isDebugMode = configData.debug === true;
+  }
+} catch (error) {
+  // Silently ignore config file errors - debug mode defaults to false
+}
 
 /**
  * Journal Path Utilities
@@ -147,9 +160,22 @@ export async function ensureJournalDirectory(filePath) {
         dirCreated = true;
         logger.progress('directory creation', `Created directory structure: ${monthDir}`);
       } catch (dirError) {
-        // Directory creation failed, but continue - it might already exist
-        dirCreated = false;
-        logger.progress('directory creation', 'Directory already exists or creation not needed');
+        if (dirError.code === 'EEXIST') {
+          // Directory exists - this is fine
+          dirCreated = false;
+          logger.progress('directory creation', 'Directory already exists');
+        } else {
+          // Real error - permission or other issue
+          if (isDebugMode) {
+            console.error(`❌ Failed to create journal directory: ${dirError.message}`);
+            console.error(`   Path: ${dirPath}`);
+          }
+          logger.error('directory creation', 'Failed to create directory', dirError, {
+            targetPath: dirPath,
+            errorCode: dirError.code
+          });
+          throw dirError; // Don't continue if we can't create the directory
+        }
       }
 
       const operationDuration = Date.now() - startTime;

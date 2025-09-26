@@ -86,8 +86,17 @@ if is_commit_story_enabled; then
         debug_log "Debug mode enabled - running in foreground"
         if [[ -f "node_modules/.bin/commit-story" ]]; then
             ./node_modules/.bin/commit-story HEAD
+            EXIT_CODE=$?
         else
             node src/index.js HEAD
+            EXIT_CODE=$?
+        fi
+
+        # Only show success if it actually succeeded
+        if [[ $EXIT_CODE -eq 0 ]]; then
+            debug_log "Journal generation completed successfully"
+        else
+            debug_log "Journal generation failed with exit code $EXIT_CODE"
         fi
     else
         debug_log "Running in background"
@@ -96,9 +105,8 @@ if is_commit_story_enabled; then
         else
             (node src/index.js HEAD >/dev/null 2>&1 &)
         fi
+        debug_log "Journal generation started in background"
     fi
-    
-    debug_log "Journal generation completed"
 else
     debug_log "Commit Story not configured for this repository, skipping"
 fi

@@ -119,11 +119,15 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
 
-      logger.error('journal entry save', 'File write failed - output to console instead', error, {
+      if (isDebugMode) {
+        console.error(`❌ Failed to write journal file: ${error.message}`);
+        console.error(`   Target path: ${filePath}`);
+      }
+      logger.error('journal entry save', 'Failed to write journal file', error, {
         targetPath: filePath
       });
 
-      return 'stdout (file write failed)';
+      throw error;
     } finally {
       span.end();
     }
