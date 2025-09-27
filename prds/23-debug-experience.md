@@ -24,6 +24,12 @@ Implement a clean, user-focused debug experience that:
 - **Reliable Error Detection**: Proper exit codes ensure hooks report accurate status
 - **Maintainable Codebase**: Consistent debug logging patterns throughout
 
+## Dependencies
+
+**Prerequisites**: None - This is a standalone UX improvement
+**Blocks**: PRD-24 (Package v1.1.0) - Can't ship with noisy debug output
+**Related PRDs**: Part of conference roadmap (PRD-26)
+
 ## User Stories
 
 ### Story 1: Developer Troubleshooting Failed Generation

@@ -28,6 +28,12 @@ Implement session isolation using the `sessionId` field available in Claude Code
 - **Improved Traceability**: Clear connection between conversation and resulting code changes
 - **Better User Experience**: Journal entries make sense and provide value
 
+## Dependencies
+
+**Prerequisites**: None - This is a standalone bug fix
+**Blocks**: Clean demo experience without chat contamination
+**Related PRDs**: Part of conference roadmap (PRD-26)
+
 ## Research Foundation
 
 Based on existing research in [`docs/dev/claude-chat-research.md`](https://github.com/wiggitywhitney/commit-story/blob/b753456ce6fca3239ce2505447c3f860d7aed29b/docs/dev/claude-chat-research.md):

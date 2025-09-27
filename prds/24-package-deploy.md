@@ -27,6 +27,10 @@ Create and publish `commit-story@1.1.0` with:
 
 ## Dependencies
 
+**Prerequisites**: PRD-23 (Debug Experience) must be complete for clean output
+**Blocks**: Conference attendees being able to install and use the tool
+**Related PRDs**: Part of conference roadmap (PRD-26)
+
 ### PRD-23 Prerequisites
 This PRD requires completion of PRD-23 (Debug Experience Improvements):
 - ✅ Telemetry noise suppression

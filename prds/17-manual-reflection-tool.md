@@ -27,6 +27,12 @@ The first Commit Story iteration included an `add_reflection` MCP tool that was 
 - **Context Preservation**: Adding background that might be forgotten by commit time
 - **Process Documentation**: Recording decision-making rationale in real-time
 
+## Dependencies
+
+**Prerequisites**: None - Tool is already functional (95% complete)
+**Blocks**: None - Only timezone edge case remains
+**Related PRDs**: Part of conference roadmap (PRD-26)
+
 ## Success Criteria
 
 1. **Seamless Integration**: Tool integrates with journal system using dedicated reflections directory

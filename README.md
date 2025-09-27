@@ -14,8 +14,6 @@ Commit Story transforms your git commits into rich journal entries by combining:
 
 Every commit triggers a background process that creates a narrative record of your development work - no workflow interruption, just automatic documentation that captures the real story.
 
-**Automated Daily Summaries**: On the first commit of each new day, Commit Story automatically generates daily summaries from your journal entries, creating a higher-level view of your development journey.
-
 ## Why Use It?
 
 **For yourself:**

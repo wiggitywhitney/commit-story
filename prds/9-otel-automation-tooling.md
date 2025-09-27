@@ -480,10 +480,14 @@ AI: Interpreting "journal file" as src/managers/journal-manager.js...
 
 ## Dependencies
 
+**Prerequisites**: PRD-7 Phase 2 (Standards Module) - ✅ Complete
+**Blocks**: None directly, but enables dogfooding on PRDs 17, 25, 23
+**Related PRDs**: Part of conference roadmap (PRD-26) - Demo centerpiece
+
 ### Hard Dependencies (Required)
-- **PRD-7 Phase 2.1**: Standards module must exist
-- **PRD-7 Phase 2.4**: Validation script must exist
-- **OpenTelemetry research**: DD-011 documentation from PRD-7
+- **PRD-7 Phase 2.1**: Standards module must exist - ✅ Complete
+- **PRD-7 Phase 2.4**: Validation script must exist - ✅ Complete
+- **OpenTelemetry research**: DD-011 documentation from PRD-7 - ✅ Complete
 
 ### Soft Dependencies (Preferred)
 - **PRD-7 Phase 2.3**: All existing instrumentation migrated to standards module
