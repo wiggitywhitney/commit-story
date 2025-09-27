@@ -413,6 +413,35 @@ If applicable, add reflection events to existing OpenTelemetry instrumentation f
 - Update TELEMETRY.md with reflection telemetry patterns
 - Begin Milestone 3: Integration & Polish (journal generator cross-referencing)
 
+### 2025-09-27: Telemetry Gap Closure - Reflection Function Instrumentation
+**Duration**: 2 hours (part of PRD-9 /add-telemetry testing)
+**Primary Focus**: Add comprehensive telemetry to core reflection functions
+
+**Completed Work**:
+- Core reflection functions now fully instrumented with OpenTelemetry:
+  - `discoverReflections()` - File I/O operations with time window telemetry
+  - `parseReflectionFile()` - File parsing with content analysis telemetry
+  - `parseReflectionTimestamp()` - Date parsing with timezone telemetry
+  - `formatJournalEntry()` - Enhanced with reflection formatting telemetry
+  - `getJournalFilePath()` - Path generation telemetry
+
+**Standards Module Extensions**:
+- Added 6 new span builders to `OTEL.span.journal.*`
+- Added 6 new attribute builders to `OTEL.attrs.journal.*`
+- All following established telemetry patterns
+
+**Validation Results**:
+- Static validation: ✅ Passed
+- Runtime execution: ✅ All spans generated
+- Datadog ingestion: ✅ Confirmed spans and metrics flowing
+
+**Remaining Telemetry Gap**:
+- Context integration changes in `context-integrator.js` still need instrumentation
+
+**Next Session Priorities**:
+- Complete telemetry coverage for context-integrator.js changes
+- Fix timezone handling per DD-008
+
 **Milestone 1 Progress**: 12 of 12 items complete (100% - Milestone 1 COMPLETE ✅)
 
 ### 2025-09-22: Milestone 1 Complete - MCP Server Implementation + AI Query Optimization

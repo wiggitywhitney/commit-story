@@ -146,49 +146,96 @@ export async function saveJournalEntry(commitHash, timestamp, commitMessage, sec
  * @returns {string} Complete formatted journal entry
  */
 function formatJournalEntry(timestamp, commitHash, commitMessage, sections, reflections = []) {
-  const date = new Date(timestamp);
-
-  // Format time with user's local timezone using extracted utility
-  const timeString = getTimezonedTimestamp(date);
-  
-  const shortHash = commitHash.substring(0, 8);
-  
-  // Build journal entry with visual separation and four-section structure
-  let entry = '\n\n';  // Newlines for visual separation between entries
-  
-  // Time-only header with commit label and message
-  entry += `## ${timeString} - Commit: ${shortHash} - ${commitMessage}\n\n`;
-  
-  // Summary section
-  entry += `### Summary - ${shortHash}\n\n`;
-  entry += sections.summary + '\n\n';
-  
-  // Development Dialogue section
-  entry += `### Development Dialogue - ${shortHash}\n\n`;
-  entry += sections.dialogue + '\n\n';
-  
-  // Technical Decisions section
-  entry += `### Technical Decisions - ${shortHash}\n\n`;
-  entry += sections.technicalDecisions + '\n\n';
-
-  // Developer Reflections section (only if reflections exist)
-  if (reflections.length > 0) {
-    entry += `### Developer Reflections - ${shortHash}\n\n`;
-
-    for (const reflection of reflections) {
-      entry += `**${reflection.timeString}**\n\n`;
-      entry += reflection.content.join('\n') + '\n\n';
+  return tracer.startActiveSpan(OTEL.span.journal.format(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.commit.hash`]: commitHash.substring(0, 8),
+      [`${OTEL.NAMESPACE}.commit.message`]: commitMessage?.split('\n')[0],
+      'code.function': 'formatJournalEntry'
     }
-  }
+  }, (span) => {
+    const logger = createNarrativeLogger('journal.format_entry');
+    const startTime = Date.now();
 
-  // Commit Details section
-  entry += `### Commit Details - ${shortHash}\n\n`;
-  entry += sections.commitDetails + '\n\n';
-  
-  // Separator for multiple entries in same day
-  entry += '═══════════════════════════════════════\n\n';
-  
-  return entry;
+    try {
+      logger.start('journal entry formatting', `Formatting journal entry for commit: ${commitHash.slice(0, 8)}`);
+
+      const date = new Date(timestamp);
+
+      // Format time with user's local timezone using extracted utility
+      const timeString = getTimezonedTimestamp(date);
+
+      const shortHash = commitHash.substring(0, 8);
+
+      logger.progress('journal entry formatting', `Building entry structure with ${reflections.length} reflections`);
+
+      // Build journal entry with visual separation and four-section structure
+      let entry = '\n\n';  // Newlines for visual separation between entries
+
+      // Time-only header with commit label and message
+      entry += `## ${timeString} - Commit: ${shortHash} - ${commitMessage}\n\n`;
+
+      // Summary section
+      entry += `### Summary - ${shortHash}\n\n`;
+      entry += sections.summary + '\n\n';
+
+      // Development Dialogue section
+      entry += `### Development Dialogue - ${shortHash}\n\n`;
+      entry += sections.dialogue + '\n\n';
+
+      // Technical Decisions section
+      entry += `### Technical Decisions - ${shortHash}\n\n`;
+      entry += sections.technicalDecisions + '\n\n';
+
+      // Developer Reflections section (only if reflections exist)
+      if (reflections.length > 0) {
+        entry += `### Developer Reflections - ${shortHash}\n\n`;
+
+        for (const reflection of reflections) {
+          entry += `**${reflection.timeString}**\n\n`;
+          entry += reflection.content.join('\n') + '\n\n';
+        }
+        logger.progress('journal entry formatting', `Added ${reflections.length} reflections to entry`);
+      }
+
+      // Commit Details section
+      entry += `### Commit Details - ${shortHash}\n\n`;
+      entry += sections.commitDetails + '\n\n';
+
+      // Separator for multiple entries in same day
+      entry += '═══════════════════════════════════════\n\n';
+
+      // Record successful format metrics
+      const formatData = {
+        entrySize: entry.length,
+        reflectionCount: reflections.length,
+        sectionCount: 4, // Summary, Dialogue, Technical, Details (reflections are conditional)
+        formatDuration: Date.now() - startTime
+      };
+      span.setAttributes(OTEL.attrs.journal.format(formatData));
+
+      // Dual emission: emit key formatting metrics
+      OTEL.metrics.gauge('commit_story.journal.formatted_entry_size', formatData.entrySize);
+      OTEL.metrics.gauge('commit_story.journal.reflection_count', formatData.reflectionCount);
+      OTEL.metrics.histogram('commit_story.journal.format_duration_ms', formatData.formatDuration);
+
+      logger.complete('journal entry formatting', `Formatted ${Math.round(entry.length / 1024)}KB entry with ${reflections.length} reflections`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry formatted successfully' });
+      return entry;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      logger.error('journal entry formatting', 'Failed to format journal entry', error, {
+        commitHash: commitHash?.slice(0, 8)
+      });
+
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 /**
@@ -198,29 +245,95 @@ function formatJournalEntry(timestamp, commitHash, commitMessage, sections, refl
  * @returns {Promise<Array>} Array of reflection objects with timestamp and content
  */
 export async function discoverReflections(commitTime, previousCommitTime) {
-  const reflections = [];
-  // Use previous commit time as start, or default to 24 hours before if no previous commit
-  const startTime = previousCommitTime || new Date(commitTime.getTime() - (24 * 60 * 60 * 1000));
-
-  // Generate date range to check for reflection files
-  const daysToCheck = Math.ceil((commitTime.getTime() - startTime.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-
-  for (let i = 0; i < daysToCheck; i++) {
-    const checkDate = new Date(startTime.getTime() + (i * 24 * 60 * 60 * 1000));
-    const reflectionPath = generateJournalPath('reflections', checkDate);
+  return await tracer.startActiveSpan(OTEL.span.journal.discover_reflections(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.commit.time`]: commitTime.toISOString(),
+      [`${OTEL.NAMESPACE}.commit.previous_time`]: previousCommitTime?.toISOString() || null,
+      'code.function': 'discoverReflections'
+    }
+  }, async (span) => {
+    const logger = createNarrativeLogger('journal.discover_reflections');
+    const startTime = Date.now();
 
     try {
-      if (fsSync.existsSync(reflectionPath)) {
-        const content = await fs.readFile(reflectionPath, 'utf8');
-        const reflectionEntries = parseReflectionFile(content, checkDate, startTime, commitTime);
-        reflections.push(...reflectionEntries);
-      }
-    } catch (error) {
-      // Silently ignore file read errors
-    }
-  }
+      const reflections = [];
+      // Use previous commit time as start, or default to 24 hours before if no previous commit
+      const searchStartTime = previousCommitTime || new Date(commitTime.getTime() - (24 * 60 * 60 * 1000));
 
-  return reflections.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      // Calculate time window for discovery
+      const timeWindowMs = commitTime.getTime() - searchStartTime.getTime();
+      const timeWindowHours = Math.round(timeWindowMs / (60 * 60 * 1000) * 10) / 10;
+
+      logger.start('reflection discovery', `Discovering reflections in ${timeWindowHours}h window ending at ${commitTime.toISOString()}`);
+
+      // Generate date range to check for reflection files
+      const daysToCheck = Math.ceil(timeWindowMs / (24 * 60 * 60 * 1000)) + 1;
+
+      logger.progress('reflection discovery', `Checking ${daysToCheck} days for reflection files`);
+
+      let filesChecked = 0;
+      let filesFound = 0;
+
+      for (let i = 0; i < daysToCheck; i++) {
+        const checkDate = new Date(searchStartTime.getTime() + (i * 24 * 60 * 60 * 1000));
+        const reflectionPath = generateJournalPath('reflections', checkDate);
+
+        filesChecked++;
+
+        try {
+          if (fsSync.existsSync(reflectionPath)) {
+            filesFound++;
+            const content = await fs.readFile(reflectionPath, 'utf8');
+            const reflectionEntries = parseReflectionFile(content, checkDate, searchStartTime, commitTime);
+            reflections.push(...reflectionEntries);
+
+            if (reflectionEntries.length > 0) {
+              logger.progress('reflection discovery', `Found ${reflectionEntries.length} reflections in ${reflectionPath.split('/').pop()}`);
+            }
+          }
+        } catch (error) {
+          // Silently ignore file read errors but log for debugging
+          if (isDebugMode) {
+            console.warn(`Could not read reflection file ${reflectionPath}: ${error.message}`);
+          }
+        }
+      }
+
+      const sortedReflections = reflections.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
+      // Record successful discovery metrics
+      const discoveryData = {
+        filesChecked: filesChecked,
+        reflectionsFound: sortedReflections.length,
+        timeWindowHours: timeWindowHours,
+        discoveryDuration: Date.now() - startTime
+      };
+      span.setAttributes(OTEL.attrs.journal.discovery(discoveryData));
+
+      // Dual emission: emit key discovery metrics
+      OTEL.metrics.gauge('commit_story.journal.reflection_files_checked', discoveryData.filesChecked);
+      OTEL.metrics.gauge('commit_story.journal.reflections_discovered', discoveryData.reflectionsFound);
+      OTEL.metrics.gauge('commit_story.journal.discovery_time_window_hours', discoveryData.timeWindowHours);
+      OTEL.metrics.histogram('commit_story.journal.discovery_duration_ms', discoveryData.discoveryDuration);
+
+      logger.complete('reflection discovery', `Discovered ${sortedReflections.length} reflections from ${filesFound}/${filesChecked} files in ${timeWindowHours}h window`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Reflection discovery completed successfully' });
+      return sortedReflections;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      logger.error('reflection discovery', 'Failed to discover reflections', error, {
+        timeWindow: `${commitTime.toISOString()} - ${previousCommitTime?.toISOString() || 'default'}`
+      });
+
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 /**
@@ -232,46 +345,102 @@ export async function discoverReflections(commitTime, previousCommitTime) {
  * @returns {Array} Array of reflection objects
  */
 function parseReflectionFile(content, fileDate, startTime, endTime) {
-  const reflections = [];
-  const lines = content.split('\n');
-  let currentReflection = null;
+  return tracer.startActiveSpan(OTEL.span.journal.parse_reflection_file(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.reflection.file_date`]: fileDate.toISOString(),
+      [`${OTEL.NAMESPACE}.reflection.window_start`]: startTime.toISOString(),
+      [`${OTEL.NAMESPACE}.reflection.window_end`]: endTime.toISOString(),
+      'code.function': 'parseReflectionFile'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('journal.parse_reflection_file');
+    const parseStartTime = Date.now();
 
-  for (const line of lines) {
-    // Look for timestamp headers (## HH:MM:SS [TIMEZONE])
-    const timestampMatch = line.match(/^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{3,4})$/);
+    try {
+      logger.start('reflection file parsing', `Parsing ${Math.round(content.length / 1024)}KB reflection file for ${fileDate.toDateString()}`);
 
-    if (timestampMatch) {
-      // Save previous reflection if it exists
+      const reflections = [];
+      const lines = content.split('\n');
+      let currentReflection = null;
+      let timestampHeadersFound = 0;
+      let contentLinesProcessed = 0;
+
+      logger.progress('reflection file parsing', `Processing ${lines.length} lines for time window ${startTime.toISOString()} to ${endTime.toISOString()}`);
+
+      for (const line of lines) {
+        contentLinesProcessed++;
+
+        // Look for timestamp headers (## HH:MM:SS [TIMEZONE])
+        const timestampMatch = line.match(/^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{3,4})$/);
+
+        if (timestampMatch) {
+          timestampHeadersFound++;
+
+          // Save previous reflection if it exists
+          if (currentReflection) {
+            reflections.push(currentReflection);
+          }
+
+          // Parse timestamp and create full datetime
+          const timeString = timestampMatch[1];
+          const reflectionTime = parseReflectionTimestamp(fileDate, timeString);
+
+          // Check if reflection falls within time window
+          if (reflectionTime >= startTime && reflectionTime <= endTime) {
+            currentReflection = {
+              timestamp: reflectionTime,
+              timeString: timeString,
+              content: []
+            };
+          } else {
+            currentReflection = null;
+          }
+        } else if (currentReflection && line.trim() && !line.match(/^═+$/)) {
+          // Add content lines (skip empty lines and separators)
+          currentReflection.content.push(line);
+        }
+      }
+
+      // Don't forget the last reflection
       if (currentReflection) {
         reflections.push(currentReflection);
       }
 
-      // Parse timestamp and create full datetime
-      const timeString = timestampMatch[1];
-      const reflectionTime = parseReflectionTimestamp(fileDate, timeString);
+      // Record successful parsing metrics
+      const parseData = {
+        fileSize: content.length,
+        linesParsed: lines.length,
+        entriesExtracted: reflections.length,
+        parseDuration: Date.now() - parseStartTime,
+        filePath: generateJournalPath('reflections', fileDate)
+      };
+      span.setAttributes(OTEL.attrs.journal.parse(parseData));
 
-      // Check if reflection falls within time window
-      if (reflectionTime >= startTime && reflectionTime <= endTime) {
-        currentReflection = {
-          timestamp: reflectionTime,
-          timeString: timeString,
-          content: []
-        };
-      } else {
-        currentReflection = null;
-      }
-    } else if (currentReflection && line.trim() && !line.match(/^═+$/)) {
-      // Add content lines (skip empty lines and separators)
-      currentReflection.content.push(line);
+      // Dual emission: emit key parsing metrics
+      OTEL.metrics.gauge('commit_story.journal.reflection_file_size_bytes', parseData.fileSize);
+      OTEL.metrics.gauge('commit_story.journal.reflection_lines_parsed', parseData.linesParsed);
+      OTEL.metrics.gauge('commit_story.journal.reflection_entries_extracted', parseData.entriesExtracted);
+      OTEL.metrics.histogram('commit_story.journal.reflection_parse_duration_ms', parseData.parseDuration);
+
+      logger.complete('reflection file parsing', `Extracted ${reflections.length} reflections from ${timestampHeadersFound} headers in ${lines.length} lines`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Reflection file parsed successfully' });
+      return reflections;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      logger.error('reflection file parsing', 'Failed to parse reflection file', error, {
+        fileDate: fileDate.toDateString(),
+        contentSize: content.length
+      });
+
+      throw error;
+    } finally {
+      span.end();
     }
-  }
-
-  // Don't forget the last reflection
-  if (currentReflection) {
-    reflections.push(currentReflection);
-  }
-
-  return reflections;
+  });
 }
 
 /**
@@ -281,22 +450,83 @@ function parseReflectionFile(content, fileDate, startTime, endTime) {
  * @returns {Date} Full datetime object
  */
 function parseReflectionTimestamp(fileDate, timeString) {
-  // Simple parsing - assumes same date as file
-  // Could be enhanced to handle timezone conversion if needed
-  const [time, period, timezone] = timeString.split(' ');
-  const [hours, minutes, seconds] = time.split(':').map(Number);
+  return tracer.startActiveSpan(OTEL.span.journal.parse_timestamp(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.reflection.file_date`]: fileDate.toISOString(),
+      [`${OTEL.NAMESPACE}.reflection.time_string`]: timeString,
+      'code.function': 'parseReflectionTimestamp'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('journal.parse_timestamp');
 
-  let hour24 = hours;
-  if (period === 'PM' && hours !== 12) {
-    hour24 += 12;
-  } else if (period === 'AM' && hours === 12) {
-    hour24 = 0;
-  }
+    try {
+      logger.start('timestamp parsing', `Parsing timestamp "${timeString}" for ${fileDate.toDateString()}`);
 
-  const reflectionDate = new Date(fileDate);
-  reflectionDate.setHours(hour24, minutes, seconds, 0);
+      // Simple parsing - assumes same date as file
+      // Could be enhanced to handle timezone conversion if needed
+      const [time, period, timezone] = timeString.split(' ');
+      const [hours, minutes, seconds] = time.split(':').map(Number);
 
-  return reflectionDate;
+      let parseSuccess = true;
+      let detectedTimezone = timezone || 'unknown';
+
+      let hour24 = hours;
+      if (period === 'PM' && hours !== 12) {
+        hour24 += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hour24 = 0;
+      }
+
+      const reflectionDate = new Date(fileDate);
+      reflectionDate.setHours(hour24, minutes, seconds, 0);
+
+      // Validate the parsed date makes sense
+      if (isNaN(reflectionDate.getTime()) || hours < 1 || hours > 12 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+        parseSuccess = false;
+        throw new Error(`Invalid timestamp components: ${timeString}`);
+      }
+
+      // Record successful parsing attributes
+      const timestampData = {
+        format: `${period} ${timezone}`,
+        timezone: detectedTimezone,
+        parseSuccess: parseSuccess
+      };
+      span.setAttributes(OTEL.attrs.journal.timestamp(timestampData));
+
+      // Lightweight metrics for timestamp parsing success
+      OTEL.metrics.counter('commit_story.journal.timestamp_parse_success', 1);
+      OTEL.metrics.gauge('commit_story.journal.timezone_detected', detectedTimezone === 'unknown' ? 0 : 1);
+
+      logger.complete('timestamp parsing', `Parsed ${timeString} to ${reflectionDate.toISOString()}`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Timestamp parsed successfully' });
+      return reflectionDate;
+
+    } catch (error) {
+      const timestampData = {
+        format: 'parse_failed',
+        timezone: 'unknown',
+        parseSuccess: false
+      };
+      span.setAttributes(OTEL.attrs.journal.timestamp(timestampData));
+
+      // Error metrics for timestamp parsing failures
+      OTEL.metrics.counter('commit_story.journal.timestamp_parse_errors', 1);
+
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      logger.error('timestamp parsing', 'Failed to parse reflection timestamp', error, {
+        timeString: timeString,
+        fileDate: fileDate.toDateString()
+      });
+
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 /**
@@ -306,6 +536,46 @@ function parseReflectionTimestamp(fileDate, timeString) {
  * @returns {string} - File path for that date's journal
  */
 export function getJournalFilePath(date) {
-  // Use extracted utility for path generation
-  return generateJournalPath('entries', date);
+  return tracer.startActiveSpan(OTEL.span.journal.get_file_path(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.journal.requested_date`]: date.toISOString(),
+      'code.function': 'getJournalFilePath'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('journal.get_file_path');
+
+    try {
+      logger.start('path generation', `Generating journal file path for ${date.toDateString()}`);
+
+      // Use extracted utility for path generation
+      const generatedPath = generateJournalPath('entries', date);
+
+      // Record successful path generation attributes
+      const pathData = {
+        requestedDate: date.toISOString(),
+        generatedPath: generatedPath
+      };
+      span.setAttributes(OTEL.attrs.journal.path(pathData));
+
+      // Lightweight metrics for path generation
+      OTEL.metrics.counter('commit_story.journal.path_generation_requests', 1);
+
+      logger.complete('path generation', `Generated path: ${generatedPath.split('/').slice(-2).join('/')}`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Journal file path generated successfully' });
+      return generatedPath;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      logger.error('path generation', 'Failed to generate journal file path', error, {
+        requestedDate: date.toDateString()
+      });
+
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }

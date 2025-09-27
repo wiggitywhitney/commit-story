@@ -73,7 +73,12 @@ export const OTEL = {
     // Journal generation operations
     journal: {
       generate: () => 'journal.generate_entry',
-      save: () => 'journal.save_entry'
+      save: () => 'journal.save_entry',
+      format: () => 'journal.format_entry',
+      discover_reflections: () => 'journal.discover_reflections',
+      parse_reflection_file: () => 'journal.parse_reflection_file',
+      parse_timestamp: () => 'journal.parse_timestamp',
+      get_file_path: () => 'journal.get_file_path'
     },
 
     // AI generation operations
@@ -260,6 +265,65 @@ export const OTEL = {
         [`${OTEL.NAMESPACE}.journal.entry_size`]: saveData.entrySize,
         [`${OTEL.NAMESPACE}.journal.directory_created`]: saveData.dirCreated,
         [`${OTEL.NAMESPACE}.journal.write_duration_ms`]: saveData.writeDuration
+      }),
+
+      /**
+       * Journal format operation attributes
+       * @param {Object} formatData - Journal format operation data
+       * @returns {Object} Journal format attributes
+       */
+      format: (formatData) => ({
+        [`${OTEL.NAMESPACE}.journal.entry_size`]: formatData.entrySize,
+        [`${OTEL.NAMESPACE}.journal.reflection_count`]: formatData.reflectionCount,
+        [`${OTEL.NAMESPACE}.journal.section_count`]: formatData.sectionCount,
+        [`${OTEL.NAMESPACE}.journal.format_duration_ms`]: formatData.formatDuration
+      }),
+
+      /**
+       * Journal reflection discovery attributes
+       * @param {Object} discoveryData - Reflection discovery operation data
+       * @returns {Object} Discovery attributes
+       */
+      discovery: (discoveryData) => ({
+        [`${OTEL.NAMESPACE}.journal.files_checked`]: discoveryData.filesChecked,
+        [`${OTEL.NAMESPACE}.journal.reflections_found`]: discoveryData.reflectionsFound,
+        [`${OTEL.NAMESPACE}.journal.time_window_hours`]: discoveryData.timeWindowHours,
+        [`${OTEL.NAMESPACE}.journal.discovery_duration_ms`]: discoveryData.discoveryDuration
+      }),
+
+      /**
+       * Journal reflection file parsing attributes
+       * @param {Object} parseData - File parsing operation data
+       * @returns {Object} Parse attributes
+       */
+      parse: (parseData) => ({
+        [`${OTEL.NAMESPACE}.journal.file_size`]: parseData.fileSize,
+        [`${OTEL.NAMESPACE}.journal.lines_parsed`]: parseData.linesParsed,
+        [`${OTEL.NAMESPACE}.journal.entries_extracted`]: parseData.entriesExtracted,
+        [`${OTEL.NAMESPACE}.journal.parse_duration_ms`]: parseData.parseDuration,
+        [SEMATTRS_CODE_FILEPATH]: parseData.filePath
+      }),
+
+      /**
+       * Journal timestamp parsing attributes
+       * @param {Object} timestampData - Timestamp parsing data
+       * @returns {Object} Timestamp attributes
+       */
+      timestamp: (timestampData) => ({
+        [`${OTEL.NAMESPACE}.journal.timestamp_format`]: timestampData.format,
+        [`${OTEL.NAMESPACE}.journal.timezone_detected`]: timestampData.timezone,
+        [`${OTEL.NAMESPACE}.journal.parse_success`]: timestampData.parseSuccess
+      }),
+
+      /**
+       * Journal file path generation attributes
+       * @param {Object} pathData - Path generation data
+       * @returns {Object} Path attributes
+       */
+      path: (pathData) => ({
+        [`${OTEL.NAMESPACE}.journal.requested_date`]: pathData.requestedDate,
+        [`${OTEL.NAMESPACE}.journal.generated_path`]: pathData.generatedPath,
+        [SEMATTRS_CODE_FILEPATH]: pathData.generatedPath
       })
     },
 

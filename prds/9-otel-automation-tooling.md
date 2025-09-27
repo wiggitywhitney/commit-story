@@ -410,7 +410,7 @@ AI: Interpreting "journal file" as src/managers/journal-manager.js...
 - [x] Create coverage analysis for standards module usage - Built into command logic
 - [x] Update npm scripts for enhanced validation - Uses existing `npm run validate:telemetry`
 - [x] Document validation process - Comprehensive Step 6 with 60-second Datadog validation
-- [ ] **Validate PRD-17 test case**: Ensure agent successfully instruments all reflection system functions per DD-001
+- [ ] **Validate PRD-17 test case**: Ensure agent successfully instruments all reflection system functions per DD-001 - Status: 5/5 journal-manager.js functions complete, context-integrator.js pending
 
 #### Enhanced Validation Features
 **Extends**: `scripts/validate-telemetry.js` from PRD-7 Phase 2.4
@@ -617,7 +617,41 @@ span.setAttributes({
 - All instrumentation must follow existing TELEMETRY.md patterns
 - Generated code must pass PRD-7's validation script
 
-**Status**: Outstanding - requires Phase 3 agent implementation
+**Status**: ⏳ In Progress - 5/5 journal-manager.js functions instrumented, context-integrator.js pending
+
+### DD-002: Validation Script Enhancement
+**Decision**: Improve validation to catch runtime issues, not just static patterns
+
+**Context**: Current validation only checks syntax but missed that spans using builders may not exist in standards.js.
+
+**Outcome Required**: Validation catches issues before they reach production
+**Implementation**: TBD during work session
+
+**Status**: ⏳ Outstanding
+
+### DD-003: /add-telemetry Step 6 Validation Overhaul
+**Decision**: Fix Step 6 to ensure complete validation of all added telemetry
+
+**Context**: Current Step 6 validated only ~60% of added telemetry, missing `getJournalFilePath` entirely. Doesn't explain test coverage or require 100% validation.
+
+**Outcome Required**:
+- Every added span/metric/log must be validated in Datadog
+- Clear understanding of what test:trace covers vs what needs additional testing
+- Intelligent test strategy selection
+
+**Implementation**: Redesign Step 6 during work session
+
+**Status**: ⏳ Outstanding
+
+### DD-004: /add-telemetry Success Checklist
+**Decision**: Add success checklist to prevent incomplete validation
+
+**Context**: No clear completion criteria led to partial validation (60% coverage vs 100% required).
+
+**Outcome Required**: Clear pass/fail criteria for /add-telemetry completion
+**Implementation**: Add checklist to command during work session
+
+**Status**: ⏳ Outstanding
 
 ## Success Metrics
 
@@ -653,9 +687,9 @@ span.setAttributes({
 
 ## Work Log
 
-### September 27, 2025: /add-telemetry Command Implementation Complete
-**Duration**: ~3 hours implementation + design discussion
-**Primary Focus**: Complete automation tool creation with comprehensive validation
+### September 27, 2025: /add-telemetry Real-World Validation & Design Improvements
+**Duration**: 2 hours instrumentation + 1 hour analysis and PRD updates
+**Primary Focus**: DD-001 test case execution and validation gap analysis
 
 **Completed PRD Items**:
 - [x] Phase 1: Convention Analysis and Gap Identification - Automated in Steps 3-4 of command
@@ -680,9 +714,10 @@ span.setAttributes({
 - "No hardcoded strings" principle maintained throughout
 
 **Next Session Priorities**:
-- Test `/add-telemetry` command on PRD-17 reflection functions
-- Validate real-world instrumentation of `discoverReflections()`, `parseReflectionFile()`, `parseReflectionTimestamp()`
-- Complete final Phase 4 deliverable with successful PRD-17 test case
+- Complete DD-001 by instrumenting context-integrator.js changes
+- Implement validation script enhancements per DD-002
+- Redesign /add-telemetry Step 6 per DD-003
+- Add success checklist to command per DD-004
 
 ### Pre-Implementation Planning
 **Focus**: Requirements analysis and architecture design based on PRD-7 foundation
