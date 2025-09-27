@@ -118,36 +118,26 @@ The chat collector currently filters by:
 
 ## Design Decisions
 
-### Decision 1: Session Detection Strategy
-**Choice**: Automatic detection based on recent message activity
-**Rationale**: Preserves workflow automation, requires no user configuration
-**Alternatives Considered**:
-- Manual session configuration (rejected: breaks automation)
-- Branch-based session mapping (rejected: doesn't handle same-branch work)
-**Tradeoffs**: May occasionally select wrong session vs. guaranteed accuracy with manual config
+### Decision 1: Validation-Based Selection Over Time Heuristics
+**Choice**: Use definitive signals (git commit presence) and AI content analysis instead of time-based guessing
+**Rationale**: Telemetry analysis revealed that "most recent activity" heuristics would fail for terminal commits and parallel workflows
+**Date**: 2025-09-27
+**Status**: ✅ Decided
 
-### Decision 2: Selection Algorithm
-**Choice**: Most recent message timestamp before commit time
-**Rationale**: Simple heuristic that captures "active" session at commit time
-**Implementation**:
-```javascript
-// For each sessionId, find the most recent message before commit
-const sessionActivity = sessions.map(session => ({
-  sessionId: session.id,
-  lastActivity: session.messages
-    .filter(msg => msg.timestamp < commitTime)
-    .reduce((latest, msg) => msg.timestamp > latest ? msg.timestamp : latest, 0)
-}));
+### Decision 2: Plan A → Plan C Approach (Skip Unreliable Heuristics)
+**Choice**:
+- **Plan A**: Check if session's last messages contain git commit command/output
+- **Plan C**: Use AI to analyze session content against git diff for relevance
+- **Skip Plan B**: Avoid unreliable signals like "git add" or "git stage" commands
+**Rationale**: Keep it simple - use definitive signals first, then intelligent analysis. No guessing.
+**Date**: 2025-09-27
+**Status**: ✅ Decided
 
-// Select session with most recent activity
-const activeSession = sessionActivity
-  .sort((a, b) => b.lastActivity - a.lastActivity)[0];
-```
-
-### Decision 3: Fallback Behavior
-**Choice**: If session detection fails, use all messages (current behavior)
-**Rationale**: Preserves existing functionality, ensures journal generation never fails
-**Tradeoffs**: Contaminated journal vs. no journal at all
+### Decision 3: Filter Each Session Independently
+**Choice**: Apply noise filtering (tool calls, system messages) to each session separately before selection
+**Rationale**: Telemetry logs revealed filtering happens in collector ("40 noisy messages" removed) - this should happen per-session for clean AI comparison
+**Date**: 2025-09-27
+**Status**: ✅ Decided
 
 ### Decision 4: Debug Output Format
 **Choice**: Structured debug output showing session selection reasoning
@@ -162,19 +152,20 @@ const activeSession = sessionActivity
 
 ## Implementation Plan
 
-### Milestone 1: Session Grouping and Detection (Priority: High)
-**Goal**: Group messages by sessionId and implement detection algorithm
+### Milestone 1: Session Grouping and Validation (Priority: High)
+**Goal**: Group messages by sessionId and implement Plan A → Plan C selection
 
-**Tasks**:
-- [ ] Modify `extractChatForCommit()` to group messages by sessionId
-- [ ] Implement session activity detection algorithm
-- [ ] Add session selection logic with confidence scoring
-- [ ] Create fallback mechanism for detection failures
-- [ ] Add comprehensive error handling
+**Tasks** (based on DD-001, DD-002, DD-003):
+- [ ] Group messages by sessionId after time/project filtering (line 90-91 in claude-collector.js)
+- [ ] Apply noise filtering to each session independently (move "40 noisy messages" logic per-session)
+- [ ] Implement Plan A: Check last 3 messages of each session for git commit commands/output
+- [ ] Implement Plan C: AI content analysis comparing filtered sessions against git diff
+- [ ] Return selected session's filtered messages
+- [ ] Add fallback: Skip journal generation if no valid session found
 
 **Files Modified**:
-- `src/collectors/claude-collector.js` - Core implementation
-- Tests for session detection logic
+- `src/collectors/claude-collector.js` - Core session selection logic
+- Tests for Plan A and Plan C validation
 
 ### Milestone 2: Debug Output and Logging (Priority: High)
 **Goal**: Provide visibility into session selection process
@@ -216,60 +207,88 @@ const activeSession = sessionActivity
 
 ## Technical Specification
 
-### Session Detection Algorithm
+### Session Selection Algorithm (Plan A → Plan C)
 
 ```javascript
 /**
- * Detects the most active Claude Code session before commit time
+ * Select relevant session using validation-based approach
  * @param {Array} messages - All messages in time window
- * @param {Date} commitTime - When the commit was made
- * @returns {Object} { sessionId, confidence, reasoning }
+ * @param {Object} gitDiff - Git diff data for commit
+ * @param {string} commitMessage - Commit message
+ * @returns {Array|null} Selected session messages or null
  */
-function detectActiveSession(messages, commitTime) {
+async function selectRelevantSession(messages, gitDiff, commitMessage) {
   // Group messages by sessionId
-  const sessions = groupMessagesBySession(messages);
+  const sessions = groupBySessionId(messages);
 
   if (sessions.length === 1) {
-    return {
-      sessionId: sessions[0].id,
-      confidence: 1.0,
-      reasoning: 'Only session in time window'
-    };
+    return filterNoiseFromMessages(sessions[0].messages);
   }
 
-  // Calculate activity score for each session
-  const sessionScores = sessions.map(session => ({
+  // Filter each session independently
+  const filteredSessions = sessions.map(session => ({
     sessionId: session.id,
-    messageCount: session.messages.length,
-    lastActivity: getLastActivityBefore(session.messages, commitTime),
-    activityScore: calculateActivityScore(session.messages, commitTime)
+    messages: filterNoiseFromMessages(session.messages),
+    hasGitCommit: checkLastMessagesForCommit(session.messages),
+    stats: { messageCount: session.messages.length }
   }));
 
-  // Sort by activity score (descending)
-  sessionScores.sort((a, b) => b.activityScore - a.activityScore);
+  // Plan A: Check for definitive git commit signal
+  const commitSession = filteredSessions.find(s => s.hasGitCommit);
+  if (commitSession) {
+    logger.info(`Selected session ${commitSession.sessionId} (Plan A: git commit found)`);
+    return commitSession.messages;
+  }
 
-  const winner = sessionScores[0];
-  const confidence = calculateConfidence(sessionScores);
+  // Plan C: AI content analysis for terminal commits
+  logger.info('No git commit found in sessions, using AI analysis (Plan C)');
+  const selected = await analyzeSessionsWithAI(filteredSessions, gitDiff, commitMessage);
 
-  return {
-    sessionId: winner.sessionId,
-    confidence: confidence,
-    reasoning: `Most active session: ${winner.messageCount} messages, last activity ${winner.lastActivity}`
-  };
+  if (selected) {
+    logger.info(`Selected session ${selected.sessionId} (Plan C: AI analysis)`);
+    return selected.messages;
+  }
+
+  // No valid session found
+  logger.info('No relevant session detected - skipping journal generation');
+  return null;
 }
 ```
 
-### Activity Scoring Formula
+### Plan A: Git Commit Detection
 
 ```javascript
-function calculateActivityScore(messages, commitTime) {
-  return messages
-    .filter(msg => new Date(msg.timestamp) < commitTime)
-    .reduce((score, msg) => {
-      const timeDiff = commitTime - new Date(msg.timestamp);
-      const timeWeight = Math.exp(-timeDiff / (1000 * 60 * 30)); // 30min decay
-      return score + timeWeight;
-    }, 0);
+function checkLastMessagesForCommit(messages) {
+  const lastThreeMessages = messages.slice(-3);
+  return lastThreeMessages.some(msg =>
+    msg.content && msg.content.match(/git commit|Successfully committed|Created commit [a-f0-9]{7}/i)
+  );
+}
+```
+
+### Plan C: AI Content Analysis
+
+```javascript
+async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
+  const prompt = `
+    Given these chat sessions and a git diff, identify which session(s)
+    led to these code changes:
+
+    Git Commit: ${commitMessage}
+    Files Changed: ${gitDiff.files?.join(', ') || 'Unknown'}
+
+    ${sessions.map((s, i) => `
+    Session ${i + 1} (${s.sessionId.slice(0, 8)}) - ${s.stats.messageCount} messages:
+    Recent messages: ${s.messages.slice(-10).map(m => m.content).join('\n---\n')}
+    `).join('\n')}
+
+    Which session discussed or implemented these changes?
+    Respond with: SESSION_1, SESSION_2, BOTH, or NONE
+    Include brief reasoning.
+  `;
+
+  const decision = await callOpenAI(prompt);
+  return parseAIDecision(decision, sessions);
 }
 ```
 
@@ -348,8 +367,15 @@ function calculateActivityScore(messages, commitTime) {
 ### 2025-09-26
 - PRD created based on identified cross-contamination issue
 - Research foundation established from existing Claude Code analysis
-- Session detection algorithm designed with fallback mechanisms
+- Initial time-based session detection algorithm designed
 - Implementation plan created with 4 milestones
+
+### 2025-09-27
+- **Telemetry analysis completed**: Used Datadog traces/logs to understand actual execution flow
+- **Design pivot**: Replaced time-based heuristics with validation-based selection (DD-001)
+- **Plan A → Plan C approach**: Definitive signals first, then AI analysis (DD-002)
+- **Architecture insight**: Filter each session independently for clean AI comparison (DD-003)
+- **Implementation strategy refined**: Leverage existing filtering pipeline in claude-collector.js
 
 ## Design Document References
 
@@ -373,10 +399,39 @@ function calculateActivityScore(messages, commitTime) {
    - Integration tests with mock multiple sessions
    - Performance benchmarks
 
+## How Telemetry Informed This Design
+
+The `/prd-next-telemetry-powered` analysis revealed critical insights that shaped our approach:
+
+### 1. **Revealed Real Execution Flow**
+Trace data showed: `context.gather_for_commit` (404ms) → `claude.collect_messages` (365ms) → `context.filter_messages` (0ms)
+- The 0ms duration on `filter_messages` revealed filtering actually happens in the collector
+- This informed where to insert session grouping logic
+
+### 2. **Showed Current Filtering Patterns**
+Logs revealed the two-stage filtering:
+- "Filtered out 1183 messages (wrong project) + 29406 messages (outside time window)"
+- "Filtered out 40 noisy messages (tool calls, system messages, empty content)"
+- This informed our per-session filtering approach
+
+### 3. **Validated Problem Impact**
+- 16 successful journal generations this week
+- But no sessionId filtering means potential contamination in every one
+- Telemetry quantified the problem's real-world impact
+
+### 4. **Guided Design Evolution Through Dialogue**
+Our iterative discussion used telemetry insights to evolve from:
+- Initial: Time-based "most recent activity" heuristics
+- Problem: "We shouldn't be guessing about session relevance"
+- Solution: Plan A (definitive signals) → Plan C (intelligent analysis)
+- Architecture: Filter each session independently for clean AI comparison
+
+The telemetry didn't just show us WHAT the system does, but HOW it does it - enabling a solution that fits naturally into the existing pipeline.
+
 ## Notes
 
 - This PRD addresses a critical issue affecting journal quality and narrative coherence
 - Solution leverages existing `sessionId` field in Claude Code messages
 - Implementation preserves backward compatibility and existing workflow
-- Focus on automatic detection to maintain seamless user experience
+- **Design informed by runtime telemetry analysis**: Used actual system behavior to guide architecture decisions
 - Fallback mechanisms ensure journal generation never fails due to session detection issues
