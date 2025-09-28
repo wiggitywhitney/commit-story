@@ -36,7 +36,7 @@ Implement session isolation using the `sessionId` field available in Claude Code
 
 ## Research Foundation
 
-Based on existing research in [`docs/dev/claude-chat-research.md`](https://github.com/wiggitywhitney/commit-story/blob/b753456ce6fca3239ce2505447c3f860d7aed29b/docs/dev/claude-chat-research.md):
+Based on research in [`docs/dev/claude-chat-research.md`](../docs/dev/claude-chat-research.md) which provides comprehensive analysis of Claude Code message structure and filtering patterns:
 
 ### Claude Code Message Structure
 - **Storage**: `~/.claude/projects/[project-path-encoded]/*.jsonl`
@@ -156,17 +156,47 @@ The chat collector currently filters by:
   - Selected: abc123 (most recent activity)
 ```
 
+### Decision 5: Implementation Location Before Noise Filtering
+**Choice**: Session detection logic must be implemented in `claude-collector.js` BEFORE noise filtering occurs
+**Rationale**: Git commit evidence exists in tool_use messages (Bash commands) and tool_result messages (git output), which are filtered out as "noise" in context-filter.js. To detect which session contains git commit commands, we must examine raw messages before filtering.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
+### Decision 6: Git Commit Detection via Bash Tool Use
+**Choice**: For multi-tab scenarios, detect git commit by looking for assistant messages with Bash tool_use containing "git commit" in the input.command field
+**Rationale**: User workflow involves `/prd-update-progress` which executes git commands via Claude's Bash tool. This creates definitive evidence in the form of tool_use messages with "git commit" commands.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
+### Decision 7: Single Session Fast Path
+**Choice**: If only one sessionId exists in all collected messages, use it immediately without detection logic
+**Rationale**: Single session is the common case and should be optimized. No need for detection overhead when there's no ambiguity.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
+### Decision 8: Scope Limitation - Focus on Realistic Problems
+**Choice**: Address multi-tab contamination first, defer complex edge cases (sequential sessions, compaction behavior) for future research
+**Rationale**: The primary issue is simultaneous multi-tab work creating contamination. Sequential session scenarios are less common and add significant complexity.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
+### Decision 9: Fallback Documentation Strategy
+**Choice**: If session detection proves too complex, document that the system works best with single Claude Code sessions
+**Rationale**: Provides user expectation management and clear boundaries for supported workflows
+**Date**: 2025-09-28
+**Status**: ✅ Decided (as backup plan)
+
 ## Implementation Plan
 
-### Milestone 1: Session Grouping and Validation (Priority: High)
-**Goal**: Group messages by sessionId and implement Plan A → Plan C selection
+### Milestone 1: Core Session Detection (Priority: High)
+**Goal**: Group messages by sessionId and implement git commit detection
 
-**Tasks** (based on DD-001, DD-002, DD-003):
-- [ ] Group messages by sessionId after time/project filtering (line 90-91 in claude-collector.js)
-- [ ] Apply noise filtering to each session independently (move "40 noisy messages" logic per-session)
-- [ ] Implement Plan A: Check last 3 messages of each session for git commit commands/output
-- [ ] Implement Plan C: AI content analysis comparing filtered sessions against git diff
-- [ ] Return selected session's filtered messages
+**Tasks** (based on DD-005, DD-006, DD-007):
+- [ ] Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)
+- [ ] Implement single session fast path per DD-007
+- [ ] Implement Plan A: Detect Bash tool_use with "git commit" in last few messages per DD-006
+- [ ] Add structured debug output per DD-004 showing session selection reasoning
+- [ ] Return selected session's messages (no pre-filtering)
 - [ ] Add fallback: Skip journal generation if no valid session found
 
 **Files Modified**:
@@ -368,6 +398,57 @@ async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
 4. **Inactive sessions**: One tab active, one idle
 5. **Overlapping activity**: Both tabs active near commit time
 
+### Contaminated Commit Test Cases
+**Purpose**: Use real contamination examples to validate session isolation effectiveness
+
+**Primary Test Case - PRD-24/PRD-9 Contamination**:
+- **Location**: `journal/entries/2025-09/2025-09-26.md`
+- **Issue**: PRD-24 commit journal contains unrelated PRD-9 question from parallel session
+- **Evidence**: "Question. Does prd-9 have a plan for evaluating updated code, not just net-new code?"
+- **Expected Result**: After session isolation, PRD-24 journal should contain only PRD-24 related conversation
+
+**Secondary Test Cases - Multi-Commit Scenarios**:
+- **Location**: `journal/entries/2025-09/2025-09-25.md`
+- **Issue**: Multiple commits with potentially overlapping session activity
+- **Purpose**: Test both Plan A (git commit detection) and Plan C (AI analysis) scenarios
+- **Expected Result**: Each commit journal contains only its relevant session conversations
+
+**Validation Method**:
+1. Regenerate journals for contaminated commits using new session isolation logic
+2. Compare before/after results to measure contamination reduction
+3. Verify narrative coherence improved in each journal entry
+4. Confirm no legitimate conversation context was lost
+
+## Outstanding Research Questions
+
+### Phase 1: Human/AI Collaborative Research (Required before implementation)
+**Status**: Not Started
+**Priority**: High
+
+**Questions requiring empirical research**:
+1. **Sequential Session Behavior**: What happens when user closes Claude and reopens to continue same feature work?
+   - Does new tab get new sessionId?
+   - How common is this workflow?
+   - Should sequential sessions be linked?
+
+2. **Compaction Impact**: When Claude compacts long conversations, does sessionId change?
+   - Can we observe this in real JSONL data?
+   - How would this affect detection?
+
+3. **Claude Code Restart Behavior**: When Claude Code application is quit and restarted, are sessionIds preserved?
+   - Test with actual quit/restart cycle
+   - Check JSONL files for evidence
+
+4. **Real Usage Patterns**: User's actual multi-tab workflow frequency
+   - How many tabs typically open?
+   - Do tabs stay open for days?
+   - Terminal commit frequency?
+
+**Research Methodology**:
+- Review existing JSONL files for session patterns
+- Conduct controlled testing of Claude Code behavior
+- Document findings before proceeding with complex implementation
+
 ## Progress Log
 
 ### 2025-09-26
@@ -382,6 +463,14 @@ async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
 - **Plan A → Plan C approach**: Definitive signals first, then AI analysis (DD-002)
 - **Architecture insight**: Filter each session independently for clean AI comparison (DD-003)
 - **Implementation strategy refined**: Leverage existing filtering pipeline in claude-collector.js
+
+### 2025-09-28
+- **Architecture decision finalized**: Session detection in claude-collector.js before noise filtering (DD-005)
+- **Git detection method refined**: Focus on Bash tool_use with "git commit" commands (DD-006)
+- **Single session optimization**: Fast path for single sessionId scenarios (DD-007)
+- **Scope limitation**: Focus on realistic multi-tab problems, defer edge cases (DD-008)
+- **Research phase identified**: Need collaborative human/AI investigation of session behavior
+- **Updated docs/dev/claude-chat-research.md**: Added comprehensive reference documentation
 
 ## Design Document References
 
