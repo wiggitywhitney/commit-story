@@ -81,11 +81,11 @@ The chat collector currently filters by:
 
 ### Functional Requirements
 
-#### 1. Session Detection
-- **R1.1**: Automatically detect which Claude Code session was active when commit was made
-- **R1.2**: Use heuristics based on message timestamps and commit timing
-- **R1.3**: Select the session with the most recent activity before commit time
-- **R1.4**: Handle edge cases where multiple sessions are equally active
+#### 1. Session Detection (Revised per DD-010)
+- **R1.1**: Group collected messages by sessionId field
+- **R1.2**: If single sessionId present, use all messages (Plan A - fast path)
+- **R1.3**: If multiple sessionIds present, apply AI session relevance filter (Plan B)
+- **R1.4**: AI filter determines which sessions relate to commit changes based on semantic analysis
 
 #### 2. Message Filtering
 - **R2.1**: Filter messages to include only the detected session's messages
@@ -186,22 +186,43 @@ The chat collector currently filters by:
 **Date**: 2025-09-28
 **Status**: ✅ Decided (as backup plan)
 
+### Decision 10: Architectural Pivot - Simplify to Plan A/B Approach
+**Choice**: Replace complex git commit detection with simple two-path logic:
+- **Plan A**: Single sessionId detected → use all messages (fast path)
+- **Plan B**: Multiple sessionIds detected → AI-powered session relevance filter
+**Rationale**: Previous approach (DD-001 through DD-006) was overengineered. Clean separation between simple case (no overhead) and complex case (AI intelligence) is more maintainable and handles all scenarios.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
+### Decision 11: AI Session Filter for Multi-Session Cases
+**Choice**: When multiple sessions detected, use dedicated AI call to determine which sessions relate to the commit changes
+**Rationale**: AI excels at semantic understanding of "does this conversation relate to these code changes?" Handles all edge cases (sequential work, terminal commits, mixed content) naturally without reverse-engineering Claude Code internals.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
+### Decision 12: Research Phase Remains Critical for AI Context
+**Choice**: Keep Phase 1 research requirements despite architectural simplification
+**Rationale**: AI filter needs to understand WHY multiple sessions exist (parallel tabs vs sequential work vs compaction) to provide appropriate prompting context. Without sessionId lifecycle understanding, AI can't make informed decisions.
+**Date**: 2025-09-28
+**Status**: ✅ Decided
+
 ## Implementation Plan
 
-### Milestone 1: Core Session Detection (Priority: High)
-**Goal**: Group messages by sessionId and implement git commit detection
+### Milestone 1: Plan A/B Session Logic (Priority: High)
+**Goal**: Implement simplified two-path approach for session handling
 
-**Tasks** (based on DD-005, DD-006, DD-007):
+**Tasks** (based on DD-010, DD-011, DD-012):
 - [ ] Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)
-- [ ] Implement single session fast path per DD-007
-- [ ] Implement Plan A: Detect Bash tool_use with "git commit" in last few messages per DD-006
-- [ ] Add structured debug output per DD-004 showing session selection reasoning
-- [ ] Return selected session's messages (no pre-filtering)
-- [ ] Add fallback: Skip journal generation if no valid session found
+- [ ] Implement Plan A: Single session fast path (DD-010) - if only one sessionId, return all messages
+- [ ] Implement Plan B: AI session relevance filter (DD-011) for multiple sessions
+- [ ] Create AI prompt for session filtering: "Given this git diff and these sessions, which relate to these changes?"
+- [ ] Add structured debug output showing which plan was used and results
+- [ ] Handle AI filter edge cases (no response, ambiguous response, API failures)
 
 **Files Modified**:
-- `src/collectors/claude-collector.js` - Core session selection logic
-- Tests for Plan A and Plan C validation
+- `src/collectors/claude-collector.js` - Plan A/B session logic
+- New AI session filter module (location TBD)
+- Tests for both single and multi-session scenarios
 
 ### Milestone 2: Debug Output and Logging (Priority: High)
 **Goal**: Provide visibility into session selection process
@@ -449,6 +470,34 @@ async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
 - Conduct controlled testing of Claude Code behavior
 - Document findings before proceeding with complex implementation
 
+### The Context Problem: Why Research Remains Critical
+
+Despite the architectural simplification to Plan A/B, understanding sessionId lifecycle is essential for the AI filter to work correctly.
+
+**The AI filter needs different instructions based on why multiple sessions exist:**
+
+**Scenario 1 - Parallel Tabs (Different Features)**:
+- User has 2+ tabs working on unrelated features simultaneously
+- AI instruction: \"Pick the session most relevant to this commit's changes\"
+- Expected: Select one session, ignore others
+
+**Scenario 2 - Sequential Work (Same Feature)**:
+- User closed Claude, reopened, continued same feature work
+- AI instruction: \"These may be continuation of same work, include all relevant sessions\"
+- Expected: Select multiple sessions that form logical sequence
+
+**Scenario 3 - Compaction/System Behavior**:
+- Long conversation triggered sessionId change due to Claude's internal behavior
+- AI instruction: \"These sessions may be the same logical conversation\"
+- Expected: Treat as single session despite different sessionIds
+
+**Without research understanding, the AI filter gets ambiguous instructions and may:**
+- Exclude important sequential context (Scenario 2)
+- Include irrelevant parallel work (Scenario 1)
+- Miss system-generated session splits (Scenario 3)
+
+This is why Phase 1 research cannot be skipped even with the simplified approach."
+
 ## Progress Log
 
 ### 2025-09-26
@@ -464,13 +513,20 @@ async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
 - **Architecture insight**: Filter each session independently for clean AI comparison (DD-003)
 - **Implementation strategy refined**: Leverage existing filtering pipeline in claude-collector.js
 
-### 2025-09-28
+### 2025-09-28 - Morning: Initial Architecture
 - **Architecture decision finalized**: Session detection in claude-collector.js before noise filtering (DD-005)
 - **Git detection method refined**: Focus on Bash tool_use with "git commit" commands (DD-006)
 - **Single session optimization**: Fast path for single sessionId scenarios (DD-007)
 - **Scope limitation**: Focus on realistic multi-tab problems, defer edge cases (DD-008)
 - **Research phase identified**: Need collaborative human/AI investigation of session behavior
 - **Updated docs/dev/claude-chat-research.md**: Added comprehensive reference documentation
+
+### 2025-09-28 - Evening: Architectural Pivot
+- **Major simplification**: Replaced complex git detection with Plan A/B approach (DD-010)
+- **AI-powered filtering**: Multi-session cases handled by dedicated AI semantic analysis (DD-011)
+- **Context problem identified**: Research phase still critical for AI filter context (DD-012)
+- **Implementation simplified**: Two clear paths eliminate need for git command parsing
+- **Edge case handling**: AI naturally handles sequential sessions, terminal commits, compaction scenarios
 
 ## Design Document References
 
