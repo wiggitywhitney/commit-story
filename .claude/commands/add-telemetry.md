@@ -116,33 +116,48 @@ The goal is to create a human-readable narrative that explains the reasoning and
 
 ## Step 6: Validation
 
-Ensure all generated telemetry works correctly and reaches Datadog:
+**REQUIREMENT**: You MUST validate 100% of added telemetry. Every span, metric, and log must be verified in Datadog before completing this command.
 
-### 6.1 Static Validation
-Run existing validation script and fix any issues before proceeding:
+### 6.1 Create Validation Inventory
+Before starting validation, create an inventory of ALL telemetry added in Step 5:
+- **Spans**: List each function and its span name (e.g., `journal.discover_reflections`)
+- **Metrics**: List each metric name (e.g., `commit_story.reflection.discovery_duration_ms`)
+- **Logs**: List each narrative logger category (e.g., `journal.reflection_discovery`)
+
+### 6.2 Static Validation
+Run existing validation script to check syntax and imports:
 ```bash
 npm run validate:telemetry
 ```
 If this fails, fix the reported issues and re-run until it passes.
 
-### 6.2 Execute Real Flow
-Run the full telemetry test to capture spans in normal execution:
+### 6.3 Execute Tests and Assess Coverage
+Run the existing test and check console output for span names:
 ```bash
 npm run test:trace
 ```
+Review the trace output to see which of your instrumented functions were triggered. If none appear, you'll need custom tests for all of them.
 
-### 6.3 Wait for Datadog Ingestion
+### 6.4 Create and Run Custom Test Script (if needed)
+For any instrumented functions NOT covered by Step 6.3, create and run a test script that imports and calls each uncovered function with realistic parameters. Verify that span traces appear in the console output before proceeding.
+
+### 6.5 Wait for Datadog Ingestion
 Wait 60 seconds for telemetry to reach Datadog:
 ```javascript
 console.log("⏱️  Waiting 60 seconds for telemetry ingestion...");
-console.log("   This ensures if data isn't found, it's an instrumentation issue, not timing");
+console.log("   This ensures if data isn't found, it's an instrumentation or test coverage issue, not timing");
 ```
 
-### 6.4 Query All Three Signals
-Query Datadog for the spans, metrics, and logs that were added. Use appropriate MCP queries based on the function names and metric names that were instrumented.
+### 6.6 Query All Three Signals (100% Coverage Required)
+For EVERY item in your validation inventory from Step 6.1, verify in Datadog:
 
-### 6.5 Fallback Testing (if any signal missing)
-Create a temporary test script that imports and calls each instrumented function with appropriate mock parameters. Run the test script, then repeat steps 6.3 and 6.4.
+1. **Find the spans** by searching for operation names
+2. **Use trace IDs from those spans** to find correlated metrics and logs
+3. **Verify every span, metric, and log** from your inventory is present
 
-### 6.6 Fix Issues
-If validation fails, analyze the missing signals and fix the instrumentation accordingly.
+**REQUIREMENT**: Every single item must be found. No exceptions.
+
+### 6.7 Fix Issues (if any failures)
+If any telemetry is missing from Datadog, fix the instrumentation code and repeat the test-wait-verify cycle until 100% of your inventory is found.
+
+**CRITICAL**: Do not mark this command as complete unless every span, metric, and log is validated in Datadog.

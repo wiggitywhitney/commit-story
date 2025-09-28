@@ -639,19 +639,19 @@ span.setAttributes({
 - Clear understanding of what test:trace covers vs what needs additional testing
 - Intelligent test strategy selection
 
-**Implementation**: Redesign Step 6 during work session
+**Implementation**: Complete Step 6 redesign with 7 substeps: validation inventory, static validation, test coverage analysis, custom testing, wait timing, correlation-based verification, and failure handling
 
-**Status**: ⏳ Outstanding
+**Status**: ✅ Complete
 
 ### DD-004: /add-telemetry Success Checklist
-**Decision**: Add success checklist to prevent incomplete validation
+**Decision**: Remove checklist approach in favor of process-based validation
 
 **Context**: No clear completion criteria led to partial validation (60% coverage vs 100% required).
 
 **Outcome Required**: Clear pass/fail criteria for /add-telemetry completion
-**Implementation**: Add checklist to command during work session
+**Implementation**: Removed formal checklist in favor of clear step requirements and "100% validation" mandate in Step 6.6
 
-**Status**: ⏳ Outstanding
+**Status**: ✅ Complete
 
 ## Success Metrics
 
@@ -686,6 +686,37 @@ span.setAttributes({
 - **IDE integration**: Real-time instrumentation hints in the editor
 
 ## Work Log
+
+### September 28, 2025: Step 6 Validation Overhaul - 100% Coverage Redesign
+**Duration**: 1.5 hours of systematic redesign and conversation-based improvement
+**Primary Focus**: Fixing the 60% validation problem through comprehensive Step 6 restructuring
+
+**Completed PRD Items**:
+- [x] DD-003: /add-telemetry Step 6 Validation Overhaul - Complete redesign with 7 substeps ensuring 100% validation coverage
+- [x] DD-004: /add-telemetry Success Checklist - Removed checklist approach in favor of outcome-focused process requirements
+
+**Key Step 6 Improvements**:
+- **Validation Inventory (6.1)**: Track every span, metric, log upfront before validation begins
+- **Static Validation (6.2)**: Early syntax/import checking with clear failure handling
+- **Smart Test Coverage (6.3)**: Immediate console output analysis instead of waiting for Datadog
+- **Custom Testing (6.4)**: Handle uncovered functions with console trace verification
+- **Proper Wait Timing (6.5)**: Clear user messaging about 60-second wait purpose
+- **Correlation-Based Verification (6.6)**: Use trace IDs to find metrics/logs instead of fragile name searches
+- **Simple Failure Handling (6.7)**: Trust AI iteration without prescriptive 6-step processes
+
+**Philosophy Changes**:
+- Outcome-focused validation instead of micromanaged steps
+- Leverages telemetry correlation for reliability
+- Requires explicit 100% validation with clear failure criteria
+- Removed unnecessary checklists in favor of process-based requirements
+
+**File Changes**:
+- `.claude/commands/add-telemetry.md`: Complete Step 6 restructure from 6 steps to 7 focused steps
+- `prds/9-otel-automation-tooling.md`: Updated DD-003 and DD-004 completion status
+
+**Next Session Priorities**:
+- Complete DD-001 real-world validation with context-integrator.js instrumentation
+- Test improved Step 6 process on actual uninstrumented code
 
 ### September 27, 2025: /add-telemetry Real-World Validation & Design Improvements
 **Duration**: 2 hours instrumentation + 1 hour analysis and PRD updates
