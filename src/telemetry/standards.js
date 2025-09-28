@@ -67,7 +67,9 @@ export const OTEL = {
     // Context and data operations
     context: {
       gather: () => 'context.gather_for_commit',
-      filter: () => 'context.filter_messages'
+      filter: () => 'context.filter_messages',
+      extract_text: () => 'context.extract_text_from_messages',
+      calculate_metadata: () => 'context.calculate_chat_metadata'
     },
 
     // Journal generation operations
@@ -217,6 +219,54 @@ export const OTEL = {
       [`${OTEL.NAMESPACE}.context.final_messages`]: contextData.finalMessages,
       [`${OTEL.NAMESPACE}.context.final_chat_tokens`]: contextData.finalChatTokens,
       [`${OTEL.NAMESPACE}.context.aggressive_filtering`]: contextData.aggressiveFiltering
+    }),
+
+    /**
+     * Text extraction operation attributes
+     * @param {Object} textData - Text extraction metrics
+     * @returns {Object} Text extraction attributes
+     */
+    textExtraction: (textData) => ({
+      [`${OTEL.NAMESPACE}.text.input_messages`]: textData.inputMessages,
+      [`${OTEL.NAMESPACE}.text.processed_messages`]: textData.processedMessages,
+      [`${OTEL.NAMESPACE}.text.string_content_messages`]: textData.stringContentMessages,
+      [`${OTEL.NAMESPACE}.text.array_content_messages`]: textData.arrayContentMessages,
+      [`${OTEL.NAMESPACE}.text.unknown_content_messages`]: textData.unknownContentMessages,
+      [`${OTEL.NAMESPACE}.text.empty_content_messages`]: textData.emptyContentMessages,
+      [`${OTEL.NAMESPACE}.text.total_content_length`]: textData.totalContentLength,
+      [`${OTEL.NAMESPACE}.text.average_content_length`]: textData.averageContentLength,
+      [`${OTEL.NAMESPACE}.text.processing_duration_ms`]: textData.processingDuration
+    }),
+
+    /**
+     * Chat metadata calculation attributes
+     * @param {Object} metadataData - Metadata calculation metrics
+     * @returns {Object} Metadata calculation attributes
+     */
+    chatMetadata: (metadataData) => ({
+      [`${OTEL.NAMESPACE}.metadata.input_messages`]: metadataData.inputMessages,
+      [`${OTEL.NAMESPACE}.metadata.user_messages`]: metadataData.userMessages,
+      [`${OTEL.NAMESPACE}.metadata.assistant_messages`]: metadataData.assistantMessages,
+      [`${OTEL.NAMESPACE}.metadata.over_twenty_char_messages`]: metadataData.overTwentyCharMessages,
+      [`${OTEL.NAMESPACE}.metadata.user_avg_length`]: metadataData.userAvgLength,
+      [`${OTEL.NAMESPACE}.metadata.user_max_length`]: metadataData.userMaxLength,
+      [`${OTEL.NAMESPACE}.metadata.assistant_avg_length`]: metadataData.assistantAvgLength,
+      [`${OTEL.NAMESPACE}.metadata.assistant_max_length`]: metadataData.assistantMaxLength,
+      [`${OTEL.NAMESPACE}.metadata.calculation_duration_ms`]: metadataData.calculationDuration
+    }),
+
+    /**
+     * Git data collection attributes
+     * @param {Object} gitData - Git data collection metrics
+     * @returns {Object} Git attributes
+     */
+    gitCollection: (gitData) => ({
+      [`${OTEL.NAMESPACE}.git.commit_ref`]: gitData.commitRef,
+      [`${OTEL.NAMESPACE}.git.command`]: gitData.command,
+      [`${OTEL.NAMESPACE}.git.previous_commit_found`]: gitData.previousCommitFound,
+      [`${OTEL.NAMESPACE}.git.previous_commit_hash`]: gitData.previousCommitHash,
+      [`${OTEL.NAMESPACE}.git.previous_commit_timestamp`]: gitData.previousCommitTimestamp,
+      [`${OTEL.NAMESPACE}.git.execution_duration_ms`]: gitData.executionDuration
     }),
 
     /**

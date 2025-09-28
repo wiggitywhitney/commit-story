@@ -12,7 +12,7 @@ Verify the Datadog MCP server is connected before proceeding:
 
 ```javascript
 // Test MCP connection
-mcp__datadog__search_datadog_services query:"*" max_tokens:100
+mcp__datadog__search_datadog_services max_tokens:100
 ```
 
 If this fails, exit immediately with an error message. 
@@ -149,6 +149,8 @@ console.log("   This ensures if data isn't found, it's an instrumentation or tes
 ```
 
 ### 6.6 Query All Three Signals (100% Coverage Required)
+**Initial Check**: `service:commit-story-dev from:now-5m` to confirm logs, metrics, and traces are flowing
+
 For EVERY item in your validation inventory from Step 6.1, verify in Datadog:
 
 1. **Find the spans** by searching for operation names

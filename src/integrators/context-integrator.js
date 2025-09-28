@@ -12,81 +12,274 @@ import { filterContext } from '../generators/filters/context-filter.js';
 import { redactSensitiveData } from '../generators/filters/sensitive-data-filter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 /**
  * Extracts clean text content from Claude messages, handling mixed content formats
- * 
+ *
  * @param {Array} messages - Array of Claude message objects
  * @returns {Array} Messages with normalized content (always strings)
  */
 export function extractTextFromMessages(messages) {
-  return messages.map(msg => {
-    const content = msg.message?.content;
-    let cleanContent = '';
-    
-    if (!content) {
-      cleanContent = '';
-    } else if (typeof content === 'string') {
-      cleanContent = content;
-    } else if (Array.isArray(content)) {
-      // Extract text from array format: [{type: "text", text: "actual content"}]
-      cleanContent = content
-        .filter(item => item.type === 'text' && item.text)
-        .map(item => item.text)
-        .join(' ');
-    } else {
-      // Fallback for unknown content types
-      cleanContent = JSON.stringify(content);
+  return tracer.startActiveSpan(OTEL.span.context.extract_text(), {
+    attributes: {
+      'code.function': 'extractTextFromMessages',
+      [`${OTEL.NAMESPACE}.text.input_messages`]: messages.length
     }
-    
-    // Filter sensitive data before AI processing
-    cleanContent = redactSensitiveData(cleanContent);
-    
-    // Return minimal message object for AI processing (eliminates Claude Code metadata bloat)
-    return {
-      type: msg.type || 'assistant', // user or assistant
-      message: {
-        content: cleanContent
-      },
-      timestamp: msg.timestamp
-    };
+  }, (span) => {
+    const logger = createNarrativeLogger('context.extract_text_from_messages');
+    const startTime = Date.now();
+
+    try {
+      logger.start('Text extraction from messages', `Starting extraction from ${messages.length} Claude messages`, {
+        inputCount: messages.length
+      });
+
+      // Track content type statistics
+      let stringContentMessages = 0;
+      let arrayContentMessages = 0;
+      let unknownContentMessages = 0;
+      let emptyContentMessages = 0;
+      let totalContentLength = 0;
+
+      const result = messages.map(msg => {
+        const content = msg.message?.content;
+        let cleanContent = '';
+
+        if (!content) {
+          cleanContent = '';
+          emptyContentMessages++;
+          logger.progress('Empty content found', 'Encountered message with no content', { msgType: msg.type });
+        } else if (typeof content === 'string') {
+          cleanContent = content;
+          stringContentMessages++;
+        } else if (Array.isArray(content)) {
+          // Extract text from array format: [{type: "text", text: "actual content"}]
+          cleanContent = content
+            .filter(item => item.type === 'text' && item.text)
+            .map(item => item.text)
+            .join(' ');
+          arrayContentMessages++;
+          logger.progress('Array content processed', 'Extracted text from structured content array', {
+            arrayItems: content.length,
+            textItems: content.filter(item => item.type === 'text' && item.text).length
+          });
+        } else {
+          // Fallback for unknown content types
+          cleanContent = JSON.stringify(content);
+          unknownContentMessages++;
+          logger.decision('Unknown content type', 'Using JSON stringify fallback for unknown content format', {
+            contentType: typeof content,
+            msgType: msg.type
+          });
+        }
+
+        // Filter sensitive data before AI processing
+        const beforeRedaction = cleanContent.length;
+        cleanContent = redactSensitiveData(cleanContent);
+        const afterRedaction = cleanContent.length;
+
+        if (beforeRedaction !== afterRedaction) {
+          logger.progress('Sensitive data redacted', `Content length changed from ${beforeRedaction} to ${afterRedaction} characters`, {
+            beforeLength: beforeRedaction,
+            afterLength: afterRedaction,
+            redacted: true
+          });
+        }
+
+        totalContentLength += cleanContent.length;
+
+        // Return minimal message object for AI processing (eliminates Claude Code metadata bloat)
+        return {
+          type: msg.type || 'assistant', // user or assistant
+          message: {
+            content: cleanContent
+          },
+          timestamp: msg.timestamp
+        };
+      });
+
+      const processingDuration = Date.now() - startTime;
+      const averageContentLength = messages.length > 0 ? Math.round(totalContentLength / messages.length) : 0;
+
+      // Add comprehensive attributes to span
+      const textAttrs = OTEL.attrs.textExtraction({
+        inputMessages: messages.length,
+        processedMessages: result.length,
+        stringContentMessages,
+        arrayContentMessages,
+        unknownContentMessages,
+        emptyContentMessages,
+        totalContentLength,
+        averageContentLength,
+        processingDuration
+      });
+      span.setAttributes(textAttrs);
+
+      // Emit correlated metrics for dashboard analysis
+      Object.entries(textAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
+
+      // Additional key business metrics
+      OTEL.metrics.gauge('commit_story.text.extraction_duration_ms', processingDuration);
+      OTEL.metrics.gauge('commit_story.text.string_content_ratio',
+        messages.length > 0 ? stringContentMessages / messages.length : 0);
+      OTEL.metrics.gauge('commit_story.text.complex_content_ratio',
+        messages.length > 0 ? (arrayContentMessages + unknownContentMessages) / messages.length : 0);
+
+      logger.complete('Text extraction completed', `Successfully processed ${result.length} messages with ${averageContentLength} avg chars`, {
+        processedCount: result.length,
+        averageLength: averageContentLength,
+        processingTime: processingDuration,
+        contentTypes: {
+          string: stringContentMessages,
+          array: arrayContentMessages,
+          unknown: unknownContentMessages,
+          empty: emptyContentMessages
+        }
+      });
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Text extraction completed successfully' });
+      return result;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('Text extraction failed', 'Error during message content extraction', error, {
+        inputMessageCount: messages.length
+      });
+      throw error;
+    } finally {
+      span.end();
+    }
   });
 }
 
 /**
  * Calculates metadata about chat messages for context enrichment
- * 
+ *
  * @param {Array} messages - Array of clean messages from extractTextFromMessages()
  * @returns {Object} Metadata object with message statistics
  */
 function calculateChatMetadata(messages) {
-  const userMessages = messages.filter(msg => msg.type === 'user');
-  const assistantMessages = messages.filter(msg => msg.type === 'assistant');
-  
-  const overTwentyCharMessages = userMessages.filter(msg => {
-    const content = msg.message?.content || '';
-    return content.length >= 20;
-  });
-  
-  const userLengths = userMessages.map(msg => (msg.message?.content || '').length);
-  const assistantLengths = assistantMessages.map(msg => (msg.message?.content || '').length);
-  
-  return {
-    totalMessages: userMessages.length + assistantMessages.length,
-    userMessageCount: userMessages.length,
-    assistantMessageCount: assistantMessages.length,
-    userMessages: {
-      total: userMessages.length,
-      overTwentyCharacters: overTwentyCharMessages.length,
-      averageLength: userLengths.length > 0 ? Math.round(userLengths.reduce((a, b) => a + b, 0) / userLengths.length) : 0,
-      maxLength: userLengths.length > 0 ? Math.max(...userLengths) : 0
-    },
-    assistantMessages: {
-      total: assistantMessages.length,
-      averageLength: assistantLengths.length > 0 ? Math.round(assistantLengths.reduce((a, b) => a + b, 0) / assistantLengths.length) : 0,
-      maxLength: assistantLengths.length > 0 ? Math.max(...assistantLengths) : 0
+  return tracer.startActiveSpan(OTEL.span.context.calculate_metadata(), {
+    attributes: {
+      'code.function': 'calculateChatMetadata',
+      [`${OTEL.NAMESPACE}.metadata.input_messages`]: messages.length
     }
-  };
+  }, (span) => {
+    const logger = createNarrativeLogger('context.calculate_chat_metadata');
+    const startTime = Date.now();
+
+    try {
+      logger.start('Chat metadata calculation', `Starting calculation for ${messages.length} messages`, {
+        inputCount: messages.length
+      });
+
+      const userMessages = messages.filter(msg => msg.type === 'user');
+      const assistantMessages = messages.filter(msg => msg.type === 'assistant');
+
+      logger.progress('Message type filtering', `Found ${userMessages.length} user and ${assistantMessages.length} assistant messages`, {
+        userCount: userMessages.length,
+        assistantCount: assistantMessages.length,
+        totalCount: messages.length
+      });
+
+      const overTwentyCharMessages = userMessages.filter(msg => {
+        const content = msg.message?.content || '';
+        return content.length >= 20;
+      });
+
+      const userLengths = userMessages.map(msg => (msg.message?.content || '').length);
+      const assistantLengths = assistantMessages.map(msg => (msg.message?.content || '').length);
+
+      const userAvgLength = userLengths.length > 0 ? Math.round(userLengths.reduce((a, b) => a + b, 0) / userLengths.length) : 0;
+      const userMaxLength = userLengths.length > 0 ? Math.max(...userLengths) : 0;
+      const assistantAvgLength = assistantLengths.length > 0 ? Math.round(assistantLengths.reduce((a, b) => a + b, 0) / assistantLengths.length) : 0;
+      const assistantMaxLength = assistantLengths.length > 0 ? Math.max(...assistantLengths) : 0;
+
+      logger.progress('Length analysis completed', `User msgs: avg=${userAvgLength}, max=${userMaxLength}; Assistant msgs: avg=${assistantAvgLength}, max=${assistantMaxLength}`, {
+        userAvgLength,
+        userMaxLength,
+        assistantAvgLength,
+        assistantMaxLength,
+        overTwentyCharCount: overTwentyCharMessages.length
+      });
+
+      const calculationDuration = Date.now() - startTime;
+
+      const result = {
+        totalMessages: userMessages.length + assistantMessages.length,
+        userMessageCount: userMessages.length,
+        assistantMessageCount: assistantMessages.length,
+        userMessages: {
+          total: userMessages.length,
+          overTwentyCharacters: overTwentyCharMessages.length,
+          averageLength: userAvgLength,
+          maxLength: userMaxLength
+        },
+        assistantMessages: {
+          total: assistantMessages.length,
+          averageLength: assistantAvgLength,
+          maxLength: assistantMaxLength
+        }
+      };
+
+      // Add comprehensive attributes to span
+      const metadataAttrs = OTEL.attrs.chatMetadata({
+        inputMessages: messages.length,
+        userMessages: userMessages.length,
+        assistantMessages: assistantMessages.length,
+        overTwentyCharMessages: overTwentyCharMessages.length,
+        userAvgLength,
+        userMaxLength,
+        assistantAvgLength,
+        assistantMaxLength,
+        calculationDuration
+      });
+      span.setAttributes(metadataAttrs);
+
+      // Emit correlated metrics for dashboard analysis
+      Object.entries(metadataAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
+
+      // Additional key business metrics
+      OTEL.metrics.gauge('commit_story.metadata.calculation_duration_ms', calculationDuration);
+      OTEL.metrics.gauge('commit_story.metadata.user_message_ratio',
+        messages.length > 0 ? userMessages.length / messages.length : 0);
+      OTEL.metrics.gauge('commit_story.metadata.quality_message_ratio',
+        userMessages.length > 0 ? overTwentyCharMessages.length / userMessages.length : 0);
+
+      logger.complete('Metadata calculation completed', `Generated statistics for ${result.totalMessages} messages with ${overTwentyCharMessages.length} quality user messages`, {
+        totalMessages: result.totalMessages,
+        qualityMessages: overTwentyCharMessages.length,
+        processingTime: calculationDuration,
+        statistics: {
+          userRatio: messages.length > 0 ? userMessages.length / messages.length : 0,
+          qualityRatio: userMessages.length > 0 ? overTwentyCharMessages.length / userMessages.length : 0
+        }
+      });
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Chat metadata calculation completed successfully' });
+      return result;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('Metadata calculation failed', 'Error during chat metadata calculation', error, {
+        inputMessageCount: messages.length
+      });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
 }
 
 
@@ -232,31 +425,154 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
 
 /**
  * Gets the previous commit data for time window calculation
- * 
+ *
  * @param {string} commitRef - Git commit reference to calculate previous from
  * @returns {Promise<Object|null>} Previous commit data or null if no previous commit
  */
 async function getPreviousCommitData(commitRef = 'HEAD') {
-  try {
-    // Get previous commit hash and timestamp (one commit before the specified commit)
-    const previousCommitInfo = execSync(
-      `git log -1 --format="%H|%ct" ${commitRef}~1`, 
-      { encoding: 'utf8', cwd: process.cwd() }
-    ).trim();
-    
-    if (!previousCommitInfo) {
-      return null; // No previous commit (first commit in repo)
+  return await tracer.startActiveSpan(OTEL.span.collectors.git(), {
+    attributes: {
+      'code.function': 'getPreviousCommitData',
+      [`${OTEL.NAMESPACE}.git.commit_ref`]: commitRef,
+      [`${OTEL.NAMESPACE}.git.command`]: `git log -1 --format="%H|%ct" ${commitRef}~1`
     }
-    
-    const [hash, timestamp] = previousCommitInfo.split('|');
-    
-    return {
-      hash: hash,
-      timestamp: new Date(parseInt(timestamp) * 1000) // Convert to Date object like git-collector
-    };
-    
-  } catch (error) {
-    // No previous commit exists (first commit in repo)
-    return null;
-  }
+  }, async (span) => {
+    const logger = createNarrativeLogger('git.collect_previous_commit_data');
+    const startTime = Date.now();
+
+    try {
+      logger.start('Previous commit data retrieval', `Retrieving previous commit data for reference: ${commitRef}`, {
+        commitRef,
+        command: `git log -1 --format="%H|%ct" ${commitRef}~1`
+      });
+
+      // Get previous commit hash and timestamp (one commit before the specified commit)
+      const previousCommitInfo = execSync(
+        `git log -1 --format="%H|%ct" ${commitRef}~1`,
+        { encoding: 'utf8', cwd: process.cwd() }
+      ).trim();
+
+      const executionDuration = Date.now() - startTime;
+
+      if (!previousCommitInfo) {
+        logger.decision('No previous commit found', 'Git command returned empty result - likely first commit in repository', {
+          commitRef,
+          executionTime: executionDuration,
+          result: 'no_previous_commit'
+        });
+
+        // Add attributes for null result case
+        const gitAttrs = OTEL.attrs.gitCollection({
+          commitRef,
+          command: `git log -1 --format="%H|%ct" ${commitRef}~1`,
+          previousCommitFound: false,
+          previousCommitHash: null,
+          previousCommitTimestamp: null,
+          executionDuration
+        });
+        span.setAttributes(gitAttrs);
+
+        // Emit metrics for null result
+        OTEL.metrics.gauge('commit_story.git.execution_duration_ms', executionDuration);
+        OTEL.metrics.gauge('commit_story.git.previous_commit_found', 0); // 0 for false
+        OTEL.metrics.counter('commit_story.git.no_previous_commit_total', 1);
+
+        logger.complete('Previous commit data retrieval completed', 'No previous commit found - returning null for first commit', {
+          result: null,
+          executionTime: executionDuration,
+          reason: 'first_commit_in_repo'
+        });
+
+        span.setStatus({ code: SpanStatusCode.OK, message: 'No previous commit found (first commit)' });
+        return null; // No previous commit (first commit in repo)
+      }
+
+      const [hash, timestamp] = previousCommitInfo.split('|');
+      const previousCommitTimestamp = new Date(parseInt(timestamp) * 1000); // Convert to Date object like git-collector
+
+      logger.progress('Previous commit data parsed', `Found previous commit: ${hash} at ${previousCommitTimestamp.toISOString()}`, {
+        hash,
+        timestamp: previousCommitTimestamp.toISOString(),
+        rawTimestamp: timestamp
+      });
+
+      const result = {
+        hash: hash,
+        timestamp: previousCommitTimestamp
+      };
+
+      // Add comprehensive attributes to span
+      const gitAttrs = OTEL.attrs.gitCollection({
+        commitRef,
+        command: `git log -1 --format="%H|%ct" ${commitRef}~1`,
+        previousCommitFound: true,
+        previousCommitHash: hash,
+        previousCommitTimestamp: previousCommitTimestamp.toISOString(),
+        executionDuration
+      });
+      span.setAttributes(gitAttrs);
+
+      // Emit correlated metrics for dashboard analysis
+      Object.entries(gitAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        } else if (typeof value === 'boolean') {
+          OTEL.metrics.gauge(name, value ? 1 : 0);
+        }
+      });
+
+      // Additional key business metrics
+      OTEL.metrics.gauge('commit_story.git.execution_duration_ms', executionDuration);
+      OTEL.metrics.gauge('commit_story.git.previous_commit_found', 1); // 1 for true
+      OTEL.metrics.counter('commit_story.git.previous_commit_success_total', 1);
+
+      logger.complete('Previous commit data retrieval completed', `Successfully retrieved previous commit ${hash} from ${previousCommitTimestamp.toISOString()}`, {
+        result: result,
+        executionTime: executionDuration,
+        hash: hash,
+        timestamp: previousCommitTimestamp.toISOString()
+      });
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Previous commit data retrieved successfully' });
+      return result;
+
+    } catch (error) {
+      const executionDuration = Date.now() - startTime;
+
+      logger.decision('Git command failed', 'Git log command failed - treating as no previous commit available', {
+        error: error.message,
+        commitRef,
+        executionTime: executionDuration,
+        errorType: 'git_command_error'
+      });
+
+      // Add attributes for error case (treat as no previous commit)
+      const gitAttrs = OTEL.attrs.gitCollection({
+        commitRef,
+        command: `git log -1 --format="%H|%ct" ${commitRef}~1`,
+        previousCommitFound: false,
+        previousCommitHash: null,
+        previousCommitTimestamp: null,
+        executionDuration
+      });
+      span.setAttributes(gitAttrs);
+
+      // Emit metrics for error case (treated as no previous commit)
+      OTEL.metrics.gauge('commit_story.git.execution_duration_ms', executionDuration);
+      OTEL.metrics.gauge('commit_story.git.previous_commit_found', 0); // 0 for false
+      OTEL.metrics.counter('commit_story.git.command_error_total', 1);
+
+      logger.complete('Previous commit data retrieval completed', 'Git command error treated as no previous commit - returning null', {
+        result: null,
+        executionTime: executionDuration,
+        reason: 'git_command_error'
+      });
+
+      // Don't throw error - return null as this is expected behavior for first commit
+      span.setStatus({ code: SpanStatusCode.OK, message: 'No previous commit exists (git error handled)' });
+      return null; // No previous commit exists (first commit in repo)
+    } finally {
+      span.end();
+    }
+  });
 }
