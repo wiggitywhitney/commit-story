@@ -26,7 +26,7 @@ You are helping analyze an existing Product Requirements Document (PRD) to sugge
 
 Test connection with a simple query:
 ```
-mcp__datadog__search_datadog_services query:* start_at:0 max_tokens:100
+mcp__datadog__search_datadog_services start_at:0 max_tokens:100
 ```
 
 **If connection fails:**

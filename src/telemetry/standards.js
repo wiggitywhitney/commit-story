@@ -80,6 +80,7 @@ export const OTEL = {
       discover_reflections: () => 'journal.discover_reflections',
       parse_reflection_file: () => 'journal.parse_reflection_file',
       parse_timestamp: () => 'journal.parse_timestamp',
+      timezone_offset: () => 'journal.timezone_offset',
       get_file_path: () => 'journal.get_file_path'
     },
 
@@ -374,6 +375,18 @@ export const OTEL = {
         [`${OTEL.NAMESPACE}.journal.requested_date`]: pathData.requestedDate,
         [`${OTEL.NAMESPACE}.journal.generated_path`]: pathData.generatedPath,
         [SEMATTRS_CODE_FILEPATH]: pathData.generatedPath
+      }),
+
+      /**
+       * Timezone offset calculation attributes
+       * @param {Object} timezoneData - Timezone offset calculation data
+       * @returns {Object} Timezone offset attributes
+       */
+      timezoneOffset: (timezoneData) => ({
+        [`${OTEL.NAMESPACE}.timezone.input_utc_millis`]: timezoneData.inputUtcMillis,
+        [`${OTEL.NAMESPACE}.timezone.iana_zone`]: timezoneData.ianaZone,
+        [`${OTEL.NAMESPACE}.timezone.offset_minutes`]: timezoneData.offsetMinutes,
+        [`${OTEL.NAMESPACE}.timezone.calculation_duration_ms`]: timezoneData.calculationDuration
       })
     },
 

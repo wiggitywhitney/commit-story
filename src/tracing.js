@@ -7,7 +7,7 @@ import { PeriodicExportingMetricReader, AggregationTemporality } from '@opentele
 import fs from 'fs';
 
 // Check if running from test script - only show console traces during testing
-const isTestScript = process.argv[1]?.includes('test-otel.js');
+const isTestScript = process.argv[1]?.includes('test-otel');
 
 // Debug mode detection from config file
 let isDebugMode = false;

@@ -33,6 +33,8 @@ Identify all uninstrumented functions in the target file(s):
 - Functions with no `tracer.startActiveSpan()` calls
 - Functions with existing spans that may have gained new operations
 
+**Change Detection**: Use git diffs to identify which functions have significant changes and may need telemetry enhancements for new logic.
+
 **Philosophy**: This is experimental telemetry for AI development assistance - identify ALL uninstrumented functions for comprehensive visibility unless they are high-frequency operations that would create excessive spans. Prioritize development insight over production performance.
 
 ## Step 3: Convention Discovery
@@ -163,3 +165,6 @@ For EVERY item in your validation inventory from Step 6.1, verify in Datadog:
 If any telemetry is missing from Datadog, fix the instrumentation code and repeat the test-wait-verify cycle until 100% of your inventory is found.
 
 **CRITICAL**: Do not mark this command as complete unless every span, metric, and log is validated in Datadog.
+
+### 6.8 Cleanup
+Remove any temporary test files created during validation (e.g., `test-otel-*.js` scripts).

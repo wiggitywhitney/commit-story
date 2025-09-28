@@ -444,10 +444,132 @@ function parseReflectionFile(content, fileDate, startTime, endTime) {
 }
 
 /**
+ * Stable abbreviation to IANA timezone mapping
+ */
+const TIMEZONE_MAP = {
+  // North America
+  'EDT': 'America/New_York', 'EST': 'America/New_York',
+  'PDT': 'America/Los_Angeles', 'PST': 'America/Los_Angeles',
+  'CDT': 'America/Chicago', 'CST': 'America/Chicago',
+  'MDT': 'America/Denver', 'MST': 'America/Denver',
+  'AKDT': 'America/Anchorage', 'AKST': 'America/Anchorage',
+  'HST': 'Pacific/Honolulu',
+
+  // Europe
+  'GMT': 'Etc/GMT', 'UTC': 'Etc/UTC',
+  'BST': 'Europe/London',
+  'CET': 'Europe/Berlin', 'CEST': 'Europe/Berlin',
+
+  // Asia
+  'JST': 'Asia/Tokyo',
+  'CCT': 'Asia/Shanghai', // China Standard Time
+
+  // Australia
+  'AEST': 'Australia/Sydney', 'AEDT': 'Australia/Sydney',
+  'AWST': 'Australia/Perth', 'AWDT': 'Australia/Perth',
+  'ACST': 'Australia/Adelaide', 'ACDT': 'Australia/Adelaide'
+};
+
+/**
+ * Get timezone offset in milliseconds for a specific date/time
+ * @param {number} utcMillis - UTC milliseconds
+ * @param {string} timeZone - IANA timezone identifier
+ * @returns {number} Offset in milliseconds
+ */
+function getTimezoneOffset(utcMillis, timeZone) {
+  return tracer.startActiveSpan(OTEL.span.journal.timezone_offset(), {
+    attributes: {
+      [`${OTEL.NAMESPACE}.timezone.input_utc_millis`]: utcMillis,
+      [`${OTEL.NAMESPACE}.timezone.iana_zone`]: timeZone,
+      'code.function': 'getTimezoneOffset'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('journal.timezone_offset');
+    const startTime = Date.now();
+
+    try {
+      logger.start('timezone offset calculation', `Calculating offset for ${timeZone} at ${new Date(utcMillis).toISOString()}`);
+
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+
+      logger.progress('timezone offset calculation', `Created DateTimeFormat for ${timeZone}, parsing UTC timestamp`);
+
+      const parts = formatter.formatToParts(new Date(utcMillis));
+      const dateMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+      logger.progress('timezone offset calculation', `Parsed ${parts.length} date/time components from formatter`);
+
+      const localMillis = Date.UTC(
+        Number(dateMap.year),
+        Number(dateMap.month) - 1,
+        Number(dateMap.day),
+        Number(dateMap.hour),
+        Number(dateMap.minute),
+        Number(dateMap.second)
+      );
+
+      const offsetMillis = localMillis - utcMillis;
+      const offsetMinutes = offsetMillis / (1000 * 60);
+      const calculationDuration = Date.now() - startTime;
+
+      // Record successful operation attributes with dual emission
+      const timezoneData = {
+        inputUtcMillis: utcMillis,
+        ianaZone: timeZone,
+        offsetMinutes: offsetMinutes,
+        calculationDuration: calculationDuration
+      };
+      const attrs = OTEL.attrs.journal.timezoneOffset(timezoneData);
+      span.setAttributes(attrs);
+
+      // Dual emission: emit key metrics for dashboards and alerting
+      OTEL.metrics.histogram('commit_story.timezone.calculation_duration_ms', calculationDuration);
+      OTEL.metrics.gauge('commit_story.timezone.offset_minutes', offsetMinutes);
+
+      logger.complete('timezone offset calculation', `Calculated ${offsetMinutes}min offset (${offsetMillis}ms) for ${timeZone} in ${calculationDuration}ms`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Timezone offset calculated successfully' });
+      return offsetMillis;
+
+    } catch (error) {
+      const calculationDuration = Date.now() - startTime;
+      const timezoneData = {
+        inputUtcMillis: utcMillis,
+        ianaZone: timeZone,
+        offsetMinutes: 0,
+        calculationDuration: calculationDuration
+      };
+      span.setAttributes(OTEL.attrs.journal.timezoneOffset(timezoneData));
+
+      // Error metrics for timezone calculation failures
+      OTEL.metrics.counter('commit_story.timezone.calculation_errors', 1);
+      OTEL.metrics.histogram('commit_story.timezone.calculation_duration_ms', calculationDuration);
+
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+
+      logger.error('timezone offset calculation', 'Failed to calculate timezone offset', error, {
+        timeZone: timeZone,
+        utcMillis: utcMillis
+      });
+
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+}
+
+/**
  * Parse reflection timestamp string into Date object
  * @param {Date} fileDate - Date of the file containing the reflection
  * @param {string} timeString - Time string like "9:36:37 PM EDT"
- * @returns {Date} Full datetime object
+ * @returns {Date} Full datetime object in UTC
  */
 function parseReflectionTimestamp(fileDate, timeString) {
   return tracer.startActiveSpan(OTEL.span.journal.parse_timestamp(), {
@@ -462,14 +584,14 @@ function parseReflectionTimestamp(fileDate, timeString) {
     try {
       logger.start('timestamp parsing', `Parsing timestamp "${timeString}" for ${fileDate.toDateString()}`);
 
-      // Simple parsing - assumes same date as file
-      // Could be enhanced to handle timezone conversion if needed
+      // Parse timezone-aware timestamp with UTC conversion for consistent time window calculations
       const [time, period, timezone] = timeString.split(' ');
       const [hours, minutes, seconds] = time.split(':').map(Number);
 
       let parseSuccess = true;
       let detectedTimezone = timezone || 'unknown';
 
+      // Convert to 24-hour format
       let hour24 = hours;
       if (period === 'PM' && hours !== 12) {
         hour24 += 12;
@@ -477,11 +599,44 @@ function parseReflectionTimestamp(fileDate, timeString) {
         hour24 = 0;
       }
 
-      const reflectionDate = new Date(fileDate);
-      reflectionDate.setHours(hour24, minutes, seconds, 0);
+      // Look up IANA timezone from abbreviation
+      const ianaTimezone = TIMEZONE_MAP[detectedTimezone.toUpperCase()];
+      let utcDate;
+
+      if (!ianaTimezone) {
+        // Fallback for unknown timezones: use native parsing
+        logger.progress('timestamp parsing', `Unknown timezone "${detectedTimezone}", attempting native parsing`);
+        const nativeAttempt = new Date(`${fileDate.toDateString()} ${timeString}`);
+        if (!isNaN(nativeAttempt.getTime())) {
+          utcDate = nativeAttempt;
+        } else {
+          // Final fallback: assume local timezone
+          const localDate = new Date(fileDate);
+          localDate.setHours(hour24, minutes, seconds || 0, 0);
+          utcDate = localDate;
+        }
+      } else {
+        // Create naive UTC date for the specified date/time
+        const naiveUTC = Date.UTC(
+          fileDate.getFullYear(),
+          fileDate.getMonth(),
+          fileDate.getDate(),
+          hour24,
+          minutes,
+          seconds || 0
+        );
+
+        // Calculate actual timezone offset using Intl
+        const offsetMs = getTimezoneOffset(naiveUTC, ianaTimezone);
+
+        // Convert to true UTC by subtracting the offset
+        utcDate = new Date(naiveUTC - offsetMs);
+
+        logger.progress('timestamp parsing', `Converted ${timeString} to UTC using ${ianaTimezone} (offset: ${offsetMs/1000/60}min)`);
+      }
 
       // Validate the parsed date makes sense
-      if (isNaN(reflectionDate.getTime()) || hours < 1 || hours > 12 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+      if (isNaN(utcDate.getTime()) || hours < 1 || hours > 12 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
         parseSuccess = false;
         throw new Error(`Invalid timestamp components: ${timeString}`);
       }
@@ -498,10 +653,10 @@ function parseReflectionTimestamp(fileDate, timeString) {
       OTEL.metrics.counter('commit_story.journal.timestamp_parse_success', 1);
       OTEL.metrics.gauge('commit_story.journal.timezone_detected', detectedTimezone === 'unknown' ? 0 : 1);
 
-      logger.complete('timestamp parsing', `Parsed ${timeString} to ${reflectionDate.toISOString()}`);
+      logger.complete('timestamp parsing', `Parsed ${timeString} to ${utcDate.toISOString()}`);
 
       span.setStatus({ code: SpanStatusCode.OK, message: 'Timestamp parsed successfully' });
-      return reflectionDate;
+      return utcDate;
 
     } catch (error) {
       const timestampData = {
