@@ -1,9 +1,9 @@
 # PRD-17: Manual Reflection Tool for Real-Time Journal Entries
 
 **GitHub Issue**: [#17](https://github.com/wiggitywhitney/commit-story/issues/17)
-**Status**: Planning - Milestone 1
+**Status**: Implementation Complete - Timezone Fix Needed
 **Created**: 2025-09-21
-**Last Updated**: 2025-09-22
+**Last Updated**: 2025-09-28
 
 ## Summary
 
@@ -559,6 +559,40 @@ If applicable, add reflection events to existing OpenTelemetry instrumentation f
 - **Milestone 3.1**: COMPLETE ✅ (5/5 core items, 100%) - *Timezone fix needed for production*
 - **Milestone 3.2**: NOT STARTED (0/5 items, 0%)
 - **Overall PRD Progress**: ~92% complete (Core functionality complete, timezone fix + polish remaining)
+
+### 2025-09-28: Telemetry Enhancement via PRD-9 Dogfooding Success ✅
+**Duration**: Part of PRD-9 `/add-telemetry` command validation
+**Primary Focus**: Complete telemetry coverage for reflection functions via automated tool
+
+**Completed PRD Items**:
+- [x] **Enhanced telemetry coverage** - Evidence: PRD-9's `/add-telemetry` command successfully instrumented all reflection functions
+- [x] **Standards module integration** - Evidence: Reflection functions now use OTEL.attrs builders from standards.js
+- [x] **Datadog validation** - Evidence: All reflection telemetry validated working in production
+
+**Implementation Details**:
+- **Dogfooding Success**: PRD-17 served as real-world validation target for PRD-9's automation tool
+- **Comprehensive Coverage**: All 5 core reflection functions now have complete telemetry
+  - `discoverReflections()`: File I/O operations with time window telemetry
+  - `parseReflectionFile()`: File parsing with content analysis telemetry
+  - `parseReflectionTimestamp()`: Date parsing with timezone telemetry
+  - `formatJournalEntry()`: Enhanced with reflection formatting telemetry
+  - `getJournalFilePath()`: Path generation telemetry
+- **Standards Integration**: Following established telemetry patterns via OTEL.span and OTEL.attrs builders
+- **Production Validation**: All spans, metrics, and logs confirmed flowing to Datadog
+
+**Conference Story Value**:
+- **Perfect Demo Example**: "I used the automation tool to instrument this reflection feature"
+- **Real-World Evidence**: Genuine production telemetry, not demo code
+- **Success Metrics**: 100% telemetry coverage achieved via automation
+
+**Remaining Critical Work**:
+- **Priority 1**: Fix timezone handling per DD-008 (production readiness blocker)
+- **Priority 2**: Documentation and configuration integration (polish items)
+
+**Next Session Priorities**:
+- Implement UTC-first timezone conversion for time window calculations
+- Fix `parseReflectionTimestamp()` to respect timezone components
+- Add timezone validation warnings for production safety
 
 ## References
 
