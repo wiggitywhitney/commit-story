@@ -206,38 +206,91 @@ The chat collector currently filters by:
 **Date**: 2025-09-28
 **Status**: ✅ Decided
 
+### Decision 13: AI Reasoning Emission During Session Filtering
+**Choice**: Modify AI session filter to emit explicit reasoning process during evaluation
+**Rationale**: Current AI filter makes decisions without exposing its reasoning, making it difficult to debug session selection issues or validate correctness. Emitted reasoning should be captured in telemetry for troubleshooting and system improvement.
+**Date**: 2025-09-29
+**Status**: ❌ Outstanding
+**Implementation**: Add reasoning field to AI response format, log reasoning to narrative telemetry
+
+### Decision 14: /clear Command Session Boundary Detection Strategy
+**Choice**: Detect session boundaries across /clear commands by identifying:
+- **Pre-clear session**: Session containing `/clear` as final user message
+- **Post-clear session**: New sessionId starting immediately after with `parentUuid: null`
+**Rationale**: `/clear` creates definitive session breaks that should be handled intelligently - either as related continuation (same feature work) or separate contexts (topic change). Detection can be programmatic (message pattern matching) rather than relying solely on AI to understand the pattern.
+**Date**: 2025-09-29
+**Status**: ❌ Outstanding
+**Implementation**: Add /clear boundary detection in session grouping logic
+
+### Decision 15: Validation Testing with Known /clear Commit
+**Choice**: Use the specific commit containing documented /clear command usage as primary validation test case
+**Rationale**: Real-world /clear usage provides authentic test scenario for session boundary detection. This commit occurred after code writing but before /add-telemetry command execution, creating perfect multi-session contamination test case.
+**Date**: 2025-09-29
+**Status**: ❌ Outstanding
+**Implementation**: Identify and test against the /clear commit for validation
+
+### Decision 16: Enhanced Telemetry for /clear-Aware Testing
+**Choice**: Conditionally rerun /add-telemetry command with enhanced instructions if testing reveals gaps in /clear scenario handling
+**Rationale**: Current telemetry instrumentation may need updates to properly capture /clear boundary detection and reasoning emission. Only rerun if validation testing identifies missing telemetry coverage.
+**Date**: 2025-09-29
+**Status**: ❌ Outstanding
+**Implementation**: Assess telemetry gaps after /clear testing, enhance instrumentation if needed
+
 ## Implementation Plan
 
 ### Milestone 1: Plan A/B Session Logic (Priority: High)
 **Goal**: Implement simplified two-path approach for session handling
 
-**Tasks** (based on DD-010, DD-011, DD-012):
-- [ ] Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)
-- [ ] Implement Plan A: Single session fast path (DD-010) - if only one sessionId, return all messages
-- [ ] Implement Plan B: AI session relevance filter (DD-011) for multiple sessions
+**Tasks** (based on DD-010, DD-011, DD-012, DD-013, DD-014):
+- [x] Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)
+- [x] Implement Plan A: Single session fast path (DD-010) - if only one sessionId, return all messages
+- [x] Implement Plan B: AI session relevance filter (DD-011) for multiple sessions
 - [x] Create AI prompt for session filtering: 4-step structured prompt with JSON response format
+- [ ] Add AI reasoning emission to response format (DD-013) - include reasoning field in JSON response
+- [ ] Add /clear command boundary detection (DD-014) in session grouping logic:
+  - [ ] Detect sessions ending with `/clear` user message
+  - [ ] Identify new sessions starting with `parentUuid: null` after /clear timestamp
+  - [ ] Link pre-clear and post-clear sessions for AI analysis context
 - [ ] Add structured debug output showing which plan was used and results
 - [ ] Handle AI filter edge cases (no response, ambiguous response, API failures)
 
 **Files Modified**:
-- `src/collectors/claude-collector.js` - Plan A/B session logic
-- New AI session filter module (location TBD)
-- Tests for both single and multi-session scenarios
+- [x] `src/collectors/claude-collector.js` - Plan A/B session logic implemented
+- [x] `src/utils/session-filter.js` - Complete AI session filter module (777 lines)
+- [x] `src/telemetry/standards.js` - Comprehensive session filtering telemetry standards
+- [ ] Tests for both single and multi-session scenarios
 
-### Milestone 2: Debug Output and Logging (Priority: High)
+### Milestone 2: /clear Command Testing and Validation (Priority: High)
+**Goal**: Validate session isolation with real /clear command usage scenarios
+
+**Tasks** (based on DD-015, DD-016):
+- [ ] Identify the specific commit that contains /clear command usage (DD-015)
+- [ ] Test current session filtering logic against /clear commit scenario
+- [ ] Validate that pre-clear and post-clear sessions are properly detected
+- [ ] Assess whether AI reasoning emission is sufficient for debugging /clear scenarios
+- [ ] Determine if enhanced telemetry instrumentation is needed (DD-016):
+  - [ ] Check if /clear boundary detection events are properly captured
+  - [ ] Verify AI reasoning logging covers /clear continuation decisions
+  - [ ] Conditionally rerun /add-telemetry command if gaps identified
+
+**Files Modified**:
+- Test validation against real commit data
+- Potentially enhanced telemetry if gaps found
+
+### Milestone 3: Debug Output and Logging (Priority: High)
 **Goal**: Provide visibility into session selection process
 
 **Tasks**:
 - [ ] Add debug output showing session detection results
 - [ ] Include session statistics in narrative logs
-- [ ] Add telemetry for session detection accuracy
+- [ ] Add telemetry for session detection accuracy (capturing AI reasoning from DD-013)
 - [ ] Create troubleshooting documentation
 
 **Files Modified**:
 - `src/collectors/claude-collector.js` - Debug output
 - Documentation updates for troubleshooting
 
-### Milestone 3: Edge Case Handling (Priority: Medium)
+### Milestone 4: Edge Case Handling (Priority: Medium)
 **Goal**: Handle complex scenarios and edge cases
 
 **Tasks**:
@@ -245,12 +298,13 @@ The chat collector currently filters by:
 - [ ] Manage very short time windows with minimal activity
 - [ ] Address sessions that span multiple commits
 - [ ] Test with various session overlap patterns
+- [ ] Handle /clear command edge cases (multiple /clear commands, immediate commits after /clear)
 
 **Files Modified**:
 - `src/collectors/claude-collector.js` - Edge case logic
 - Test cases for complex scenarios
 
-### Milestone 4: Performance Optimization (Priority: Low)
+### Milestone 5: Performance Optimization (Priority: Low)
 **Goal**: Ensure minimal performance impact
 
 **Tasks**:
@@ -555,6 +609,59 @@ This is why Phase 1 research cannot be skipped even with the simplified approach
 - Implement session grouping logic in claude-collector.js line 90-91
 - Add Plan A/B decision tree before noise filtering
 - Integrate AI filter module with structured prompt
+
+### 2025-09-29 - Evening: Implementation and Enhancement Decisions ✅
+**Duration**: Post-instrumentation reflection and planning session
+**Primary Focus**: Identify remaining implementation requirements and edge case handling
+
+**New Design Decisions Captured**:
+- **DD-013**: AI reasoning emission for debugging session selection (Outstanding)
+- **DD-014**: /clear command boundary detection strategy (Outstanding)
+- **DD-015**: Validation testing with known /clear commit (Outstanding)
+- **DD-016**: Conditional telemetry enhancement based on testing gaps (Outstanding)
+
+**Implementation Plan Enhanced**:
+- **Milestone 2 added**: /clear command testing and validation as high priority
+- **Milestone renumbering**: Debug output moved to Milestone 3
+- **Task specifications**: Detailed /clear boundary detection requirements
+- **Validation strategy**: Real-world /clear commit identified as primary test case
+
+**Key Insight**: /clear command creates definitive session boundaries that need programmatic detection rather than relying solely on AI pattern recognition. This addresses a critical edge case in multi-session contamination scenarios.
+
+**Implementation Status**: Research complete, 4 core design decisions made, ready for /clear-aware implementation phase
+
+### 2025-09-29 - Evening: Core Session Isolation Implementation Complete ✅
+**Duration**: ~6 hours (estimated from file changes and conversation)
+**Commits**: Implementation work (ready to commit)
+**Primary Focus**: Complete Plan A/B session filtering architecture with full telemetry
+
+**Completed PRD Items**:
+- [x] **Plan A/B Architecture** - Complete single/multi-session detection logic in claude-collector.js (lines 140-161)
+- [x] **AI Session Filter Module** - Full 777-line implementation with OpenAI integration (`src/utils/session-filter.js`)
+- [x] **Session grouping by sessionId** - Implemented in message collection pipeline
+- [x] **Plan A: Single session fast path** - Zero overhead for single sessions (lines 143-148)
+- [x] **Plan B: AI session relevance filter** - Dynamic import and semantic analysis (lines 150-161)
+- [x] **Telemetry infrastructure** - Comprehensive OTEL spans, metrics, and attributes for all session operations
+- [x] **Updated standards.js** - 134 lines of session filtering telemetry conventions
+
+**Technical Achievements**:
+- **Architecture**: Plan A/B approach provides optimal performance (fast path) with intelligent fallback (AI analysis)
+- **Integration**: Seamless integration into existing claude-collector.js pipeline before noise filtering
+- **Telemetry**: Full observability with spans for debugging and metrics for monitoring session filter decisions
+- **AI Integration**: Complete OpenAI-powered session relevance analysis with git context and structured JSON responses
+- **Code Quality**: Over-instrumentation corrected (removed parseTimestamp spans to avoid 60+ span pollution)
+
+**Implementation Evidence**:
+- `src/collectors/claude-collector.js`: +146 lines, -37 lines - Core Plan A/B logic
+- `src/utils/session-filter.js`: 777 lines - Complete AI filter with 8 instrumented functions
+- `src/telemetry/standards.js`: +134 lines - Session filtering telemetry standards
+- Full OTEL instrumentation validated through console traces and Datadog integration
+
+**Next Session Priorities**:
+- Test implementation against /clear command scenarios (DD-015)
+- Add AI reasoning emission for debugging (DD-013)
+- Validate session boundary detection across /clear commands
+- Conduct end-to-end testing with real multi-session scenarios
 
 ## Design Document References
 

@@ -53,6 +53,14 @@ If journal generated now, would mix:
 - **Evidence**: Session `ecdd3ba0` successfully resumed after full app restart using --continue
 - **Important**: Without --continue, restart likely creates new sessionId
 
+### 6. /clear Command Creates Completely New Session ✅
+- **/clear command** → Brand new sessionId (complete session reset)
+- **No conversation continuity** from previous session
+- **JSONL structure**: First message has `"parentUuid": null` (session start marker)
+- **Evidence**: Session `50ae381d` created at `2025-09-29T14:21:41.146Z` immediately after `/clear`
+- **Session tracking**: Messages have unique sessionId, confirming complete isolation from prior conversation
+- **Implication**: /clear provides clean session boundary for journal isolation
+
 ## Remaining Questions (Lower Priority)
 
 ### MEDIUM PRIORITY - Edge Cases
@@ -95,6 +103,7 @@ Real JSONL files with test content:
 - `~/.claude/projects/-Users-whitney-lee-Documents-Repositories-commit-story/50d1198c-*.jsonl` (zebra biology)
 - `~/.claude/projects/-Users-whitney-lee-Documents-Repositories-commit-story/0a91338a-*.jsonl` (limerick poetry)
 - `~/.claude/projects/-Users-whitney-lee-Documents-Repositories-commit-story/47641e77-*.jsonl` (Jupiter facts)
+- `~/.claude/projects/-Users-whitney-lee-Documents-Repositories-commit-story/50ae381d-*.jsonl` (session isolation analysis - clean start)
 
 ## Next Steps
 

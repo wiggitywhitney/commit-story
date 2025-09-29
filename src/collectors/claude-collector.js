@@ -21,7 +21,7 @@ const tracer = trace.getTracer('commit-story-claude-collector', '1.0.0');
  * @param {string} repoPath - Full path to repository (for cwd filtering)
  * @returns {Array} Sorted array of complete chat message objects from the time window
  */
-export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
+export async function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
   return tracer.startActiveSpan(OTEL.span.collectors.claude(), {
     attributes: {
       [`${OTEL.NAMESPACE}.collector.repo_path`]: repoPath,
@@ -29,7 +29,7 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
       [`${OTEL.NAMESPACE}.collector.time_window_end`]: commitTime.toISOString(),
       'code.function': 'extractChatForCommit'
     }
-  }, (span) => {
+  }, async (span) => {
     const logger = createNarrativeLogger('claude.collect_messages');
 
     try {
@@ -132,12 +132,33 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
 
       if (validMessages === 0) {
         logger.complete('chat message collection', 'No messages found in time window - empty result');
-      } else {
-        logger.complete('chat message collection', `Collected ${validMessages} messages, sorted chronologically`);
+        span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected successfully' });
+        return sortedMessages;
       }
 
-      span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected successfully' });
-      return sortedMessages;
+      // 6. Session isolation - lightweight detection first
+      const uniqueSessionIds = new Set(sortedMessages.map(msg => msg.sessionId).filter(Boolean));
+      const sessionCount = uniqueSessionIds.size;
+
+      if (sessionCount <= 1) {
+        // Plan A: Single session fast path - zero overhead
+        logger.complete('chat message collection', `Collected ${validMessages} messages, sorted chronologically`);
+        span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected successfully' });
+        return sortedMessages;
+      }
+
+      // Plan B: Multiple sessions detected - need AI filtering
+      logger.progress('chat message collection', `Plan B: Multiple sessions detected (${sessionCount} sessions), using AI filter`);
+
+      // Import AI filter module dynamically to avoid overhead for single sessions
+      const { filterRelevantSessions } = await import('../utils/session-filter.js');
+      const filteredMessages = await filterRelevantSessions(sortedMessages, uniqueSessionIds, repoPath, logger);
+
+      const finalMessageCount = filteredMessages.length;
+      logger.complete('chat message collection', `AI session filter selected ${finalMessageCount} messages from ${sessionCount} sessions`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected and session filtered successfully' });
+      return filteredMessages;
 
     } catch (error) {
       span.recordException(error);
@@ -159,50 +180,138 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
  * @returns {Array<string>} Array of file paths to process
  */
 function findClaudeFiles() {
-  // Find all Claude Code JSONL files across all project directories
-  const claudeProjectsDir = join(homedir(), '.claude', 'projects');
-  
-  if (!existsSync(claudeProjectsDir)) {
-    return [];
-  }
-  
-  const allFiles = [];
-  
-  try {
-    const projectDirs = readdirSync(claudeProjectsDir);
-    
-    for (const projectDir of projectDirs) {
-      const projectPath = join(claudeProjectsDir, projectDir);
-      
+  return tracer.startActiveSpan(OTEL.span.collectors.file_discovery(), {
+    attributes: {
+      'code.function': 'findClaudeFiles'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('claude.file_discovery');
+    const startTime = Date.now();
+
+    try {
+      // Find all Claude Code JSONL files across all project directories
+      const claudeProjectsDir = join(homedir(), '.claude', 'projects');
+
+      logger.start('file discovery', `Searching for Claude JSONL files in ${claudeProjectsDir}`);
+
+      if (!existsSync(claudeProjectsDir)) {
+        logger.complete('file discovery', 'Claude projects directory does not exist - no files found');
+
+        const discoveryData = {
+          projectsChecked: 0,
+          filesFound: 0,
+          searchDuration: Date.now() - startTime,
+          claudeProjectsDir
+        };
+
+        span.setAttributes(OTEL.attrs.fileDiscovery(discoveryData));
+
+        // Emit metrics
+        Object.entries(OTEL.attrs.fileDiscovery(discoveryData)).forEach(([name, value]) => {
+          OTEL.metrics.gauge(name, value);
+        });
+
+        span.setStatus({ code: SpanStatusCode.OK, message: 'File discovery completed - no projects directory' });
+        return [];
+      }
+
+      const allFiles = [];
+      let projectsChecked = 0;
+
       try {
-        if (existsSync(projectPath)) {
-          const files = readdirSync(projectPath)
-            .filter(file => file.endsWith('.jsonl'))
-            .map(file => join(projectPath, file));
-          
-          allFiles.push(...files);
+        const projectDirs = readdirSync(claudeProjectsDir);
+        logger.progress('file discovery', `Found ${projectDirs.length} project directories to check`);
+
+        for (const projectDir of projectDirs) {
+          const projectPath = join(claudeProjectsDir, projectDir);
+          projectsChecked++;
+
+          try {
+            if (existsSync(projectPath)) {
+              const files = readdirSync(projectPath)
+                .filter(file => file.endsWith('.jsonl'))
+                .map(file => join(projectPath, file));
+
+              allFiles.push(...files);
+            }
+          } catch (error) {
+            // Skip directories that can't be read
+            continue;
+          }
         }
       } catch (error) {
-        // Skip directories that can't be read
-        continue;
+        logger.error('file discovery', 'Failed to read projects directory', error);
+        span.recordException(error);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+        return [];
       }
+
+      const discoveryData = {
+        projectsChecked,
+        filesFound: allFiles.length,
+        searchDuration: Date.now() - startTime,
+        claudeProjectsDir
+      };
+
+      span.setAttributes(OTEL.attrs.fileDiscovery(discoveryData));
+
+      // Emit metrics
+      Object.entries(OTEL.attrs.fileDiscovery(discoveryData)).forEach(([name, value]) => {
+        OTEL.metrics.gauge(name, value);
+      });
+
+      logger.complete('file discovery', `Found ${allFiles.length} JSONL files across ${projectsChecked} project directories`);
+      span.setStatus({ code: SpanStatusCode.OK, message: 'File discovery completed successfully' });
+
+      return allFiles;
+
+    } catch (error) {
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('file discovery', 'File discovery failed', error);
+      return [];
+    } finally {
+      span.end();
     }
-  } catch (error) {
-    return [];
-  }
-  
-  return allFiles;
+  });
 }
 
 /**
  * Parse Claude Code timestamp to UTC Date object
  * Claude timestamps: "2025-08-20T20:54:46.152Z" (UTC ISO format)
+ * NOTE: No span instrumentation - this is a simple utility function called 60+ times per commit.
+ * Aggregate metrics are tracked in the parent span (extractChatForCommit) to avoid span pollution.
  * @param {string} timestamp - Timestamp string from Claude message
  * @returns {Date|null} Parsed Date in UTC, or null if invalid
  */
 function parseTimestamp(timestamp) {
-  if (!timestamp) return null;
-  
-  // Claude timestamps: "2025-08-20T20:54:46.152Z" -> UTC Date
-  return new Date(timestamp.replace('Z', '+00:00'));
+  if (!timestamp) {
+    // Emit aggregate metric for null inputs
+    OTEL.metrics.counter('commit_story.timestamp.parse_attempts').add(1);
+    OTEL.metrics.counter('commit_story.timestamp.null_inputs').add(1);
+    return null;
+  }
+
+  try {
+    // Claude timestamps: "2025-08-20T20:54:46.152Z" -> UTC Date
+    const utcDate = new Date(timestamp.replace('Z', '+00:00'));
+    const parseSuccess = !isNaN(utcDate.getTime());
+
+    // Emit aggregate metrics
+    OTEL.metrics.counter('commit_story.timestamp.parse_attempts').add(1);
+
+    if (!parseSuccess) {
+      OTEL.metrics.counter('commit_story.timestamp.parse_failures').add(1);
+      return null;
+    }
+
+    OTEL.metrics.counter('commit_story.timestamp.parse_successes').add(1);
+    return utcDate;
+
+  } catch (error) {
+    // Emit error metric and continue processing
+    OTEL.metrics.counter('commit_story.timestamp.parse_attempts').add(1);
+    OTEL.metrics.counter('commit_story.timestamp.parse_exceptions').add(1);
+    return null;
+  }
 }
