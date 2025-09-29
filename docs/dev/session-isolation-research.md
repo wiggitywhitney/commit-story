@@ -105,13 +105,63 @@ Real JSONL files with test content:
 - `~/.claude/projects/-Users-whitney-lee-Documents-Repositories-commit-story/47641e77-*.jsonl` (Jupiter facts)
 - `~/.claude/projects/-Users-whitney-lee-Documents-Repositories-commit-story/50ae381d-*.jsonl` (session isolation analysis - clean start)
 
+## Real /clear Pattern Discovery ✅
+
+**Investigation Date**: 2025-09-29 4:17 PM EDT
+**Purpose**: Find actual /clear message structure to implement programmatic detection
+
+### Critical Finding: /clear Creates New Session with Metadata
+
+Previous assumption was incorrect - `/clear` does not appear as last message in old session.
+
+**Actual /clear Pattern (from session `50ae381d`):**
+```json
+{
+  "parentUuid": "a836f746-5b82-4fb4-90b6-08d540b13ad1",
+  "sessionId": "50ae381d-33cf-42c9-9319-4b747491d39f",
+  "type": "user",
+  "message": {
+    "role": "user",
+    "content": "<command-name>/clear</command-name>\n            <command-message>clear</command-message>\n            <command-args></command-args>"
+  },
+  "timestamp": "2025-09-29T14:21:41.129Z"
+}
+```
+
+### Key Insights
+
+1. **New session starts immediately** with `/clear` metadata included
+2. **XML-structured content** - not simple `"/clear"` text string
+3. **Session boundary marker** - `parentUuid: null` at session start (`2025-09-29T14:21:41.146Z`)
+4. **Detection strategy** - Look for sessions **starting with** `/clear` metadata in early messages
+
+### Corrected Detection Logic
+
+```javascript
+function detectClearSessions(sessions) {
+  return sessions.filter(session => {
+    const earlyMessages = session.messages.slice(0, 3);
+    return earlyMessages.some(msg =>
+      msg.content?.includes('<command-name>/clear</command-name>')
+    );
+  });
+}
+```
+
+### Implementation Impact
+
+- Plan A.5 `/clear` continuation detection must be updated
+- Look for NEW sessions containing `/clear` metadata, not old sessions ending with `/clear`
+- Session linking logic needs to find sessions that start immediately after normal session endings
+
 ## Next Steps
 
 1. **Complete app restart testing**
-2. **Write session detection algorithm** based on findings
-3. **Implement Plan A/B logic** in claude-collector.js
+2. **Write session detection algorithm** based on findings including corrected `/clear` pattern
+3. **Implement Plan A/B logic** in claude-collector.js with accurate `/clear` detection
 4. **Test with real contamination scenarios**
 5. **Validate session isolation works**
 
 ---
 *Research conducted through controlled multi-tab testing on 2025-09-29*
+*Real /clear pattern discovered through JSONL data investigation on 2025-09-29*

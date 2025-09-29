@@ -236,6 +236,16 @@ The chat collector currently filters by:
 **Status**: ❌ Outstanding
 **Implementation**: Assess telemetry gaps after /clear testing, enhance instrumentation if needed
 
+### Decision 17: /clear Detection Strategy Correction Based on Real Data
+**Choice**: Detect `/clear` command by looking for NEW sessions that contain XML metadata `<command-name>/clear</command-name>` in early messages, not by looking for sessions that end with `/clear` text
+**Rationale**: Investigation of actual JSONL data revealed that Claude Code creates a brand new session immediately when user runs `/clear`, and includes structured XML metadata about the command in the new session. The old session simply ends normally with no `/clear` marker.
+**Date**: 2025-09-29
+**Status**: ✅ Documented
+**Implementation**:
+- Detection pattern: `msg.content?.includes('<command-name>/clear</command-name>')` in first 3 messages of session
+- Session linking: Use timestamp correlation to connect sessions that end normally with sessions that start with `/clear` metadata
+- Update Plan A.5 logic to use correct detection strategy
+
 ## Implementation Plan
 
 ### Milestone 1: Plan A/B Session Logic (Priority: High)
@@ -247,10 +257,10 @@ The chat collector currently filters by:
 - [x] Implement Plan B: AI session relevance filter (DD-011) for multiple sessions
 - [x] Create AI prompt for session filtering: 4-step structured prompt with JSON response format
 - [ ] Add AI reasoning emission to response format (DD-013) - include reasoning field in JSON response
-- [ ] Add /clear command boundary detection (DD-014) in session grouping logic:
-  - [ ] Detect sessions ending with `/clear` user message
-  - [ ] Identify new sessions starting with `parentUuid: null` after /clear timestamp
-  - [ ] Link pre-clear and post-clear sessions for AI analysis context
+- [ ] Add /clear command boundary detection (DD-014, DD-017) in session grouping logic:
+  - [ ] Detect sessions starting with `/clear` XML metadata in early messages
+  - [ ] Use pattern: `msg.content?.includes('<command-name>/clear</command-name>')`
+  - [ ] Link sessions ending normally with sessions starting with `/clear` via timestamp correlation
 - [ ] Add structured debug output showing which plan was used and results
 - [ ] Handle AI filter edge cases (no response, ambiguous response, API failures)
 
@@ -663,6 +673,37 @@ This is why Phase 1 research cannot be skipped even with the simplified approach
 - Add AI reasoning emission for debugging (DD-013)
 - Validate session boundary detection across /clear commands
 - Conduct end-to-end testing with real multi-session scenarios
+
+### 2025-09-29 - Evening: /clear Command Pattern Investigation ✅
+**Duration**: JSONL data investigation session
+**Primary Focus**: Determine actual structure of /clear command in Claude Code message data
+
+**Problem**: Implementation needed to detect when user runs `/clear` command to reset conversation, but the actual message structure was unknown.
+
+**Investigation Method**: Searched through real JSONL files to find session `50ae381d` which was created after a `/clear` command.
+
+**Key Discovery**: The `/clear` command does NOT appear as a simple text message. Instead:
+
+1. **When user runs `/clear`**: Claude Code creates a brand new session immediately
+2. **New session contains**: XML-structured metadata about the `/clear` command
+3. **Actual message structure**:
+```json
+{
+  "type": "user",
+  "message": {
+    "content": "<command-name>/clear</command-name>\n            <command-message>clear</command-message>\n            <command-args></command-args>"
+  },
+  "timestamp": "2025-09-29T14:21:41.129Z"
+}
+```
+4. **Session boundary marker**: New session starts with `parentUuid: null`
+
+**Impact on Implementation**:
+- Detection must look for sessions that START WITH `/clear` metadata (not sessions that end with `/clear`)
+- Pattern to detect: `msg.content?.includes('<command-name>/clear</command-name>')` in session's first few messages
+- Session linking: Find sessions that begin immediately after other sessions end (timestamp correlation)
+
+**Decision Added**: DD-017 - /clear Detection Strategy uses XML metadata pattern in new sessions
 
 ## Design Document References
 
