@@ -137,8 +137,8 @@ This sequence was chosen based on:
 |-----|--------|----------|--------|
 | 9   | ✅ Complete | 100% | Tool functional and validated |
 | 17  | ✅ Complete | 100% | International timezone support delivered |
-| 25  | Not Started | 0% | After PRD-9 |
-| 23  | Not Started | 0% | After PRD-25 |
+| 25  | 🔬 Research Complete | 70% | AI filter prompt designed, ready for implementation |
+| 23  | Not Started | 0% | After PRD-25 implementation |
 | 24  | Not Started | 0% | After PRD-23 |
 
 ### Meta Progress Log
@@ -183,6 +183,30 @@ This sequence was chosen based on:
 - **Progress Update**: Conference roadmap now shows 2/5 PRDs complete (40% overall progress)
 - **Next Priority**: Begin PRD-25 (Session Isolation) implementation with `/add-telemetry` dogfooding approach
 - **Dogfooding Success**: PRD-17 served as successful validation target for PRD-9's automation tool
+
+### 2025-09-29: PRD-25 Research Complete - Conference Demo Story Enhanced ✅
+**Duration**: Full research and design session
+**Conference Milestone**: PRD-25 research phase complete, implementation phase ready
+
+**PRD-25 Research Achievements**:
+- **Multi-tab contamination confirmed**: Real test data with zebra/limerick/PRD-25/Jupiter sessions demonstrates problem scope
+- **SessionId lifecycle fully documented**: Restart, compaction, --continue behaviors systematically mapped
+- **AI filter prompt designed**: 4-step structured approach with JSON response format ready for implementation
+- **Files Created**: `docs/dev/session-isolation-research.md`, `docs/dev/session-filter-prompt-context.md`
+
+**Conference Demo Story Enhanced**:
+- **Original**: "I used telemetry automation to instrument fixes"
+- **Enhanced**: "I researched the problem systematically, designed an AI solution, and implemented session isolation"
+- **Value Add**: Demonstrates systematic problem-solving methodology beyond just tool usage
+
+**Updated Implementation Status**:
+- PRD-9: ✅ Complete (OpenTelemetry automation tool functional)
+- PRD-17: ✅ Complete (International timezone support delivered)
+- PRD-25: 70% complete (research done, ready for implementation phase)
+- PRD-23: Blocked until PRD-25 implementation complete
+- PRD-24: On track for final deployment after dependency chain
+
+**Next Session Priority**: Implement PRD-25 session isolation logic in claude-collector.js using designed AI filter prompt
 
 ## Risk Management
 
