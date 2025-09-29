@@ -320,6 +320,24 @@ The chat collector currently filters by:
 **Files Modified**:
 - `README.md` - Single session workflow guidance
 
+### Milestone R3: Backfill Broken Journal Entries (Priority: Medium)
+**Goal**: Generate journal entries for all commits that failed during session isolation implementation period
+
+**Methodology**:
+Use the main journal generation script with specific commit references to backfill missing entries one at a time:
+```bash
+npm run commit-story:run <commit-hash>
+```
+
+**Tasks**:
+- [ ] After revert is complete and journal generation is working, identify ALL commits missing journal entries since last successful generation (2025-09-29 10:44 AM)
+- [ ] Use `git log --oneline --since="2025-09-29 10:44"` to get complete list of commits needing backfill
+- [ ] Backfill journal entries for each commit in chronological order (oldest first)
+- [ ] Verify all journal entries generated correctly and contain coherent narratives
+- [ ] Test that current journal generation works for new commits going forward
+
+**Expected Result**: Complete journal coverage restored for all commits during the broken period, with full development story preserved
+
 ## ~~Technical Specification~~ (ABANDONED)
 
 **Status**: ❌ **ABANDONED** - See DD-018, DD-019
