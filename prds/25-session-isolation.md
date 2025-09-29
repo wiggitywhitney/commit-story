@@ -246,172 +246,87 @@ The chat collector currently filters by:
 - Session linking: Use timestamp correlation to connect sessions that end normally with sessions that start with `/clear` metadata
 - Update Plan A.5 logic to use correct detection strategy
 
+### Decision 18: Strategic Abandonment - Single Session Approach
+**Choice**: Abandon multi-session support entirely. Document that commit-story is designed for single Claude Code session workflows only.
+**Rationale**: Multiple fatal flaws discovered during implementation planning:
+1. **Time Window Problem**: Sequential commits truncate conversation history. User working on payments/auth/shipping in parallel tabs, commits payments at 2:00 PM, then shipping at 2:01 PM - shipping commit journal only captures 1 minute of context, losing hours of design discussion.
+2. **Complexity Explosion**: Session correlation, timestamp linking, /clear boundary detection, AI reasoning emission, overlapping vs sequential logic - each solution creates new edge cases.
+**Date**: 2025-09-29
+**Status**: ❌ Outstanding - Requires implementation revert and README update
+**Implementation**:
+- Revert all session isolation code changes via git
+- Add README guidance: "System designed for single Claude Code session per project"
+- Document multi-session limitations clearly
+
+### Decision 19: Comprehensive Implementation Revert Plan
+**Choice**: Use git-based revert strategy rather than manual code deletion to remove session isolation implementation
+**Rationale**: Preserves implementation history while cleanly returning to pre-session-isolation state. Safer than manual deletion, maintains git history for future reference.
+**Date**: 2025-09-29
+**Status**: ❌ Outstanding - Requires git revert execution
+**Implementation**:
+- Identify commit range for session isolation implementation
+- Create revert commits for: session-filter.js creation, claude-collector.js modifications, telemetry standards updates
+- Test that revert restores original functionality
+- Verify no session isolation logic remains in codebase
+
 ## Implementation Plan
 
-### Milestone 1: Plan A/B Session Logic (Priority: High)
-**Goal**: Implement simplified two-path approach for session handling
+### ~~Milestone 1: Plan A/B Session Logic~~ (ABANDONED)
+**Status**: ❌ **ABANDONED** - See DD-018, DD-019
 
-**Tasks** (based on DD-010, DD-011, DD-012, DD-013, DD-014):
-- [x] Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)
-- [x] Implement Plan A: Single session fast path (DD-010) - if only one sessionId, return all messages
-- [x] Implement Plan B: AI session relevance filter (DD-011) for multiple sessions
-- [x] Create AI prompt for session filtering: 4-step structured prompt with JSON response format
-- [ ] Add AI reasoning emission to response format (DD-013) - include reasoning field in JSON response
-- [ ] Add /clear command boundary detection (DD-014, DD-017) in session grouping logic:
-  - [ ] Detect sessions starting with `/clear` XML metadata in early messages
-  - [ ] Use pattern: `msg.content?.includes('<command-name>/clear</command-name>')`
-  - [ ] Link sessions ending normally with sessions starting with `/clear` via timestamp correlation
-- [ ] Add structured debug output showing which plan was used and results
-- [ ] Handle AI filter edge cases (no response, ambiguous response, API failures)
+**Completed Implementation** (TO BE REVERTED):
+- [x] ~~Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)~~
+- [x] ~~Implement Plan A: Single session fast path (DD-010)~~
+- [x] ~~Implement Plan B: AI session relevance filter (DD-011)~~
+- [x] ~~Create AI prompt for session filtering: 4-step structured prompt with JSON response format~~
 
-**Files Modified**:
-- [x] `src/collectors/claude-collector.js` - Plan A/B session logic implemented
-- [x] `src/utils/session-filter.js` - Complete AI session filter module (777 lines)
-- [x] `src/telemetry/standards.js` - Comprehensive session filtering telemetry standards
-- [ ] Tests for both single and multi-session scenarios
+**Files Modified** (TO BE REVERTED):
+- [x] ~~`src/collectors/claude-collector.js` - Plan A/B session logic implemented~~
+- [x] ~~`src/utils/session-filter.js` - Complete AI session filter module (777 lines)~~
+- [x] ~~`src/telemetry/standards.js` - Comprehensive session filtering telemetry standards~~
 
-### Milestone 2: /clear Command Testing and Validation (Priority: High)
-**Goal**: Validate session isolation with real /clear command usage scenarios
+### Milestone R1: Implementation Revert (Priority: High)
+**Goal**: Remove all session isolation code and return to pre-implementation state
 
-**Tasks** (based on DD-015, DD-016):
-- [x] Identify the specific commit that contains /clear command usage (DD-015): **Commit `a7af51e`** - Implementation work done after `/clear` command, creating perfect multi-session test case
-- [ ] Test current session filtering logic against /clear commit scenario using `a7af51e`
-- [ ] Validate that pre-clear and post-clear sessions are properly detected across `/clear` boundary
-- [ ] Assess whether AI reasoning emission is sufficient for debugging /clear scenarios
-- [ ] Determine if enhanced telemetry instrumentation is needed (DD-016):
-  - [ ] Check if /clear boundary detection events are properly captured
-  - [ ] Verify AI reasoning logging covers /clear continuation decisions
-  - [ ] Conditionally rerun /add-telemetry command if gaps identified
+**Tasks** (based on DD-018, DD-019):
+- [ ] Identify commit range containing session isolation implementation (journal entries will help identify exact commits)
+- [ ] Create revert commit for `src/utils/session-filter.js` creation
+- [ ] Revert modifications to `src/collectors/claude-collector.js`
+- [ ] Revert session filtering additions to `src/telemetry/standards.js`
+- [ ] Test that reverted system functions correctly with single sessions
+- [ ] Verify no session isolation logic remains in codebase
 
-**Files Modified**:
-- Test validation against real commit data
-- Potentially enhanced telemetry if gaps found
+**Expected Result**: System returns to pre-session-isolation functionality
 
-### Milestone 3: Debug Output and Logging (Priority: High)
-**Goal**: Provide visibility into session selection process
+### ~~Milestone 2: /clear Command Testing and Validation~~ (ABANDONED)
+**Status**: ❌ **ABANDONED** - See DD-018, DD-019
 
-**Tasks**:
-- [ ] Add debug output showing session detection results
-- [ ] Include session statistics in narrative logs
-- [ ] Add telemetry for session detection accuracy (capturing AI reasoning from DD-013)
-- [ ] Create troubleshooting documentation
+### ~~Milestone 3: Debug Output and Logging~~ (ABANDONED)
+**Status**: ❌ **ABANDONED** - See DD-018, DD-019
+
+### ~~Milestone 4: Edge Case Handling~~ (ABANDONED)
+**Status**: ❌ **ABANDONED** - See DD-018, DD-019
+
+### ~~Milestone 5: Performance Optimization~~ (ABANDONED)
+**Status**: ❌ **ABANDONED** - See DD-018, DD-019
+
+### Milestone R2: Documentation and User Guidance (Priority: High)
+**Goal**: Document single-session workflow design
+
+**Tasks** (based on DD-018):
+- [ ] Add README section: "The system is designed to have one user conversation with Claude Code running in the repo at a time"
+- [ ] Keep messaging positive and focused on intended workflow rather than limitations
 
 **Files Modified**:
-- `src/collectors/claude-collector.js` - Debug output
-- Documentation updates for troubleshooting
+- `README.md` - Single session workflow guidance
 
-### Milestone 4: Edge Case Handling (Priority: Medium)
-**Goal**: Handle complex scenarios and edge cases
+## ~~Technical Specification~~ (ABANDONED)
 
-**Tasks**:
-- [ ] Handle sessions with identical activity times
-- [ ] Manage very short time windows with minimal activity
-- [ ] Address sessions that span multiple commits
-- [ ] Test with various session overlap patterns
-- [ ] Handle /clear command edge cases (multiple /clear commands, immediate commits after /clear)
+**Status**: ❌ **ABANDONED** - See DD-018, DD-019
 
-**Files Modified**:
-- `src/collectors/claude-collector.js` - Edge case logic
-- Test cases for complex scenarios
+The technical specification for session isolation has been abandoned due to fundamental architectural issues. The complex session selection algorithms, AI content analysis, and git commit detection logic proved to be solving the wrong problem.
 
-### Milestone 5: Performance Optimization (Priority: Low)
-**Goal**: Ensure minimal performance impact
-
-**Tasks**:
-- [ ] Optimize session grouping algorithm
-- [ ] Add early exit for single-session cases
-- [ ] Minimize memory usage for large message sets
-- [ ] Benchmark before/after performance
-
-**Files Modified**:
-- `src/collectors/claude-collector.js` - Performance optimizations
-
-## Technical Specification
-
-### Session Selection Algorithm (Plan A → Plan C)
-
-```javascript
-/**
- * Select relevant session using validation-based approach
- * @param {Array} messages - All messages in time window
- * @param {Object} gitDiff - Git diff data for commit
- * @param {string} commitMessage - Commit message
- * @returns {Array|null} Selected session messages or null
- */
-async function selectRelevantSession(messages, gitDiff, commitMessage) {
-  // Group messages by sessionId
-  const sessions = groupBySessionId(messages);
-
-  if (sessions.length === 1) {
-    return filterNoiseFromMessages(sessions[0].messages);
-  }
-
-  // Filter each session independently
-  const filteredSessions = sessions.map(session => ({
-    sessionId: session.id,
-    messages: filterNoiseFromMessages(session.messages),
-    hasGitCommit: checkLastMessagesForCommit(session.messages),
-    stats: { messageCount: session.messages.length }
-  }));
-
-  // Plan A: Check for definitive git commit signal
-  const commitSession = filteredSessions.find(s => s.hasGitCommit);
-  if (commitSession) {
-    logger.info(`Selected session ${commitSession.sessionId} (Plan A: git commit found)`);
-    return commitSession.messages;
-  }
-
-  // Plan C: AI content analysis for terminal commits
-  logger.info('No git commit found in sessions, using AI analysis (Plan C)');
-  const selected = await analyzeSessionsWithAI(filteredSessions, gitDiff, commitMessage);
-
-  if (selected) {
-    logger.info(`Selected session ${selected.sessionId} (Plan C: AI analysis)`);
-    return selected.messages;
-  }
-
-  // No valid session found
-  logger.info('No relevant session detected - skipping journal generation');
-  return null;
-}
-```
-
-### Plan A: Git Commit Detection
-
-```javascript
-function checkLastMessagesForCommit(messages) {
-  const lastThreeMessages = messages.slice(-3);
-  return lastThreeMessages.some(msg =>
-    msg.content && msg.content.match(/git commit|Successfully committed|Created commit [a-f0-9]{7}/i)
-  );
-}
-```
-
-### Plan C: AI Content Analysis
-
-```javascript
-async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
-  const prompt = `
-    Given these chat sessions and a git diff, identify which session(s)
-    led to these code changes:
-
-    Git Commit: ${commitMessage}
-    Files Changed: ${gitDiff.files?.join(', ') || 'Unknown'}
-
-    ${sessions.map((s, i) => `
-    Session ${i + 1} (${s.sessionId.slice(0, 8)}) - ${s.stats.messageCount} messages:
-    Recent messages: ${s.messages.slice(-10).map(m => m.content).join('\n---\n')}
-    `).join('\n')}
-
-    Which session discussed or implemented these changes?
-    Respond with: SESSION_1, SESSION_2, BOTH, or NONE
-    Include brief reasoning.
-  `;
-
-  const decision = await callOpenAI(prompt);
-  return parseAIDecision(decision, sessions);
-}
-```
+**Key Insight**: Instead of building complex systems to guess which conversations relate to which commits, the system is now designed for single-session workflows where this ambiguity doesn't exist.
 
 ## Success Metrics
 
