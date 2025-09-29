@@ -215,7 +215,7 @@ The chat collector currently filters by:
 - [ ] Group messages by sessionId after time/project filtering in claude-collector.js (line 90-91)
 - [ ] Implement Plan A: Single session fast path (DD-010) - if only one sessionId, return all messages
 - [ ] Implement Plan B: AI session relevance filter (DD-011) for multiple sessions
-- [ ] Create AI prompt for session filtering: "Given this git diff and these sessions, which relate to these changes?"
+- [x] Create AI prompt for session filtering: 4-step structured prompt with JSON response format
 - [ ] Add structured debug output showing which plan was used and results
 - [ ] Handle AI filter edge cases (no response, ambiguous response, API failures)
 
@@ -527,6 +527,34 @@ This is why Phase 1 research cannot be skipped even with the simplified approach
 - **Context problem identified**: Research phase still critical for AI filter context (DD-012)
 - **Implementation simplified**: Two clear paths eliminate need for git command parsing
 - **Edge case handling**: AI naturally handles sequential sessions, terminal commits, compaction scenarios
+
+### 2025-09-29: Research Phase Complete - AI Filter Prompt Designed ✅
+**Duration**: Full research and design session
+**Primary Focus**: Complete sessionId lifecycle research and AI filter prompt design
+
+**Research Achievements**:
+- **Multi-tab contamination confirmed**: Real test data with zebra/limerick/PRD-25/Jupiter sessions
+- **SessionId lifecycle documented**: Restart, compaction, --continue behavior fully understood
+- **Plan A/B approach validated**: Controlled testing confirms approach viability
+- **Evidence**: `docs/dev/session-isolation-research.md` with comprehensive behavioral findings
+
+**Prompt Design Completed**:
+- **4-step AI filter prompt**: data structure → session topics → commit analysis → selection
+- **Structured JSON response**: sessionIds array format for programmatic parsing
+- **Git commit detection**: Specific Bash tool_use signal integration
+- **No bias prevention**: Avoided session creation pattern assumptions in prompt
+- **Evidence**: `docs/dev/session-filter-prompt-context.md` ready for implementation
+
+**Implementation Readiness**:
+- Plan A: Single sessionId fast path (no AI overhead needed)
+- Plan B: AI semantic filtering with designed prompt ready
+- Test data available: 4 distinctive contamination scenarios documented
+- Architecture decisions finalized: claude-collector.js integration points identified
+
+**Next Session Priorities**:
+- Implement session grouping logic in claude-collector.js line 90-91
+- Add Plan A/B decision tree before noise filtering
+- Integrate AI filter module with structured prompt
 
 ## Design Document References
 
