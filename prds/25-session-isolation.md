@@ -226,8 +226,8 @@ The chat collector currently filters by:
 **Choice**: Use the specific commit containing documented /clear command usage as primary validation test case
 **Rationale**: Real-world /clear usage provides authentic test scenario for session boundary detection. This commit occurred after code writing but before /add-telemetry command execution, creating perfect multi-session contamination test case.
 **Date**: 2025-09-29
-**Status**: ❌ Outstanding
-**Implementation**: Identify and test against the /clear commit for validation
+**Status**: ✅ Identified - **Commit `a7af51e`**
+**Implementation**: Test against commit `a7af51e` which represents implementation work done after `/clear` command, creating pre-clear and post-clear session boundary for validation
 
 ### Decision 16: Enhanced Telemetry for /clear-Aware Testing
 **Choice**: Conditionally rerun /add-telemetry command with enhanced instructions if testing reveals gaps in /clear scenario handling
@@ -264,9 +264,9 @@ The chat collector currently filters by:
 **Goal**: Validate session isolation with real /clear command usage scenarios
 
 **Tasks** (based on DD-015, DD-016):
-- [ ] Identify the specific commit that contains /clear command usage (DD-015)
-- [ ] Test current session filtering logic against /clear commit scenario
-- [ ] Validate that pre-clear and post-clear sessions are properly detected
+- [x] Identify the specific commit that contains /clear command usage (DD-015): **Commit `a7af51e`** - Implementation work done after `/clear` command, creating perfect multi-session test case
+- [ ] Test current session filtering logic against /clear commit scenario using `a7af51e`
+- [ ] Validate that pre-clear and post-clear sessions are properly detected across `/clear` boundary
 - [ ] Assess whether AI reasoning emission is sufficient for debugging /clear scenarios
 - [ ] Determine if enhanced telemetry instrumentation is needed (DD-016):
   - [ ] Check if /clear boundary detection events are properly captured
@@ -472,6 +472,7 @@ async function analyzeSessionsWithAI(sessions, gitDiff, commitMessage) {
 3. **Sequential sessions**: One tab closed, another opened
 4. **Inactive sessions**: One tab active, one idle
 5. **Overlapping activity**: Both tabs active near commit time
+6. **/clear command boundary testing**: Use commit `a7af51e` to test pre-clear and post-clear session detection across `/clear` command usage
 
 ### Contaminated Commit Test Cases
 **Purpose**: Use real contamination examples to validate session isolation effectiveness
