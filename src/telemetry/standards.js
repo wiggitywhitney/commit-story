@@ -94,9 +94,7 @@ export const OTEL = {
     // Data collection operations
     collectors: {
       claude: () => 'claude.collect_messages',
-      git: () => 'git.collect_data',
-      // File discovery operations
-      file_discovery: () => 'claude.discover_files'
+      git: () => 'git.collect_data'
     },
 
     // Configuration operations
@@ -106,16 +104,7 @@ export const OTEL = {
 
     // Data filtering operations
     filters: {
-      sensitiveData: () => 'filters.redact_sensitive_data',
-      // Session filtering operations
-      session_filter: () => 'session.filter_relevant',
-      session_grouping: () => 'session.group_messages',
-      git_context: () => 'session.get_git_context',
-      ai_analysis: () => 'session.ai_analysis',
-      prompt_building: () => 'session.build_prompt',
-      commit_detection: () => 'session.check_git_commit',
-      ai_parsing: () => 'session.parse_ai_response',
-      fallback_selection: () => 'session.fallback_selection'
+      sensitiveData: () => 'filters.redact_sensitive_data'
     },
 
     // Utility operations
@@ -492,127 +481,6 @@ export const OTEL = {
         })
       }
     },
-
-    /**
-     * File discovery operation attributes
-     * @param {Object} discoveryData - File discovery metrics
-     * @returns {Object} File discovery attributes
-     */
-    fileDiscovery: (discoveryData) => ({
-      [`${OTEL.NAMESPACE}.file_discovery.projects_checked`]: discoveryData.projectsChecked,
-      [`${OTEL.NAMESPACE}.file_discovery.files_found`]: discoveryData.filesFound,
-      [`${OTEL.NAMESPACE}.file_discovery.search_duration_ms`]: discoveryData.searchDuration,
-      [`${OTEL.NAMESPACE}.file_discovery.claude_projects_dir`]: discoveryData.claudeProjectsDir
-    }),
-
-
-    /**
-     * Session filtering operation attributes
-     * @param {Object} sessionData - Session filtering metrics
-     * @returns {Object} Session filtering attributes
-     */
-    sessionFiltering: (sessionData) => ({
-      [`${OTEL.NAMESPACE}.session.total_messages`]: sessionData.totalMessages,
-      [`${OTEL.NAMESPACE}.session.total_sessions`]: sessionData.totalSessions,
-      [`${OTEL.NAMESPACE}.session.selected_sessions`]: sessionData.selectedSessions,
-      [`${OTEL.NAMESPACE}.session.filtered_messages`]: sessionData.filteredMessages,
-      [`${OTEL.NAMESPACE}.session.filter_type`]: sessionData.filterType, // 'ai_analysis' or 'fallback'
-      [`${OTEL.NAMESPACE}.session.processing_duration_ms`]: sessionData.processingDuration
-    }),
-
-    /**
-     * Session grouping operation attributes
-     * @param {Object} groupingData - Message grouping metrics
-     * @returns {Object} Session grouping attributes
-     */
-    sessionGrouping: (groupingData) => ({
-      [`${OTEL.NAMESPACE}.grouping.input_messages`]: groupingData.inputMessages,
-      [`${OTEL.NAMESPACE}.grouping.session_ids`]: groupingData.sessionIds,
-      [`${OTEL.NAMESPACE}.grouping.groups_created`]: groupingData.groupsCreated,
-      [`${OTEL.NAMESPACE}.grouping.processing_duration_ms`]: groupingData.processingDuration
-    }),
-
-    /**
-     * Git context gathering attributes
-     * @param {Object} contextData - Git context metrics
-     * @returns {Object} Git context attributes
-     */
-    gitContext: (contextData) => ({
-      [`${OTEL.NAMESPACE}.git_context.commit_message`]: contextData.commitMessage,
-      [`${OTEL.NAMESPACE}.git_context.files_count`]: contextData.filesCount,
-      [`${OTEL.NAMESPACE}.git_context.context_type`]: contextData.contextType, // 'static' or 'dynamic'
-      [`${OTEL.NAMESPACE}.git_context.gather_duration_ms`]: contextData.gatherDuration
-    }),
-
-    /**
-     * AI analysis operation attributes
-     * @param {Object} analysisData - AI analysis metrics
-     * @returns {Object} AI analysis attributes
-     */
-    aiAnalysis: (analysisData) => ({
-      [`${OTEL.NAMESPACE}.ai_analysis.sessions_analyzed`]: analysisData.sessionsAnalyzed,
-      [`${OTEL.NAMESPACE}.ai_analysis.prompt_length`]: analysisData.promptLength,
-      [`${OTEL.NAMESPACE}.ai_analysis.response_length`]: analysisData.responseLength,
-      [`${OTEL.NAMESPACE}.ai_analysis.analysis_success`]: analysisData.analysisSuccess,
-      [`${OTEL.NAMESPACE}.ai_analysis.processing_duration_ms`]: analysisData.processingDuration,
-      // GenAI attributes for AI operations
-      'gen_ai.request.model': analysisData.model,
-      'gen_ai.request.temperature': analysisData.temperature,
-      'gen_ai.usage.prompt_tokens': analysisData.promptTokens,
-      'gen_ai.usage.completion_tokens': analysisData.completionTokens
-    }),
-
-    /**
-     * Prompt building operation attributes
-     * @param {Object} promptData - Prompt building metrics
-     * @returns {Object} Prompt building attributes
-     */
-    promptBuilding: (promptData) => ({
-      [`${OTEL.NAMESPACE}.prompt.sessions_included`]: promptData.sessionsIncluded,
-      [`${OTEL.NAMESPACE}.prompt.total_messages`]: promptData.totalMessages,
-      [`${OTEL.NAMESPACE}.prompt.recent_messages`]: promptData.recentMessages,
-      [`${OTEL.NAMESPACE}.prompt.git_commits_detected`]: promptData.gitCommitsDetected,
-      [`${OTEL.NAMESPACE}.prompt.prompt_length`]: promptData.promptLength,
-      [`${OTEL.NAMESPACE}.prompt.build_duration_ms`]: promptData.buildDuration
-    }),
-
-    /**
-     * Git commit detection attributes
-     * @param {Object} detectionData - Git commit detection metrics
-     * @returns {Object} Git commit detection attributes
-     */
-    commitDetection: (detectionData) => ({
-      [`${OTEL.NAMESPACE}.commit_detection.messages_checked`]: detectionData.messagesChecked,
-      [`${OTEL.NAMESPACE}.commit_detection.git_commits_found`]: detectionData.gitCommitsFound,
-      [`${OTEL.NAMESPACE}.commit_detection.tool_use_messages`]: detectionData.toolUseMessages,
-      [`${OTEL.NAMESPACE}.commit_detection.bash_commands`]: detectionData.bashCommands,
-      [`${OTEL.NAMESPACE}.commit_detection.detection_duration_ms`]: detectionData.detectionDuration
-    }),
-
-    /**
-     * AI response parsing attributes
-     * @param {Object} parseData - AI response parsing metrics
-     * @returns {Object} AI response parsing attributes
-     */
-    aiResponseParsing: (parseData) => ({
-      [`${OTEL.NAMESPACE}.ai_parsing.response_length`]: parseData.responseLength,
-      [`${OTEL.NAMESPACE}.ai_parsing.json_found`]: parseData.jsonFound,
-      [`${OTEL.NAMESPACE}.ai_parsing.session_ids_extracted`]: parseData.sessionIdsExtracted,
-      [`${OTEL.NAMESPACE}.ai_parsing.parse_success`]: parseData.parseSuccess,
-      [`${OTEL.NAMESPACE}.ai_parsing.parse_duration_ms`]: parseData.parseDuration
-    }),
-
-    /**
-     * Fallback session selection attributes
-     * @param {Object} fallbackData - Fallback selection metrics
-     * @returns {Object} Fallback selection attributes
-     */
-    fallbackSelection: (fallbackData) => ({
-      [`${OTEL.NAMESPACE}.fallback.sessions_available`]: fallbackData.sessionsAvailable,
-      [`${OTEL.NAMESPACE}.fallback.messages_selected`]: fallbackData.messagesSelected,
-      [`${OTEL.NAMESPACE}.fallback.selection_type`]: fallbackData.selectionType, // 'most_recent' or 'first'
-      [`${OTEL.NAMESPACE}.fallback.selection_duration_ms`]: fallbackData.selectionDuration
-    }),
 
     /**
      * MCP (Model Context Protocol) operation attributes
