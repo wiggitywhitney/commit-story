@@ -38,6 +38,13 @@ Every commit triggers a background process that creates a narrative record of yo
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 - Active Claude Code usage
 
+## Optimal Workflow Design
+
+Commit Story is designed to work best with **one Claude Code session per project** at a time. This ensures:
+
+- **Clean narrative coherence**: Each journal entry tells a focused story of your development decisions
+- **Accurate conversation capture**: Your discussions are precisely connected to the resulting code changes
+
 ## Quick Start
 
 ### 1. Install the Package
