@@ -181,11 +181,20 @@ export default async function main() {
     });
 
     try {
-      debugLog(`Starting context collection for commit ${commitRef.substring(0, 8)}`);
-    
+      // Phase 1: Context Collection
+      debugLog(`🔍 Collecting context for commit ${commitRef.substring(0, 8)}...`);
+
       // Gather all context for the specified commit
       const context = await gatherContextForCommit(commitRef);
-      
+
+      // Show detailed context results
+      debugLog(`📊 Git: Found commit "${context.commit.data.message.split('\n')[0]}" by ${context.commit.data.author.name} (${new Date(context.commit.data.timestamp).toISOString().split('T')[0]})`);
+      debugLog(`💬 Claude: Found ${context.chatMessages.data.length} messages from ${context.chatMetadata.data.totalSessions || 1} session(s)`);
+      if (context.previousCommit.data) {
+        debugLog(`📝 Previous commit: ${context.previousCommit.data.hash.substring(0, 8)} (for context)`);
+      }
+      debugLog(`✅ Context collection complete (${context.chatMessages.data.length} messages, 1 commit)`);
+
       // Add context attributes to the span
       const contextAttrs = {
         ...OTEL.attrs.commit(context.commit.data),
@@ -203,28 +212,46 @@ export default async function main() {
         }
       });
       
+      // Phase 2: Validation
+      debugLog(`\n🔍 Running validations...`);
+
       // Validate repository-specific chat data availability (DD-068)
       if (context.chatMetadata.data.totalMessages === 0) {
         span.addEvent('no-chat-data-found', {
           'commit_story.repository.path': process.cwd(),
           'commit_story.commit.timestamp': context.commit.data.timestamp,
         });
-        debugLog(`❌ ERROR: No chat data found for this repository and time window`);
-        span.setStatus({ code: SpanStatusCode.OK, message: 'No chat data found - graceful exit' });
+        console.error(`❌ ERROR: No chat data found for this repository
 
-        process.exit(0); // Graceful exit, not an error
+This usually means:
+  1. Claude Code hasn't been used in this repository yet
+  2. The commit is outside the time window of available chat history
+  3. The repository path doesn't match Claude's working directory
+
+Next steps:
+  • Use Claude Code in this repo, make commits, then try again
+  • Check commit-story.config.json time window settings
+  • Run with --dry-run to test without creating files`);
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'No chat data found' });
+        span.end();
+        return 1;
       }
-    
-      debugLog(`Found ${context.chatMessages.data.length} chat messages`);
-      debugLog('Found git metadata');
-      
+
       // Validate OpenAI connectivity before expensive processing
       if (!process.env.OPENAI_API_KEY) {
         span.recordException(new Error('OPENAI_API_KEY not found in environment'));
         span.setStatus({ code: SpanStatusCode.ERROR, message: 'Missing OpenAI API key' });
-        debugLog(`❌ ERROR: OPENAI_API_KEY not configured`);
-        process.exit(1);
+        console.error(`❌ ERROR: OPENAI_API_KEY not configured
+
+Next steps:
+  • Add OPENAI_API_KEY to your .env file
+  • Or export OPENAI_API_KEY=sk-... in your shell
+  • Get your API key from: https://platform.openai.com/api-keys`);
+        span.end();
+        return 1;
       }
+
+      debugLog(`✅ OpenAI API key configured`);
     
       try {
         const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -240,7 +267,7 @@ export default async function main() {
               max_tokens: 1
             });
             connectivitySpan.setStatus({ code: SpanStatusCode.OK, message: 'OpenAI connectivity confirmed' });
-            // OpenAI connectivity confirmed - no need to log in debug mode
+            debugLog(`✅ OpenAI connectivity confirmed`);
           } catch (error) {
             connectivitySpan.recordException(error);
             connectivitySpan.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
@@ -252,13 +279,28 @@ export default async function main() {
       } catch (error) {
         span.recordException(error);
         span.setStatus({ code: SpanStatusCode.ERROR, message: 'OpenAI connectivity failed' });
-        debugLog(`❌ ERROR: OpenAI connectivity failed: ${error.message}`);
-        process.exit(1);
+        console.error(`❌ ERROR: Cannot connect to OpenAI API
+
+Error details: ${error.message}
+
+Next steps:
+  • Check your internet connection
+  • Verify your API key is valid and has credits
+  • Check OpenAI status: https://status.openai.com`);
+        span.end();
+        return 1;
       }
-    
+
+      debugLog(`✅ All validations passed`);
+
+      // Phase 3: AI Generation
+      debugLog(`\n🤖 Generating journal sections...`);
+
       // Generate all journal sections using AI and programmatic content
       const sections = await generateJournalEntry(context);
-      
+
+      debugLog(`✅ Journal generation complete`);
+
       // Add sections metadata to span
       const sectionsData = {
         summary: sections.summary?.length || 0,
@@ -275,6 +317,9 @@ export default async function main() {
       OTEL.metrics.gauge('commit_story.sections.commit_details_length', sectionsData.details);
       OTEL.metrics.gauge('commit_story.sections.total_count', 4); // Always 4 sections
       
+      // Phase 4: Saving
+      debugLog(`\n💾 Saving journal entry...`);
+
       // Save the complete journal entry to daily file (or show in dry-run mode)
       let filePath = null;
       if (isDryRun) {
@@ -283,6 +328,7 @@ export default async function main() {
         console.log(sections);
         debugLog('--- End of Generated Content (not saved) ---');
         filePath = '[dry-run-no-file]';
+        debugLog('✅ Dry run complete: Journal generated successfully (not saved)');
       } else {
         // Normal mode: save to file
         filePath = await saveJournalEntry(
@@ -292,6 +338,7 @@ export default async function main() {
           sections,
           context.previousCommit.data?.timestamp || null
         );
+        debugLog(`✅ Journal saved to: ${filePath}`);
       }
 
       // Add final attributes
@@ -307,27 +354,64 @@ export default async function main() {
           OTEL.metrics.gauge(name, value ? 1 : 0);
         }
       });
-      
-      if (isDryRun) {
-        debugLog('✅ Dry run complete: Journal generated successfully (not saved)');
-      } else {
-        debugLog(`✅ Journal saved to: ${filePath}`);
-      }
+
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });
+      span.end();
+      return 0;
 
     } catch (error) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-      console.error('❌ Error generating journal entry:', error.message);
-      process.exit(1);
-    } finally {
-      // End span first, then let process handlers handle telemetry shutdown
+      console.error(`❌ ERROR: Journal generation failed
+
+Error details: ${error.message}
+
+Next steps:
+  • Check the error details above
+  • Try running with --dry-run to test
+  • Check your configuration in commit-story.config.json
+  • Verify your OpenAI API key has sufficient credits`);
       span.end();
-      // Note: gracefulShutdown is handled by process event handlers in logging.js
+      return 1;
     }
   });
 }
 
+// CLI boundary - handles process lifecycle and telemetry shutdown
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
+  const runCLI = async () => {
+    try {
+      // Run main and get exit code
+      const exitCode = await main();
+
+      // Import shutdown functions dynamically to avoid circular dependencies
+      const [{ shutdownTelemetry }, { shutdownLogging }] = await Promise.all([
+        import('./tracing.js'),
+        import('./logging.js')
+      ]);
+
+      // Gracefully shutdown telemetry with timeout
+      if (isDebugMode) {
+        debugLog('\n🔄 Shutting down telemetry...');
+      }
+      await Promise.all([
+        shutdownLogging({ timeoutMs: 2000 }),
+        shutdownTelemetry({ timeoutMs: 2000 })
+      ]);
+      if (isDebugMode) {
+        debugLog('✅ Telemetry shutdown complete');
+      }
+
+      // Set exit code - process.exit() is safe now because telemetry is flushed
+      process.exit(exitCode);
+    } catch (error) {
+      console.error('❌ Unhandled CLI error:', error);
+      process.exit(1);
+    }
+  };
+
+  runCLI().catch((error) => {
+    console.error('❌ Fatal CLI error:', error);
+    process.exit(1);
+  });
 }

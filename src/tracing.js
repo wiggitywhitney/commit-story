@@ -8,6 +8,7 @@ import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from './telemetry/standards.js';
 import { createNarrativeLogger } from './utils/trace-logger.js';
+import { shutdownWithTimeout } from './utils/shutdown-helper.js';
 
 // Check if running from test script - only show console traces during testing
 const isTestScript = process.argv[1]?.includes('test-otel');
@@ -215,5 +216,20 @@ function initializeSDK(logger, startTime, span) {
 
 // Execute conditional initialization
 sdk = initializeTelemetryConditionally();
+
+/**
+ * Gracefully shutdown telemetry with timeout
+ * @param {Object} options - Shutdown options
+ * @param {number} options.timeoutMs - Maximum time to wait for shutdown (default: 2000ms)
+ * @returns {Promise<void>}
+ */
+export async function shutdownTelemetry({ timeoutMs = 2000 } = {}) {
+  if (!sdk) {
+    // Telemetry not initialized (dev mode disabled), nothing to shutdown
+    return;
+  }
+
+  await shutdownWithTimeout(() => sdk.shutdown(), timeoutMs, 'Telemetry');
+}
 
 export default sdk;

@@ -172,15 +172,15 @@ Implement proper flag-based output control:
 **Documentation Updates**:
 - None required (internal change)
 
-### Milestone 2: Add Useful Debug Logs (Priority: High)
+### Milestone 2: Add Useful Debug Logs (Priority: High) ✅ COMPLETE
 **Goal**: Provide clear, helpful progress messages and error guidance when `debug: true`
 
 **Tasks**:
-- [ ] Fix "no chat data found" exit code from 0 to 1
-- [ ] Add console.error alongside debugLog for error scenarios in debug mode
-- [ ] Enhance progress messages with clear phase indicators
-- [ ] Add actionable next steps to all error messages
-- [ ] Verify hook script detects failure correctly with new exit codes
+- [x] Fix "no chat data found" exit code from 0 to 1
+- [x] Add console.error alongside debugLog for error scenarios in debug mode
+- [x] Enhance progress messages with clear phase indicators
+- [x] Add actionable next steps to all error messages
+- [x] Verify hook script detects failure correctly with new exit codes
 
 **Documentation Updates**:
 - Update README troubleshooting section with new error messages
@@ -422,6 +422,113 @@ Implement proper flag-based output control:
 - Consider implementing Milestone 4 (Conference Demo Mode) for clean presentation
 - Consider implementing Milestone 6 (Telemetry-Aware Console Output) leveraging new telemetry infrastructure
 - Milestone 2-3 remain available for error handling and path matching improvements
+
+### 2025-10-01: Milestone 2 COMPLETE - Enhanced Debug Logging & Process Exit Fix ✅
+**Duration**: ~4 hours (includes debugging and refactoring)
+**Commits**: Implementation pending commit
+**Primary Focus**: User-facing error messages and process lifecycle management
+
+**Completed PRD Items** (All 5 tasks in Milestone 2):
+- [x] **Exit code fix for no chat data** - Evidence: src/index.js:236 changed from exit(0) to return 1
+  - Critical bug fix: git hooks can now detect this failure condition correctly
+  - Error message includes helpful troubleshooting guidance
+
+- [x] **Console.error for all error scenarios** - Evidence: src/index.js lines 224-234, 243-249, 282-289, 365-373
+  - No chat data error: Explains 3 common causes with next steps
+  - Missing API key error: Shows where to add key and how to get one
+  - OpenAI connectivity error: Suggests connection troubleshooting
+  - Generic errors: Provides debugging guidance with --dry-run recommendation
+
+- [x] **4-phase progress indicators** - Evidence: src/index.js lines 185-196, 216-252, 294-299, 318-338
+  - Phase 1 (Context Collection): Shows commit details, message count, sessions, previous commit
+  - Phase 2 (Validation): Lists each validation step with checkmarks
+  - Phase 3 (AI Generation): Indicates generation start and completion
+  - Phase 4 (Saving): Shows save location or dry-run status
+  - All phases use emoji icons for visual clarity (🔍 📊 💬 ✅)
+
+- [x] **Actionable next steps in all errors** - Evidence: All error messages follow "Next steps:" pattern
+  - Specific remediation guidance tailored to each error type
+  - Examples include exact commands to run and resources to check
+
+- [x] **Hook script exit code verification** - Evidence: Manual testing confirmed correct behavior
+  - Success: exit code 0
+  - All failures: exit code 1
+  - Git hooks can now reliably detect failures
+
+**Additional Work Completed (Beyond PRD Scope)**:
+- [x] **Fixed pre-existing process hanging issue** - Evidence: Process now exits cleanly in 15ms vs hanging indefinitely
+  - Root cause: Event loop kept alive by periodic metric exporter (5s interval)
+  - Solution: Proper telemetry shutdown sequence before process.exit()
+  - Following ChatGPT's recommended Node.js best practices for OpenTelemetry
+
+- [x] **Created shutdown-helper utility** - Evidence: src/utils/shutdown-helper.js (new file)
+  - DRY principle: Single implementation of timeout-bounded shutdown logic
+  - Reusable across telemetry and logging systems
+  - Follows same pattern as getConfig() utility
+
+- [x] **Added shutdown functions** - Evidence: tracing.js and logging.js exports
+  - `shutdownTelemetry({ timeoutMs: 2000 })` - Flushes traces/metrics with timeout
+  - `shutdownLogging({ timeoutMs: 2000 })` - Flushes logs with timeout
+  - Both use shared shutdown-helper for consistent behavior
+
+- [x] **Refactored main() to return exit codes** - Evidence: src/index.js main() function
+  - Removed all process.exit() calls from main()
+  - Returns 0 for success, 1 for failures
+  - Cleaner architecture, more testable
+
+- [x] **Added CLI boundary** - Evidence: src/index.js lines 380-416
+  - Proper separation: main() does work, CLI handles process lifecycle
+  - Awaits telemetry shutdown before exit
+  - Graceful error handling for unhandled exceptions
+
+- [x] **Fixed author display bug** - Evidence: src/index.js:191
+  - Was showing "[object Object]" in status logs
+  - Now shows actual author name from commit data
+
+**Technical Implementation Details**:
+- **Status Logging Architecture**: 4-phase pipeline with emoji icons for visual clarity
+- **Error Message Pattern**: All errors follow "❌ ERROR: [what]" + explanation + "Next steps:" format
+- **Exit Code Strategy**: Consistent use of return codes instead of direct process.exit() calls
+- **Shutdown Sequence**: Logging and telemetry shut down in parallel with 2s timeout each
+
+**Files Modified**:
+- src/index.js (138 lines changed: +108, -30)
+- src/tracing.js (16 lines added: shutdown function)
+- src/logging.js (16 lines added: shutdown function)
+- NEW: src/utils/shutdown-helper.js (reusable shutdown utility)
+
+**Testing Validation**:
+- ✅ Dry-run mode: Clean status logging, proper error messages
+- ✅ Normal mode: Journal saved successfully with status updates
+- ✅ Exit codes: 0 for success, 1 for all failures
+- ✅ Process exit: Clean exit in 15ms after ~18s AI processing (normal)
+- ✅ Telemetry: Still flows to Datadog correctly when dev: true
+
+**Conference Readiness Impact**:
+- ✅ **Professional error UX**: Users can self-solve issues with clear guidance
+- ✅ **Reliable git hooks**: Exit codes now correctly indicate success/failure
+- ✅ **Clean status output**: Progress indicators show exactly what's happening
+- ✅ **Process stability**: No more hanging (was breaking workflows)
+
+**Design Decision: Process Exit Pattern**
+- **Context**: Process was hanging indefinitely after completion (pre-existing issue)
+- **Root Cause**: PeriodicExportingMetricReader keeps event loop alive with 5s timer
+- **Solution Adopted**: ChatGPT-recommended pattern for Node.js + OpenTelemetry
+  - Return exit codes from helper functions (not process.exit)
+  - Single exit point at CLI boundary
+  - Await telemetry shutdown with timeout before exit
+  - Use process.exit() AFTER telemetry flushed
+- **Alternative Considered**: process.exitCode without explicit exit
+  - Rejected: Doesn't force exit when event loop has active timers
+- **Trade-offs**: Added 15ms shutdown delay, but ensures telemetry delivery
+- **Validation**: Tested old vs new behavior - old version also hung
+- **Status**: ✅ Implemented and validated
+
+**Next Session Priorities**:
+- Milestone 4 (Conference Demo Mode) - Silent telemetry for professional presentation
+- Milestone 6 (Telemetry-Aware Console Output) - Show trace IDs for AI assistant queries
+- Milestone 3 (Path Normalization) - Lower priority, handle symlinks robustly
+- Documentation: Update README troubleshooting section with new error messages
 
 ## Design Document References
 

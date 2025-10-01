@@ -8,6 +8,7 @@ import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from './telemetry/standards.js';
 import { createNarrativeLogger } from './utils/trace-logger.js';
+import { shutdownWithTimeout } from './utils/shutdown-helper.js';
 
 // Get tracer instance for instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
@@ -173,6 +174,21 @@ logger = loggingResult.logger;
 batchProcessor = loggingResult.batchProcessor;
 
 export { logger };
+
+/**
+ * Shutdown logging system with timeout
+ * @param {Object} options - Shutdown options
+ * @param {number} options.timeoutMs - Maximum time to wait for shutdown (default: 2000ms)
+ * @returns {Promise<void>}
+ */
+export async function shutdownLogging({ timeoutMs = 2000 } = {}) {
+  if (!isDevMode || !batchProcessor) {
+    // Logging not initialized, nothing to shutdown
+    return;
+  }
+
+  await shutdownWithTimeout(() => batchProcessor.forceFlush(), timeoutMs, 'Logging');
+}
 
 // Add graceful shutdown handler to flush logs and metrics (only when dev mode enabled)
 export async function gracefulShutdown() {
