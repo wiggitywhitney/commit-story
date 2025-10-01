@@ -66,10 +66,6 @@ export function extractTextFromMessages(sessionGroups) {
               .map(item => item.text)
               .join(' ');
             arrayContentMessages++;
-            logger.progress('Array content processed', 'Extracted text from structured content array', {
-              originalArrayLength: content.length,
-              extractedLength: cleanContent.length
-            });
           } else {
             // Fallback for unknown content types
             cleanContent = JSON.stringify(content);
