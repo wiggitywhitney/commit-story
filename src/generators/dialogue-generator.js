@@ -10,6 +10,7 @@ import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { dialoguePrompt } from './prompts/sections/dialogue-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { selectContext } from './utils/context-selector.js';
+import { formatSessionsForAI } from '../utils/session-formatter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
@@ -30,8 +31,11 @@ export async function generateDevelopmentDialogue(context, summary) {
   return await tracer.startActiveSpan(OTEL.span.ai.dialogue(), {
     attributes: {
       ...OTEL.attrs.commit(context.commit.data),
-      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatMessages.data.length),
-      ...OTEL.attrs.chat({ count: context.chatMessages.data.length }),
+      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatSessions.data.length),
+      ...OTEL.attrs.chat({
+        count: context.chatSessions.data.reduce((sum, session) => sum + session.messageCount, 0),
+        sessions: context.chatSessions.data.length
+      }),
       'code.function': 'generateDevelopmentDialogue'
     }
   }, async (span) => {
@@ -40,9 +44,9 @@ export async function generateDevelopmentDialogue(context, summary) {
     try {
       logger.start('dialogue generation', 'Starting dialogue extraction from chat messages');
 
-      // Select chat messages and metadata for dialogue extraction (ignore git data)
-      const selected = selectContext(context, ['chatMessages', 'chatMetadata']);
-      const cleanMessages = selected.data.chatMessages;
+      // Select chat sessions and metadata for dialogue extraction (ignore git data)
+      const selected = selectContext(context, ['chatSessions', 'chatMetadata']);
+      const chatSessions = selected.data.chatSessions;
 
       // Check if any user messages are substantial enough for dialogue extraction (DD-054)
       if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
@@ -68,13 +72,13 @@ You have access to:
 ${dialoguePrompt}
   `.trim();
 
-      // Prepare the context for AI processing
+      // Prepare the context for AI processing with session grouping
       // Calculate maximum quotes based on available content - prevents AI from fabricating
       // quotes when few meaningful user messages exist. Cap at 25 to maintain quality focus.
       const maxQuotes = Math.min(context.chatMetadata.data.userMessages.overTwentyCharacters, 25);
       const contextForAI = {
         summary: summary,
-        chat: cleanMessages,
+        chat_sessions: formatSessionsForAI(chatSessions),
         maxQuotes: maxQuotes
       };
 

@@ -15,11 +15,11 @@ import { createNarrativeLogger } from '../utils/trace-logger.js';
 const tracer = trace.getTracer('commit-story-claude-collector', '1.0.0');
 
 /**
- * Extract chat messages for a specific commit time window
+ * Extract chat messages for a specific commit time window, grouped by session
  * @param {Date} commitTime - Current commit timestamp (UTC)
  * @param {Date} previousCommitTime - Previous commit timestamp (UTC)
  * @param {string} repoPath - Full path to repository (for cwd filtering)
- * @returns {Array} Sorted array of complete chat message objects from the time window
+ * @returns {Array} Array of session objects, each containing sessionId, messages array, startTime, and messageCount
  */
 export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
   return tracer.startActiveSpan(OTEL.span.collectors.claude(), {
@@ -127,17 +127,18 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
         OTEL.metrics.gauge(name, value);
       });
 
-      // 5. Sort by timestamp in chronological order
-      const sortedMessages = messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      // 5. Group by session ID and sort sessions chronologically
+      const groupedMessages = groupMessagesBySession(messages);
 
       if (validMessages === 0) {
         logger.complete('chat message collection', 'No messages found in time window - empty result');
       } else {
-        logger.complete('chat message collection', `Collected ${validMessages} messages, sorted chronologically`);
+        const sessionCount = groupedMessages.length;
+        logger.complete('chat message collection', `Collected ${validMessages} messages across ${sessionCount} sessions, grouped by conversation thread`);
       }
 
       span.setStatus({ code: SpanStatusCode.OK, message: 'Claude messages collected successfully' });
-      return sortedMessages;
+      return groupedMessages;
 
     } catch (error) {
       span.recordException(error);
@@ -202,7 +203,43 @@ function findClaudeFiles() {
  */
 function parseTimestamp(timestamp) {
   if (!timestamp) return null;
-  
+
   // Claude timestamps: "2025-08-20T20:54:46.152Z" -> UTC Date
   return new Date(timestamp.replace('Z', '+00:00'));
+}
+
+/**
+ * Groups messages by session ID and sorts sessions chronologically
+ * @param {Array} messages - Array of message objects with sessionId
+ * @returns {Array} Array of session objects, each containing sessionId and messages array
+ */
+function groupMessagesBySession(messages) {
+  // Group messages by sessionId
+  const sessionMap = new Map();
+
+  for (const message of messages) {
+    const sessionId = message.sessionId;
+    if (!sessionId) continue; // Skip messages without session ID
+
+    if (!sessionMap.has(sessionId)) {
+      sessionMap.set(sessionId, []);
+    }
+    sessionMap.get(sessionId).push(message);
+  }
+
+  // Convert to array of session objects
+  const sessions = Array.from(sessionMap.entries()).map(([sessionId, sessionMessages]) => {
+    // Sort messages within each session chronologically
+    const sortedMessages = sessionMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+    return {
+      sessionId: sessionId,
+      messages: sortedMessages,
+      startTime: sortedMessages[0]?.timestamp,
+      messageCount: sortedMessages.length
+    };
+  });
+
+  // Sort sessions by their earliest message timestamp
+  return sessions.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
 }

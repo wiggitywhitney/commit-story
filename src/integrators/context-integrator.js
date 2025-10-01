@@ -15,24 +15,29 @@ import { OTEL } from '../telemetry/standards.js';
 import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 /**
- * Extracts clean text content from Claude messages, handling mixed content formats
+ * Extracts clean text content from grouped Claude messages, handling mixed content formats
  *
- * @param {Array} messages - Array of Claude message objects
- * @returns {Array} Messages with normalized content (always strings)
+ * @param {Array} sessionGroups - Array of session objects containing messages
+ * @returns {Array} Session objects with cleaned messages
  */
-export function extractTextFromMessages(messages) {
+export function extractTextFromMessages(sessionGroups) {
+  // Count total messages across all sessions
+  const totalMessages = sessionGroups.reduce((sum, session) => sum + (session.messages?.length || 0), 0);
+
   return tracer.startActiveSpan(OTEL.span.context.extract_text(), {
     attributes: {
       'code.function': 'extractTextFromMessages',
-      [`${OTEL.NAMESPACE}.text.input_messages`]: messages.length
+      [`${OTEL.NAMESPACE}.text.input_messages`]: totalMessages,
+      [`${OTEL.NAMESPACE}.text.input_sessions`]: sessionGroups.length
     }
   }, (span) => {
     const logger = createNarrativeLogger('context.extract_text_from_messages');
     const startTime = Date.now();
 
     try {
-      logger.start('Text extraction from messages', `Starting extraction from ${messages.length} Claude messages`, {
-        inputCount: messages.length
+      logger.start('Text extraction from messages', `Starting extraction from ${totalMessages} Claude messages across ${sessionGroups.length} sessions`, {
+        inputCount: totalMessages,
+        sessionCount: sessionGroups.length
       });
 
       // Track content type statistics
@@ -42,70 +47,64 @@ export function extractTextFromMessages(messages) {
       let emptyContentMessages = 0;
       let totalContentLength = 0;
 
-      const result = messages.map(msg => {
-        const content = msg.message?.content;
-        let cleanContent = '';
+      const result = sessionGroups.map(session => {
+        const cleanedMessages = session.messages.map(msg => {
+          const content = msg.message?.content;
+          let cleanContent = '';
 
-        if (!content) {
-          cleanContent = '';
-          emptyContentMessages++;
-          logger.progress('Empty content found', 'Encountered message with no content', { msgType: msg.type });
-        } else if (typeof content === 'string') {
-          cleanContent = content;
-          stringContentMessages++;
-        } else if (Array.isArray(content)) {
-          // Extract text from array format: [{type: "text", text: "actual content"}]
-          cleanContent = content
-            .filter(item => item.type === 'text' && item.text)
-            .map(item => item.text)
-            .join(' ');
-          arrayContentMessages++;
-          logger.progress('Array content processed', 'Extracted text from structured content array', {
-            arrayItems: content.length,
-            textItems: content.filter(item => item.type === 'text' && item.text).length
-          });
-        } else {
-          // Fallback for unknown content types
-          cleanContent = JSON.stringify(content);
-          unknownContentMessages++;
-          logger.decision('Unknown content type', 'Using JSON stringify fallback for unknown content format', {
-            contentType: typeof content,
-            msgType: msg.type
-          });
-        }
+          if (!content) {
+            cleanContent = '';
+            emptyContentMessages++;
+          } else if (typeof content === 'string') {
+            cleanContent = content;
+            stringContentMessages++;
+          } else if (Array.isArray(content)) {
+            // Extract text from array format: [{type: "text", text: "actual content"}]
+            cleanContent = content
+              .filter(item => item.type === 'text' && item.text)
+              .map(item => item.text)
+              .join(' ');
+            arrayContentMessages++;
+          } else {
+            // Fallback for unknown content types
+            cleanContent = JSON.stringify(content);
+            unknownContentMessages++;
+          }
 
-        // Filter sensitive data before AI processing
-        const beforeRedaction = cleanContent.length;
-        cleanContent = redactSensitiveData(cleanContent);
-        const afterRedaction = cleanContent.length;
+          // Filter sensitive data before AI processing
+          const beforeRedaction = cleanContent.length;
+          cleanContent = redactSensitiveData(cleanContent);
+          const afterRedaction = cleanContent.length;
 
-        if (beforeRedaction !== afterRedaction) {
-          logger.progress('Sensitive data redacted', `Content length changed from ${beforeRedaction} to ${afterRedaction} characters`, {
-            beforeLength: beforeRedaction,
-            afterLength: afterRedaction,
-            redacted: true
-          });
-        }
+          totalContentLength += cleanContent.length;
 
-        totalContentLength += cleanContent.length;
+          // Return minimal message object for AI processing (eliminates Claude Code metadata bloat)
+          return {
+            type: msg.type || 'assistant', // user or assistant
+            message: {
+              content: cleanContent
+            },
+            timestamp: msg.timestamp
+          };
+        });
 
-        // Return minimal message object for AI processing (eliminates Claude Code metadata bloat)
         return {
-          type: msg.type || 'assistant', // user or assistant
-          message: {
-            content: cleanContent
-          },
-          timestamp: msg.timestamp
+          sessionId: session.sessionId,
+          messages: cleanedMessages,
+          startTime: session.startTime,
+          messageCount: cleanedMessages.length
         };
       });
 
       const processingDuration = Date.now() - startTime;
-      const averageContentLength = messages.length > 0 ? Math.round(totalContentLength / messages.length) : 0;
+      const averageContentLength = totalMessages > 0 ? Math.round(totalContentLength / totalMessages) : 0;
 
       // Add comprehensive attributes to span
       const textAttrs = OTEL.attrs.textExtraction({
-        inputMessages: messages.length,
-        processedMessages: result.length,
+        inputMessages: totalMessages,
+        inputSessions: sessionGroups.length,
+        processedMessages: totalMessages,
+        processedSessions: result.length,
         stringContentMessages,
         arrayContentMessages,
         unknownContentMessages,
@@ -125,13 +124,11 @@ export function extractTextFromMessages(messages) {
 
       // Additional key business metrics
       OTEL.metrics.gauge('commit_story.text.extraction_duration_ms', processingDuration);
-      OTEL.metrics.gauge('commit_story.text.string_content_ratio',
-        messages.length > 0 ? stringContentMessages / messages.length : 0);
-      OTEL.metrics.gauge('commit_story.text.complex_content_ratio',
-        messages.length > 0 ? (arrayContentMessages + unknownContentMessages) / messages.length : 0);
+      OTEL.metrics.gauge('commit_story.text.sessions_count', result.length);
 
-      logger.complete('Text extraction completed', `Successfully processed ${result.length} messages with ${averageContentLength} avg chars`, {
-        processedCount: result.length,
+      logger.complete('Text extraction completed', `Successfully processed ${totalMessages} messages across ${result.length} sessions with ${averageContentLength} avg chars`, {
+        processedCount: totalMessages,
+        sessionCount: result.length,
         averageLength: averageContentLength,
         processingTime: processingDuration,
         contentTypes: {
@@ -149,7 +146,8 @@ export function extractTextFromMessages(messages) {
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
       logger.error('Text extraction failed', 'Error during message content extraction', error, {
-        inputMessageCount: messages.length
+        inputMessageCount: totalMessages,
+        inputSessionCount: sessionGroups.length
       });
       throw error;
     } finally {
@@ -349,29 +347,39 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
         process.cwd()                      // string - repo path for cwd filtering
       );
     
-      // Extract clean text content from messages
-      const cleanChatMessages = extractTextFromMessages(rawChatMessages || []);
-      
+      // Extract clean text content from messages (now returns session groups)
+      const cleanChatSessions = extractTextFromMessages(rawChatMessages || []);
+
+      // Flatten session groups to get all messages for metadata calculation and filtering
+      const flattenedMessages = cleanChatSessions.flatMap(session => session.messages);
+
       // Add raw message data to span
+      const rawSessionCount = rawChatMessages?.length || 0;
+      const totalMessageCount = flattenedMessages.length;
       const rawChatData = {
-        raw: rawChatMessages?.length || 0,
-        count: cleanChatMessages.length
+        raw_sessions: rawSessionCount,
+        sessions: cleanChatSessions.length,
+        raw_messages: rawChatMessages?.reduce((sum, session) => sum + (session.messages?.length || 0), 0) || 0,
+        count: totalMessageCount
       };
       span.setAttributes(OTEL.attrs.chat(rawChatData));
 
       // Dual emission: emit metrics alongside span attributes
-      OTEL.metrics.gauge('commit_story.chat.raw_messages_count', rawChatData.raw);
+      OTEL.metrics.gauge('commit_story.chat.raw_sessions_count', rawChatData.raw_sessions);
+      OTEL.metrics.gauge('commit_story.chat.sessions_count', rawChatData.sessions);
+      OTEL.metrics.gauge('commit_story.chat.raw_messages_count', rawChatData.raw_messages);
       OTEL.metrics.gauge('commit_story.chat.messages_count', rawChatData.count);
-      
+
       // Apply complete context preparation (consolidate all filtering and token management)
+      // Use flattened messages for filtering to maintain existing filter logic
       const rawContext = {
         commit: currentCommit,
-        chatMessages: cleanChatMessages
+        chatMessages: flattenedMessages
       };
       const filteredContext = filterContext(rawContext);
-      
+
       // Calculate metadata from cleaned messages (before filtering for richer data)
-      const metadata = calculateChatMetadata(cleanChatMessages);
+      const metadata = calculateChatMetadata(flattenedMessages);
       
       // Add final metadata to span
       const finalChatData = {
@@ -400,8 +408,12 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
           description: "Previous commit data used for calculating development time window"
         },
         chatMessages: {
-          data: filteredContext.chatMessages, // Filtered chat messages with token optimization
+          data: filteredContext.chatMessages, // Filtered chat messages with token optimization (flattened)
           description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"
+        },
+        chatSessions: {
+          data: cleanChatSessions, // Session-grouped chat messages for better AI context understanding
+          description: "Chat messages grouped by session ID to maintain conversation thread context"
         },
         chatMetadata: {
           data: metadata,

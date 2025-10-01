@@ -10,6 +10,7 @@ import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { technicalDecisionsPrompt } from './prompts/sections/technical-decisions-prompt.js';
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { selectContext } from './utils/context-selector.js';
+import { formatSessionsForAI } from '../utils/session-formatter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
@@ -31,15 +32,18 @@ export async function generateTechnicalDecisions(context) {
   return await tracer.startActiveSpan(OTEL.span.ai.technical(), {
     attributes: {
       ...OTEL.attrs.commit(context.commit.data),
-      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.1, context.chatMessages.data.length),
-      ...OTEL.attrs.chat({ count: context.chatMessages.data.length }),
+      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.1, context.chatSessions.data.length),
+      ...OTEL.attrs.chat({
+        count: context.chatSessions.data.reduce((sum, session) => sum + session.messageCount, 0),
+        sessions: context.chatSessions.data.length
+      }),
       'code.function': 'generateTechnicalDecisions'
     }
   }, async (span) => {
     try {
       // Select both commit and chat data for technical decisions analysis
-      const selected = selectContext(context, ['commit', 'chatMessages']);
-      const cleanMessages = selected.data.chatMessages;
+      const selected = selectContext(context, ['commit', 'chatSessions']);
+      const chatSessions = selected.data.chatSessions;
 
       // Check if any user messages are substantial enough for technical decisions analysis
       if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
@@ -92,7 +96,7 @@ ${technicalDecisionsPrompt}${implementationGuidance}
 ${guidelines}
   `.trim();
 
-      // Prepare the filtered context for the AI
+      // Prepare the filtered context for the AI with session grouping
       const contextForAI = {
         git: {
           hash: selected.data.commit.hash,
@@ -101,7 +105,7 @@ ${guidelines}
           timestamp: selected.data.commit.timestamp,
           diff: selected.data.commit.diff
         },
-        chat: cleanMessages
+        chat_sessions: formatSessionsForAI(chatSessions)
       };
 
       // Prepare request payload

@@ -9,6 +9,7 @@ import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
 import { summaryPrompt } from './prompts/sections/summary-prompt.js';
 import { selectContext } from './utils/context-selector.js';
+import { formatSessionsForAI } from '../utils/session-formatter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
@@ -31,21 +32,25 @@ export async function generateSummary(context) {
   return await tracer.startActiveSpan(OTEL.span.ai.summary(), {
     attributes: {
       ...OTEL.attrs.commit(context.commit.data),
-      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatMessages.data.length),
-      ...OTEL.attrs.chat({ count: context.chatMessages.data.length }),
+      ...OTEL.attrs.genAI.request(DEFAULT_MODEL, 0.7, context.chatSessions.data.length),
+      ...OTEL.attrs.chat({
+        count: context.chatSessions.data.reduce((sum, session) => sum + session.messageCount, 0),
+        sessions: context.chatSessions.data.length
+      }),
       'code.function': 'generateSummary'
     }
   }, async (span) => {
     const logger = createNarrativeLogger('ai.generate_summary');
 
     try {
-      // Select both commit and chat data for summary generation
-      const selected = selectContext(context, ['commit', 'chatMessages']);
+      // Select commit and chat sessions for summary generation
+      const selected = selectContext(context, ['commit', 'chatSessions']);
 
       logger.start('summary generation', `Generating summary for commit: ${selected.data.commit.hash.slice(0, 8)}`);
 
-      const messagesCount = selected.data.chatMessages.length;
-      logger.progress('summary generation', `Using ${messagesCount} chat messages and git diff for context`);
+      const sessionsCount = selected.data.chatSessions.length;
+      const totalMessages = selected.data.chatSessions.reduce((sum, session) => sum + session.messageCount, 0);
+      logger.progress('summary generation', `Using ${totalMessages} chat messages across ${sessionsCount} sessions and git diff for context`);
 
       // Create fresh OpenAI instance (DD-016: prevent context bleeding)
       const openai = new OpenAI({
@@ -63,7 +68,7 @@ ${summaryPrompt}
 ${guidelines}
   `.trim();
 
-  // Prepare the filtered context for the AI
+  // Prepare the filtered context for the AI with session grouping
   const contextForAI = {
     git: {
       hash: selected.data.commit.hash,
@@ -72,11 +77,7 @@ ${guidelines}
       timestamp: selected.data.commit.timestamp,
       diff: selected.data.commit.diff,
     },
-    chat: selected.data.chatMessages.map(msg => ({
-      type: msg.type,
-      content: msg.message?.content,
-      timestamp: msg.timestamp,
-    }))
+    chat_sessions: formatSessionsForAI(selected.data.chatSessions)
   };
 
 
