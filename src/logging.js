@@ -4,19 +4,10 @@ import resourcePkg from '@opentelemetry/resources';
 const { resourceFromAttributes, defaultResource } = resourcePkg;
 import pkg from '@opentelemetry/semantic-conventions';
 const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } = pkg;
-import fs from 'fs';
+import { getConfig } from './utils/config.js';
 
-// Check dev mode from config file
-let isDevMode = false;
-try {
-  const configPath = './commit-story.config.json';
-  if (fs.existsSync(configPath)) {
-    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    isDevMode = configData.dev === true;
-  }
-} catch (error) {
-  // Silently ignore config file errors - dev mode defaults to false
-}
+// Get configuration
+const { dev: isDevMode } = getConfig();
 
 // Only initialize logging when dev mode is enabled
 let logger = null;

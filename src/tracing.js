@@ -4,24 +4,13 @@ import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trac
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { PeriodicExportingMetricReader, AggregationTemporality } from '@opentelemetry/sdk-metrics';
-import fs from 'fs';
+import { getConfig } from './utils/config.js';
 
 // Check if running from test script - only show console traces during testing
 const isTestScript = process.argv[1]?.includes('test-otel');
 
-// Config detection from config file
-let isDebugMode = false;
-let isDevMode = false;
-try {
-  const configPath = './commit-story.config.json';
-  if (fs.existsSync(configPath)) {
-    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    isDebugMode = configData.debug === true;
-    isDevMode = configData.dev === true;
-  }
-} catch (error) {
-  // Silently ignore config file errors - both modes default to false
-}
+// Get configuration
+const { debug: isDebugMode, dev: isDevMode } = getConfig();
 
 // Only initialize telemetry when dev mode is enabled
 let sdk = null;

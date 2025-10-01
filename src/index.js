@@ -9,27 +9,18 @@
 import './tracing.js';
 
 import { config } from 'dotenv';
-import fs from 'fs';
 import OpenAI from 'openai';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
+import { getConfig } from './utils/config.js';
 
 config({ quiet: true });
 
-// Debug mode detection from config file
-let isDebugMode = false;
-try {
-  const configPath = './commit-story.config.json';
-  if (fs.existsSync(configPath)) {
-    const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    isDebugMode = configData.debug === true;
-  }
-} catch (error) {
-  // Silently ignore config file errors - debug mode defaults to false
-}
+// Get configuration
+const { debug: isDebugMode, dev: isDevMode } = getConfig();
 
 // Debug-only logging
 const debugLog = (message) => {
@@ -43,12 +34,29 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
 
 /**
  * Main entry point - orchestrates the complete journal generation flow
+ *
+ * @param {string} commitRef - Git commit reference to generate journal for (default: 'HEAD')
+ * @param {boolean} isDryRun - If true, generates journal content but doesn't save to file (default: false)
+ *
+ * CLI Usage:
+ *   node src/index.js                    # Generate journal for HEAD commit
+ *   node src/index.js abc123             # Generate journal for specific commit
+ *   node src/index.js --dry-run          # Test generation without saving file
+ *   node src/index.js --test             # Alias for --dry-run
+ *   node src/index.js --dry-run abc123   # Test with specific commit
+ *
+ * Dry run mode:
+ *   - Collects all context and generates journal content
+ *   - Sends telemetry to Datadog (when dev: true)
+ *   - Displays generated content instead of saving to file
+ *   - Useful for testing without creating files to clean up
  */
-export default async function main(commitRef = 'HEAD') {
+export default async function main(commitRef = 'HEAD', isDryRun = false) {
   return await tracer.startActiveSpan(OTEL.span.main(), {
     attributes: {
       ...OTEL.attrs.repository({ path: process.cwd() }),
       [`${OTEL.NAMESPACE}.commit.ref`]: commitRef,
+      [`${OTEL.NAMESPACE}.journal.dry_run`]: isDryRun,
       'code.function': 'main'
     }
   }, async (span) => {
@@ -147,19 +155,29 @@ export default async function main(commitRef = 'HEAD') {
       OTEL.metrics.gauge('commit_story.sections.commit_details_length', sectionsData.details);
       OTEL.metrics.gauge('commit_story.sections.total_count', 4); // Always 4 sections
       
-      // Save the complete journal entry to daily file
-      const filePath = await saveJournalEntry(
-        context.commit.data.hash,
-        context.commit.data.timestamp,
-        context.commit.data.message,
-        sections,
-        context.previousCommit.data?.timestamp || null
-      );
-      
+      // Save the complete journal entry to daily file (or show in dry-run mode)
+      let filePath = null;
+      if (isDryRun) {
+        // Dry run mode: show the generated content without saving
+        debugLog('--- DRY RUN MODE: Generated Journal Entry ---');
+        console.log(sections);
+        debugLog('--- End of Generated Content (not saved) ---');
+        filePath = '[dry-run-no-file]';
+      } else {
+        // Normal mode: save to file
+        filePath = await saveJournalEntry(
+          context.commit.data.hash,
+          context.commit.data.timestamp,
+          context.commit.data.message,
+          sections,
+          context.previousCommit.data?.timestamp || null
+        );
+      }
+
       // Add final attributes
       const completionAttrs = OTEL.attrs.journal.completion({
         filePath: filePath,
-        completed: true
+        completed: !isDryRun
       });
       span.setAttributes(completionAttrs);
 
@@ -170,7 +188,11 @@ export default async function main(commitRef = 'HEAD') {
         }
       });
       
-      debugLog(`✅ Journal saved to: ${filePath}`);
+      if (isDryRun) {
+        debugLog('✅ Dry run complete: Journal generated successfully (not saved)');
+      } else {
+        debugLog(`✅ Journal saved to: ${filePath}`);
+      }
       span.setStatus({ code: SpanStatusCode.OK, message: 'Journal entry generated successfully' });
 
     } catch (error) {
@@ -187,6 +209,19 @@ export default async function main(commitRef = 'HEAD') {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const commitRef = process.argv[2] || 'HEAD';
-  main(commitRef);
+  // Parse command line arguments
+  const args = process.argv.slice(2);
+  let commitRef = 'HEAD';
+  let isDryRun = false;
+
+  // Process arguments
+  for (const arg of args) {
+    if (arg === '--dry-run' || arg === '--test') {
+      isDryRun = true;
+    } else if (!arg.startsWith('--')) {
+      commitRef = arg;
+    }
+  }
+
+  main(commitRef, isDryRun);
 }

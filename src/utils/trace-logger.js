@@ -12,24 +12,15 @@
 import { trace } from '@opentelemetry/api';
 import { logger } from '../logging.js';
 import { SeverityNumber } from '@opentelemetry/api-logs';
-import fs from 'fs';
-import path from 'path';
+import { getConfig } from './config.js';
 
 /**
- * Detect if we're in dev mode by checking the config file
+ * Check if we're in dev mode using centralized config
  * Dev mode controls narrative logging output to Datadog
  */
 function isDevMode() {
-  try {
-    const configPath = path.join(process.cwd(), 'commit-story.config.json');
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      return config.dev === true;
-    }
-  } catch (error) {
-    // If config can't be read, default to false
-  }
-  return false;
+  const { dev } = getConfig();
+  return dev;
 }
 
 /**
