@@ -37,6 +37,10 @@ Identify all uninstrumented functions in the target file(s):
 
 **Philosophy**: This is experimental telemetry for AI development assistance - identify ALL uninstrumented functions for comprehensive visibility unless they are high-frequency operations that would create excessive spans. Prioritize development insight over production performance.
 
+## Step 2.5: Telemetry Change Management
+
+Detect if any telemetry (OTEL calls, traces, spans, loggers, metrics) was removed in recent commits. If telemetry was removed, show the user what was removed and ask whether it should be restored, providing a recommendation based on the development value of the removed telemetry. If the user says restore, restore the removed telemetry. If the user says the removal was intentional, clean up any now-unused standards/builders from the standards module.
+
 ## Step 3: Convention Discovery
 
 Check which conventions are already available:

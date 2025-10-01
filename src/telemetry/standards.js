@@ -126,6 +126,7 @@ export const OTEL = {
     // Utility operations
     utils: {
       contextSelect: () => 'utils.select_context',
+      sessionFormat: () => 'utils.session_format',
       journal_paths: {
         generate_path: () => 'utils.journal_paths.generate_path',
         create_directory: () => 'utils.journal_paths.create_directory',
@@ -133,6 +134,12 @@ export const OTEL = {
         format_timestamp: () => 'utils.journal_paths.format_timestamp',
         write_file: () => 'utils.journal_paths.write_file'
       }
+    },
+
+    // Claude collector utility operations
+    claude: {
+      find_files: () => 'claude.find_files',
+      group_by_session: () => 'claude.group_by_session'
     },
 
     // MCP (Model Context Protocol) operations
@@ -566,6 +573,18 @@ export const OTEL = {
       }),
 
       /**
+       * Session formatting operation attributes
+       * @param {Object} formatData - Session format metrics
+       * @returns {Object} Session format attributes
+       */
+      sessionFormat: (formatData) => ({
+        [`${OTEL.NAMESPACE}.session.input_sessions`]: formatData.inputSessions,
+        [`${OTEL.NAMESPACE}.session.formatted_sessions`]: formatData.formattedSessions,
+        [`${OTEL.NAMESPACE}.session.total_messages`]: formatData.totalMessages,
+        [`${OTEL.NAMESPACE}.session.processing_duration_ms`]: formatData.processingDuration
+      }),
+
+      /**
        * Journal paths operation attributes
        * @param {Object} pathData - Path operation data
        * @returns {Object} Journal paths attributes
@@ -600,6 +619,35 @@ export const OTEL = {
           [`${OTEL.NAMESPACE}.timestamp.timezone`]: timestampData.timezone
         })
       }
+    },
+
+    /**
+     * Claude collector utility operation attributes
+     */
+    claude: {
+      /**
+       * File discovery operation attributes
+       * @param {Object} discoveryData - File discovery metrics
+       * @returns {Object} File discovery attributes
+       */
+      findFiles: (discoveryData) => ({
+        [`${OTEL.NAMESPACE}.claude.directories_scanned`]: discoveryData.directoriesScanned,
+        [`${OTEL.NAMESPACE}.claude.files_found`]: discoveryData.filesFound,
+        [`${OTEL.NAMESPACE}.claude.scan_duration_ms`]: discoveryData.scanDuration,
+        [`${OTEL.NAMESPACE}.claude.scan_errors`]: discoveryData.scanErrors
+      }),
+
+      /**
+       * Message grouping operation attributes
+       * @param {Object} groupData - Grouping operation metrics
+       * @returns {Object} Message grouping attributes
+       */
+      groupBySession: (groupData) => ({
+        [`${OTEL.NAMESPACE}.claude.input_messages`]: groupData.inputMessages,
+        [`${OTEL.NAMESPACE}.claude.unique_sessions`]: groupData.uniqueSessions,
+        [`${OTEL.NAMESPACE}.claude.grouped_sessions`]: groupData.groupedSessions,
+        [`${OTEL.NAMESPACE}.claude.grouping_duration_ms`]: groupData.groupingDuration
+      })
     },
 
     /**

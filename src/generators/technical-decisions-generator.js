@@ -14,6 +14,7 @@ import { formatSessionsForAI } from '../utils/session-formatter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
+import { createNarrativeLogger } from '../utils/trace-logger.js';
 
 // Get tracer instance for technical decisions generation instrumentation
 const tracer = trace.getTracer('commit-story-technical-decisions', '1.0.0');
@@ -40,15 +41,22 @@ export async function generateTechnicalDecisions(context) {
       'code.function': 'generateTechnicalDecisions'
     }
   }, async (span) => {
+    const logger = createNarrativeLogger('ai.generate_technical_decisions');
+
     try {
+      logger.start('technical decisions generation', 'Starting technical decisions extraction from development session');
+
       // Select both commit and chat data for technical decisions analysis
       const selected = selectContext(context, ['commit', 'chatSessions']);
       const chatSessions = selected.data.chatSessions;
 
       // Check if any user messages are substantial enough for technical decisions analysis
       if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
+        logger.decision('technical decisions generation', 'No substantial user messages found - skipping technical decisions generation');
         return "No significant technical decisions documented for this development session";
       }
+
+      logger.progress('technical decisions generation', `Found ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages for analysis`);
 
       // Analyze file types to determine implementation status
       const diffLines = selected.data.commit.diff.split('\n');

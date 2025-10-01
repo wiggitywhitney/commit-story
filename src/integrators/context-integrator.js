@@ -55,6 +55,7 @@ export function extractTextFromMessages(sessionGroups) {
           if (!content) {
             cleanContent = '';
             emptyContentMessages++;
+            logger.progress('Empty content found', 'Encountered message with no content', { msgType: msg.type });
           } else if (typeof content === 'string') {
             cleanContent = content;
             stringContentMessages++;
@@ -65,16 +66,31 @@ export function extractTextFromMessages(sessionGroups) {
               .map(item => item.text)
               .join(' ');
             arrayContentMessages++;
+            logger.progress('Array content processed', 'Extracted text from structured content array', {
+              originalArrayLength: content.length,
+              extractedLength: cleanContent.length
+            });
           } else {
             // Fallback for unknown content types
             cleanContent = JSON.stringify(content);
             unknownContentMessages++;
+            logger.decision('Unknown content type', 'Using JSON stringify fallback for unknown content format', {
+              contentType: typeof content,
+              msgType: msg.type
+            });
           }
 
           // Filter sensitive data before AI processing
           const beforeRedaction = cleanContent.length;
           cleanContent = redactSensitiveData(cleanContent);
           const afterRedaction = cleanContent.length;
+
+          if (beforeRedaction !== afterRedaction) {
+            logger.progress('Sensitive data redacted', `Content length changed from ${beforeRedaction} to ${afterRedaction} characters`, {
+              reductionAmount: beforeRedaction - afterRedaction,
+              msgType: msg.type
+            });
+          }
 
           totalContentLength += cleanContent.length;
 
@@ -125,6 +141,12 @@ export function extractTextFromMessages(sessionGroups) {
       // Additional key business metrics
       OTEL.metrics.gauge('commit_story.text.extraction_duration_ms', processingDuration);
       OTEL.metrics.gauge('commit_story.text.sessions_count', result.length);
+
+      // Content type ratio metrics for detecting Claude Code format changes
+      OTEL.metrics.gauge('commit_story.text.string_content_ratio',
+        totalMessages > 0 ? stringContentMessages / totalMessages : 0);
+      OTEL.metrics.gauge('commit_story.text.complex_content_ratio',
+        totalMessages > 0 ? (arrayContentMessages + unknownContentMessages) / totalMessages : 0);
 
       logger.complete('Text extraction completed', `Successfully processed ${totalMessages} messages across ${result.length} sessions with ${averageContentLength} avg chars`, {
         processedCount: totalMessages,

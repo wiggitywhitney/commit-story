@@ -156,43 +156,122 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
  * Uses file modification time to avoid processing all session files
  * @param {string} repoPath - Repository path for directory encoding
  * @param {Date} commitTime - Current commit timestamp
- * @param {Date} previousCommitTime - Previous commit timestamp  
+ * @param {Date} previousCommitTime - Previous commit timestamp
  * @returns {Array<string>} Array of file paths to process
  */
 function findClaudeFiles() {
-  // Find all Claude Code JSONL files across all project directories
-  const claudeProjectsDir = join(homedir(), '.claude', 'projects');
-  
-  if (!existsSync(claudeProjectsDir)) {
-    return [];
-  }
-  
-  const allFiles = [];
-  
-  try {
-    const projectDirs = readdirSync(claudeProjectsDir);
-    
-    for (const projectDir of projectDirs) {
-      const projectPath = join(claudeProjectsDir, projectDir);
-      
+  return tracer.startActiveSpan(OTEL.span.claude.find_files(), {
+    attributes: {
+      'code.function': 'findClaudeFiles'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('claude.find_files');
+    const startTime = Date.now();
+
+    try {
+      // Find all Claude Code JSONL files across all project directories
+      const claudeProjectsDir = join(homedir(), '.claude', 'projects');
+
+      logger.start('file discovery', `Scanning Claude projects directory: ${claudeProjectsDir}`);
+
+      if (!existsSync(claudeProjectsDir)) {
+        logger.decision('file discovery', 'Claude projects directory not found - returning empty result');
+
+        const scanDuration = Date.now() - startTime;
+        const discoveryAttrs = OTEL.attrs.claude.findFiles({
+          directoriesScanned: 0,
+          filesFound: 0,
+          scanDuration,
+          scanErrors: 0
+        });
+        span.setAttributes(discoveryAttrs);
+
+        // Emit metrics
+        Object.entries(discoveryAttrs).forEach(([name, value]) => {
+          if (typeof value === 'number') {
+            OTEL.metrics.gauge(name, value);
+          }
+        });
+
+        logger.complete('file discovery', 'No Claude projects directory found - empty result');
+        span.setStatus({ code: SpanStatusCode.OK, message: 'No Claude projects directory found' });
+        return [];
+      }
+
+      const allFiles = [];
+      let directoriesScanned = 0;
+      let scanErrors = 0;
+
       try {
-        if (existsSync(projectPath)) {
-          const files = readdirSync(projectPath)
-            .filter(file => file.endsWith('.jsonl'))
-            .map(file => join(projectPath, file));
-          
-          allFiles.push(...files);
+        const projectDirs = readdirSync(claudeProjectsDir);
+        logger.progress('file discovery', `Found ${projectDirs.length} project directories to scan`);
+
+        for (const projectDir of projectDirs) {
+          const projectPath = join(claudeProjectsDir, projectDir);
+          directoriesScanned++;
+
+          try {
+            if (existsSync(projectPath)) {
+              const files = readdirSync(projectPath)
+                .filter(file => file.endsWith('.jsonl'))
+                .map(file => join(projectPath, file));
+
+              allFiles.push(...files);
+            }
+          } catch (error) {
+            scanErrors++;
+            // Skip directories that can't be read
+            continue;
+          }
         }
       } catch (error) {
-        // Skip directories that can't be read
-        continue;
+        scanErrors++;
+        logger.progress('file discovery', `Error reading project directories: ${error.message}`);
       }
+
+      const scanDuration = Date.now() - startTime;
+
+      // Add comprehensive attributes to span
+      const discoveryAttrs = OTEL.attrs.claude.findFiles({
+        directoriesScanned,
+        filesFound: allFiles.length,
+        scanDuration,
+        scanErrors
+      });
+      span.setAttributes(discoveryAttrs);
+
+      // Emit correlated metrics for dashboard analysis
+      Object.entries(discoveryAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
+
+      // Additional key business metrics
+      OTEL.metrics.gauge('commit_story.claude.scan_duration_ms', scanDuration);
+      OTEL.metrics.gauge('commit_story.claude.files_per_directory',
+        directoriesScanned > 0 ? allFiles.length / directoriesScanned : 0);
+
+      logger.complete('file discovery', `Discovered ${allFiles.length} JSONL files across ${directoriesScanned} directories`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Claude files discovered successfully' });
+      return allFiles;
+
+    } catch (error) {
+      const scanDuration = Date.now() - startTime;
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('file discovery', 'Claude file discovery failed', error);
+
+      // Emit error metrics
+      OTEL.metrics.gauge('commit_story.claude.scan_duration_ms', scanDuration);
+      OTEL.metrics.counter('commit_story.claude.discovery_errors_total', 1);
+
+      return [];
+    } finally {
+      span.end();
     }
-  } catch (error) {
-    return [];
-  }
-  
-  return allFiles;
+  });
 }
 
 /**
@@ -214,32 +293,91 @@ function parseTimestamp(timestamp) {
  * @returns {Array} Array of session objects, each containing sessionId and messages array
  */
 function groupMessagesBySession(messages) {
-  // Group messages by sessionId
-  const sessionMap = new Map();
-
-  for (const message of messages) {
-    const sessionId = message.sessionId;
-    if (!sessionId) continue; // Skip messages without session ID
-
-    if (!sessionMap.has(sessionId)) {
-      sessionMap.set(sessionId, []);
+  return tracer.startActiveSpan(OTEL.span.claude.group_by_session(), {
+    attributes: {
+      'code.function': 'groupMessagesBySession',
+      [`${OTEL.NAMESPACE}.claude.input_messages`]: messages.length
     }
-    sessionMap.get(sessionId).push(message);
-  }
+  }, (span) => {
+    const logger = createNarrativeLogger('claude.group_by_session');
+    const startTime = Date.now();
 
-  // Convert to array of session objects
-  const sessions = Array.from(sessionMap.entries()).map(([sessionId, sessionMessages]) => {
-    // Sort messages within each session chronologically
-    const sortedMessages = sessionMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    try {
+      logger.start('message grouping', `Grouping ${messages.length} messages by session ID for chronological organization`);
 
-    return {
-      sessionId: sessionId,
-      messages: sortedMessages,
-      startTime: sortedMessages[0]?.timestamp,
-      messageCount: sortedMessages.length
-    };
+      // Group messages by sessionId
+      const sessionMap = new Map();
+
+      for (const message of messages) {
+        const sessionId = message.sessionId;
+        if (!sessionId) continue; // Skip messages without session ID
+
+        if (!sessionMap.has(sessionId)) {
+          sessionMap.set(sessionId, []);
+        }
+        sessionMap.get(sessionId).push(message);
+      }
+
+      const uniqueSessions = sessionMap.size;
+      logger.progress('message grouping', `Found ${uniqueSessions} unique session IDs in message set`);
+
+      // Convert to array of session objects
+      const sessions = Array.from(sessionMap.entries()).map(([sessionId, sessionMessages]) => {
+        // Sort messages within each session chronologically
+        const sortedMessages = sessionMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+        return {
+          sessionId: sessionId,
+          messages: sortedMessages,
+          startTime: sortedMessages[0]?.timestamp,
+          messageCount: sortedMessages.length
+        };
+      });
+
+      // Sort sessions by their earliest message timestamp
+      const result = sessions.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+      const groupingDuration = Date.now() - startTime;
+
+      // Add comprehensive attributes to span
+      const groupAttrs = OTEL.attrs.claude.groupBySession({
+        inputMessages: messages.length,
+        uniqueSessions,
+        groupedSessions: result.length,
+        groupingDuration
+      });
+      span.setAttributes(groupAttrs);
+
+      // Emit correlated metrics for dashboard analysis
+      Object.entries(groupAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
+
+      // Additional key business metrics
+      OTEL.metrics.gauge('commit_story.claude.grouping_duration_ms', groupingDuration);
+      OTEL.metrics.gauge('commit_story.claude.avg_messages_per_session',
+        result.length > 0 ? messages.length / result.length : 0);
+
+      logger.complete('message grouping', `Successfully grouped messages into ${result.length} chronologically sorted sessions`);
+
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Message grouping completed successfully' });
+      return result;
+
+    } catch (error) {
+      const groupingDuration = Date.now() - startTime;
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      logger.error('message grouping', 'Session grouping failed', error);
+
+      // Emit error metrics
+      OTEL.metrics.gauge('commit_story.claude.grouping_duration_ms', groupingDuration);
+      OTEL.metrics.counter('commit_story.claude.grouping_errors_total', 1);
+
+      throw error;
+    } finally {
+      span.end();
+    }
   });
-
-  // Sort sessions by their earliest message timestamp
-  return sessions.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
 }
