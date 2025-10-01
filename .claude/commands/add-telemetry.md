@@ -81,6 +81,11 @@ For each missing convention identified in Step 3:
 
 Generate complete instrumentation with correlated spans, metrics, and logs for each uninstrumented function. The correlation is critical: metrics emitted within spans automatically inherit trace context, and logs can reference span IDs, allowing AI assistants to connect performance metrics with specific execution paths and log messages.
 
+### Safety Checks
+Before instrumenting any file, verify:
+1. **Circular Dependency Prevention**: Check if the target file is imported by `tracing.js` or `logging.js`. If yes, skip instrumentation and explain why to avoid circular dependencies.
+2. **Trace Correlation Enforcement**: Always add instrumentation inside existing traced functions rather than creating new trace entry points. Look for existing `tracer.startActiveSpan()` calls and nest new spans within them.
+
 ### Required Imports
 Add these imports if not present:
 - `trace` and `SpanStatusCode` from `@opentelemetry/api`

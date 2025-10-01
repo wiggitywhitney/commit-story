@@ -31,5 +31,6 @@ export function getConfig() {
  * @returns {string} Absolute path to commit-story.config.json
  */
 export function getConfigPath() {
-  return path.join(process.cwd(), 'commit-story.config.json');
+  const workingDirectory = process.cwd();
+  return path.join(workingDirectory, 'commit-story.config.json');
 }

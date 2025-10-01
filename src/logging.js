@@ -4,16 +4,126 @@ import resourcePkg from '@opentelemetry/resources';
 const { resourceFromAttributes, defaultResource } = resourcePkg;
 import pkg from '@opentelemetry/semantic-conventions';
 const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } = pkg;
-import { getConfig } from './utils/config.js';
+import fs from 'fs';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from './telemetry/standards.js';
+import { createNarrativeLogger } from './utils/trace-logger.js';
 
-// Get configuration
-const { dev: isDevMode } = getConfig();
+// Get tracer instance for instrumentation
+const tracer = trace.getTracer('commit-story', '1.0.0');
+
+// Get configuration synchronously during bootstrap
+const { dev: isDevMode } = (() => {
+  try {
+    const configPath = './commit-story.config.json';
+    if (fs.existsSync(configPath)) {
+      const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      return {
+        debug: configData.debug === true,
+        dev: configData.dev === true
+      };
+    }
+  } catch (error) {
+    // Silently ignore config file errors - both modes default to false
+  }
+  return { debug: false, dev: false };
+})();
 
 // Only initialize logging when dev mode is enabled
 let logger = null;
 let batchProcessor = null;
 
-if (isDevMode) {
+// Instrument conditional logging initialization
+function initializeLoggingConditionally() {
+  return tracer.startActiveSpan(OTEL.span.initialization.logging(), {
+    attributes: {
+      'code.function': 'initializeLoggingConditionally'
+    }
+  }, (span) => {
+    const narrativeLogger = createNarrativeLogger('initialization.logging_setup');
+    const startTime = Date.now();
+
+    try {
+      narrativeLogger.decision('Condition check', `Logging initialization condition: dev mode = ${isDevMode}`, {
+        dev_mode_enabled: isDevMode,
+        condition_met: isDevMode
+      });
+
+      if (!isDevMode) {
+        narrativeLogger.decision('Skip initialization', 'Logging initialization skipped - dev mode is false', {
+          skip_reason: 'dev_mode_disabled',
+          logger_type: 'noop'
+        });
+
+        const skipDuration = Date.now() - startTime;
+        const attrs = OTEL.attrs.initialization.logging({
+          providerInitialized: false,
+          batchProcessor: false,
+          otlpEndpoint: null,
+          maxBatchSize: 0,
+          scheduledDelayMs: 0,
+          initializationDuration: skipDuration
+        });
+
+        span.setAttributes(attrs);
+        span.setStatus({ code: SpanStatusCode.OK, message: 'Logging skipped - dev mode disabled' });
+        return { logger: { emit: () => {} }, batchProcessor: null };
+      }
+
+      narrativeLogger.progress('Starting initialization', 'Dev mode enabled, initializing logging system', {
+        service_name: 'commit-story-dev',
+        service_version: '1.0.0'
+      });
+
+      return initializeLoggingProvider(narrativeLogger, startTime, span);
+
+    } catch (error) {
+      const initializationDuration = Date.now() - startTime;
+      narrativeLogger.error('Logging initialization', 'Failed to initialize logging', error, {
+        initialization_duration_ms: initializationDuration
+      });
+
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+}
+
+function initializeLoggingProvider(narrativeLogger, startTime, span) {
+  narrativeLogger.progress('OTLP configuration', 'Configuring OTLP log exporter for Datadog Agent', {
+    endpoint: 'http://localhost:4318/v1/logs'
+  });
+
+  const initResult = initializeLoggingSystem();
+
+  const initializationDuration = Date.now() - startTime;
+  const attrs = OTEL.attrs.initialization.logging({
+    providerInitialized: true,
+    batchProcessor: true,
+    otlpEndpoint: 'http://localhost:4318/v1/logs',
+    maxBatchSize: 1,
+    scheduledDelayMs: 0,
+    initializationDuration
+  });
+
+  span.setAttributes(attrs);
+  span.setStatus({ code: SpanStatusCode.OK, message: 'Logging initialized successfully' });
+
+  narrativeLogger.complete('Logging initialization', 'Logging system initialized successfully', {
+    provider_initialized: true,
+    batch_processor: true,
+    otlp_endpoint: 'http://localhost:4318/v1/logs',
+    initialization_duration_ms: initializationDuration
+  });
+
+  return initResult;
+}
+
+function initializeLoggingSystem() {
+  const isDevModeActive = isDevMode;
   // Create OTLP log exporter for local Datadog Agent (same as traces)
   const logExporter = new OTLPLogExporter({
     url: 'http://localhost:4318/v1/logs',
@@ -52,13 +162,15 @@ if (isDevMode) {
   });
 
   // Export logger instance for narrative logging
-  logger = loggerProvider.getLogger('commit-story-narrative', '1.0.0');
-} else {
-  // When dev mode is disabled, provide a noop logger
-  logger = {
-    emit: () => {} // No-op function
-  };
+  const loggerInstance = loggerProvider.getLogger('commit-story-narrative', '1.0.0');
+
+  return { logger: loggerInstance, batchProcessor };
 }
+
+// Execute conditional initialization
+const loggingResult = initializeLoggingConditionally();
+logger = loggingResult.logger;
+batchProcessor = loggingResult.batchProcessor;
 
 export { logger };
 
@@ -69,37 +181,134 @@ export async function gracefulShutdown() {
     return Promise.resolve();
   }
 
-  console.log('🔄 Shutting down logger, flushing logs...');
-  return new Promise((resolve) => {
-    // Force flush any remaining logs
-    batchProcessor.forceFlush().then(() => {
-      console.log('✅ Logs flushed successfully');
+  return tracer.startActiveSpan(OTEL.span.shutdown.graceful(), {
+    attributes: {
+      'code.function': 'gracefulShutdown'
+    }
+  }, async (span) => {
+    const logger = createNarrativeLogger('shutdown.graceful_shutdown');
+    const startTime = Date.now();
 
-      // Import and shutdown OpenTelemetry SDK to flush metrics
-      import('./tracing.js').then(({ default: sdk }) => {
-        if (sdk) {
-          return sdk.shutdown();
-        } else {
-          return Promise.resolve();
-        }
-      }).then(() => {
-        console.log('✅ OpenTelemetry SDK shutdown, metrics flushed');
-        resolve();
-      }).catch((err) => {
-        console.error('❌ Error shutting down SDK:', err);
-        resolve();
+    try {
+      logger.start('Graceful shutdown', 'Beginning graceful shutdown of telemetry systems', {
+        operation: 'graceful_shutdown',
+        dev_mode: isDevMode
       });
-    }).catch((err) => {
-      console.error('❌ Error flushing logs:', err);
-      resolve();
-    });
+
+      console.log('🔄 Shutting down logger, flushing logs...');
+
+      return new Promise((resolve) => {
+        // Force flush any remaining logs
+        logger.progress('Flushing logs', 'Flushing batch processor logs to OTLP endpoint', {
+          flush_target: 'batch_processor'
+        });
+
+        batchProcessor.forceFlush().then(() => {
+          logger.progress('Logs flushed', 'Batch processor logs successfully flushed', {
+            flush_status: 'success'
+          });
+          console.log('✅ Logs flushed successfully');
+
+          // Import and shutdown OpenTelemetry SDK to flush metrics
+          logger.progress('SDK shutdown', 'Importing tracing module and shutting down OpenTelemetry SDK', {
+            shutdown_target: 'opentelemetry_sdk'
+          });
+
+          import('./tracing.js').then(({ default: sdk }) => {
+            if (sdk) {
+              return sdk.shutdown();
+            } else {
+              logger.decision('No SDK', 'No SDK found to shutdown, resolving immediately', {
+                sdk_present: false,
+                action: 'skip_shutdown'
+              });
+              return Promise.resolve();
+            }
+          }).then(() => {
+            const shutdownDuration = Date.now() - startTime;
+            const attrs = OTEL.attrs.shutdown.graceful({
+              logsFlushed: true,
+              sdkShutdown: true,
+              shutdownDuration
+            });
+
+            span.setAttributes(attrs);
+
+            // Emit metrics for shutdown analysis
+            Object.entries(attrs).forEach(([name, value]) => {
+              if (typeof value === 'number') {
+                OTEL.metrics.histogram(name, value);
+              } else if (typeof value === 'boolean') {
+                OTEL.metrics.gauge(name, value ? 1 : 0);
+              }
+            });
+
+            logger.complete('Shutdown complete', `Graceful shutdown completed successfully in ${shutdownDuration}ms`, {
+              logs_flushed: true,
+              sdk_shutdown: true,
+              total_duration_ms: shutdownDuration
+            });
+
+            console.log('✅ OpenTelemetry SDK shutdown, metrics flushed');
+            span.setStatus({ code: SpanStatusCode.OK, message: 'Graceful shutdown completed successfully' });
+            resolve();
+          }).catch((err) => {
+            const shutdownDuration = Date.now() - startTime;
+
+            logger.error('SDK shutdown', 'Error shutting down OpenTelemetry SDK', err, {
+              error_type: 'sdk_shutdown_error',
+              duration_ms: shutdownDuration
+            });
+
+            span.recordException(err);
+            span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+            console.error('❌ Error shutting down SDK:', err);
+            resolve();
+          });
+        }).catch((err) => {
+          const shutdownDuration = Date.now() - startTime;
+
+          logger.error('Log flush', 'Error flushing logs during shutdown', err, {
+            error_type: 'log_flush_error',
+            duration_ms: shutdownDuration
+          });
+
+          span.recordException(err);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          console.error('❌ Error flushing logs:', err);
+          resolve();
+        });
+      });
+
+    } catch (error) {
+      const shutdownDuration = Date.now() - startTime;
+
+      logger.error('Graceful shutdown', 'Unexpected error during graceful shutdown', error, {
+        error_type: 'unexpected_shutdown_error',
+        duration_ms: shutdownDuration
+      });
+
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    } finally {
+      span.end();
+    }
   });
 }
 
+// Prevent multiple shutdown executions
+let isShuttingDown = false;
+
 // Only register shutdown handlers when dev mode is enabled
 if (isDevMode) {
-  process.on('SIGINT', gracefulShutdown);
-  process.on('SIGTERM', gracefulShutdown);
-  process.on('beforeExit', gracefulShutdown);
+  const handleShutdown = () => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    gracefulShutdown();
+  };
+
+  process.on('SIGINT', handleShutdown);
+  process.on('SIGTERM', handleShutdown);
 }
 

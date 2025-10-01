@@ -4,18 +4,121 @@ import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trac
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { PeriodicExportingMetricReader, AggregationTemporality } from '@opentelemetry/sdk-metrics';
-import { getConfig } from './utils/config.js';
+import fs from 'fs';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { OTEL } from './telemetry/standards.js';
+import { createNarrativeLogger } from './utils/trace-logger.js';
 
 // Check if running from test script - only show console traces during testing
 const isTestScript = process.argv[1]?.includes('test-otel');
 
-// Get configuration
-const { debug: isDebugMode, dev: isDevMode } = getConfig();
+// Get configuration synchronously during bootstrap
+const { debug: isDebugMode, dev: isDevMode } = (() => {
+  try {
+    const configPath = './commit-story.config.json';
+    if (fs.existsSync(configPath)) {
+      const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      return {
+        debug: configData.debug === true,
+        dev: configData.dev === true
+      };
+    }
+  } catch (error) {
+    // Silently ignore config file errors - both modes default to false
+  }
+  return { debug: false, dev: false };
+})();
 
 // Only initialize telemetry when dev mode is enabled
 let sdk = null;
 
-if (isDevMode) {
+// Instrument conditional telemetry initialization
+function initializeTelemetryConditionally() {
+  // We need to use a simple tracer since the SDK might not be initialized yet
+  const simpleTracer = {
+    startActiveSpan: (name, options, fn) => {
+      const startTime = Date.now();
+      const logger = createNarrativeLogger('initialization.telemetry_setup');
+
+      try {
+        logger.start('Telemetry initialization', `Checking telemetry initialization conditions`, {
+          dev_mode: isDevMode,
+          test_script: isTestScript
+        });
+
+        const result = fn({
+          setAttributes: () => {},
+          setStatus: () => {},
+          recordException: () => {},
+          end: () => {}
+        });
+
+        const duration = Date.now() - startTime;
+        logger.complete('Telemetry setup', `Telemetry initialization completed in ${duration}ms`, {
+          sdk_initialized: result !== null,
+          initialization_duration_ms: duration
+        });
+
+        return result;
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        logger.error('Telemetry setup', 'Error during telemetry initialization', error, {
+          initialization_duration_ms: duration
+        });
+        throw error;
+      }
+    }
+  };
+
+  return simpleTracer.startActiveSpan(OTEL.span.initialization.telemetry(), {
+    attributes: {
+      'code.function': 'initializeTelemetryConditionally'
+    }
+  }, (span) => {
+    const logger = createNarrativeLogger('initialization.telemetry_setup');
+    const startTime = Date.now();
+
+    try {
+      logger.decision('Condition check', `Telemetry initialization condition: dev mode = ${isDevMode}`, {
+        dev_mode_enabled: isDevMode,
+        condition_met: isDevMode
+      });
+
+      if (!isDevMode) {
+        logger.decision('Skip initialization', 'Telemetry disabled - dev mode is false', {
+          skip_reason: 'dev_mode_disabled',
+          sdk_initialized: false
+        });
+        return null;
+      }
+
+      logger.progress('Starting initialization', 'Dev mode enabled, initializing telemetry stack', {
+        service_name: 'commit-story-dev',
+        service_version: '1.0.0'
+      });
+
+      return initializeSDK(logger, startTime, span);
+
+    } catch (error) {
+      const initializationDuration = Date.now() - startTime;
+      logger.error('Telemetry initialization', 'Failed to initialize telemetry', error, {
+        initialization_duration_ms: initializationDuration
+      });
+
+      span.recordException(error);
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+}
+
+function initializeSDK(logger, startTime, span) {
+  logger.progress('OTLP configuration', 'Configuring OTLP exporters for Datadog Agent', {
+    trace_endpoint: 'http://localhost:4318/v1/traces',
+    metrics_endpoint: 'http://localhost:4318/v1/metrics'
+  });
   // Create OTLP exporter for Datadog Agent (localhost:4318)
   const otlpTraceExporter = new OTLPTraceExporter({
     url: 'http://localhost:4318/v1/traces',
@@ -76,6 +179,27 @@ if (isDevMode) {
   // Initialize tracing
   sdk.start();
 
+  const initializationDuration = Date.now() - startTime;
+  const attrs = OTEL.attrs.initialization.telemetry({
+    sdkInitialized: true,
+    serviceName: 'commit-story-dev',
+    serviceVersion: '1.0.0',
+    otlpEndpoint: 'http://localhost:4318',
+    consoleOutput: isTestScript,
+    initializationDuration
+  });
+
+  span.setAttributes(attrs);
+  span.setStatus({ code: SpanStatusCode.OK, message: 'Telemetry initialized successfully' });
+
+  logger.complete('SDK initialization', 'OpenTelemetry SDK initialized successfully', {
+    service_name: 'commit-story-dev',
+    traces_enabled: true,
+    metrics_enabled: true,
+    console_output: isTestScript,
+    initialization_duration_ms: initializationDuration
+  });
+
   // Only show initialization messages in test script or debug mode
   if (isTestScript) {
     console.log('🔭 OpenTelemetry observability stack initialized:');
@@ -85,9 +209,11 @@ if (isDevMode) {
   } else if (isDebugMode) {
     console.log('OpenTelemetry initialized');
   }
-} else {
-  // When dev mode is disabled, telemetry is completely disabled
-  // No console output, no initialization, no noise
+
+  return sdk;
 }
+
+// Execute conditional initialization
+sdk = initializeTelemetryConditionally();
 
 export default sdk;

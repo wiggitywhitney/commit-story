@@ -97,9 +97,25 @@ export const OTEL = {
       git: () => 'git.collect_data'
     },
 
-    // Configuration operations
-    config: {
-      openai: () => 'config.openai'
+
+    // CLI argument parsing operations
+    cli: {
+      parse_arguments: () => 'cli.parse_arguments',
+      process_flags: () => 'cli.process_flags'
+    },
+
+    // Application initialization operations
+    initialization: {
+      conditional: () => 'initialization.conditional_setup',
+      telemetry: () => 'initialization.telemetry_setup',
+      logging: () => 'initialization.logging_setup'
+    },
+
+    // Application shutdown operations
+    shutdown: {
+      graceful: () => 'shutdown.graceful_shutdown',
+      flush_logs: () => 'shutdown.flush_logs',
+      flush_metrics: () => 'shutdown.flush_metrics'
     },
 
     // Data filtering operations
@@ -390,20 +406,124 @@ export const OTEL = {
       })
     },
 
+
     /**
-     * Configuration operation attributes
+     * CLI argument parsing operation attributes
      */
-    config: {
+    cli: {
       /**
-       * OpenAI client initialization attributes
-       * @param {Object} configData - OpenAI configuration data
-       * @returns {Object} Config attributes
+       * CLI argument parsing attributes
+       * @param {Object} parseData - CLI parsing operation data
+       * @returns {Object} CLI parsing attributes
        */
-      openai: (configData) => ({
-        [`${OTEL.NAMESPACE}.config.api_key_valid`]: configData.apiKeyValid,
-        [`${OTEL.NAMESPACE}.config.model`]: configData.model,
-        [`${OTEL.NAMESPACE}.config.provider`]: configData.provider,
-        [`${OTEL.NAMESPACE}.config.init_duration_ms`]: configData.initDuration
+      parseArguments: (parseData) => ({
+        [`${OTEL.NAMESPACE}.cli.total_arguments`]: parseData.totalArguments,
+        [`${OTEL.NAMESPACE}.cli.processed_arguments`]: parseData.processedArguments,
+        [`${OTEL.NAMESPACE}.cli.dry_run_flag`]: parseData.dryRunFlag,
+        [`${OTEL.NAMESPACE}.cli.commit_ref_provided`]: parseData.commitRefProvided,
+        [`${OTEL.NAMESPACE}.cli.commit_ref`]: parseData.commitRef,
+        [`${OTEL.NAMESPACE}.cli.unknown_flags`]: parseData.unknownFlags,
+        [`${OTEL.NAMESPACE}.cli.parsing_duration_ms`]: parseData.parsingDuration
+      }),
+
+      /**
+       * CLI flag processing attributes
+       * @param {Object} flagData - CLI flag processing data
+       * @returns {Object} CLI flag attributes
+       */
+      processFlags: (flagData) => ({
+        [`${OTEL.NAMESPACE}.cli.flags_found`]: flagData.flagsFound,
+        [`${OTEL.NAMESPACE}.cli.flags_processed`]: flagData.flagsProcessed,
+        [`${OTEL.NAMESPACE}.cli.test_flag_alias`]: flagData.testFlagAlias,
+        [`${OTEL.NAMESPACE}.cli.processing_duration_ms`]: flagData.processingDuration
+      })
+    },
+
+    /**
+     * Application initialization operation attributes
+     */
+    initialization: {
+      /**
+       * Conditional initialization attributes
+       * @param {Object} initData - Initialization operation data
+       * @returns {Object} Initialization attributes
+       */
+      conditional: (initData) => ({
+        [`${OTEL.NAMESPACE}.init.condition_met`]: initData.conditionMet,
+        [`${OTEL.NAMESPACE}.init.condition_type`]: initData.conditionType,
+        [`${OTEL.NAMESPACE}.init.initialization_duration_ms`]: initData.initializationDuration,
+        [`${OTEL.NAMESPACE}.init.skip_reason`]: initData.skipReason
+      }),
+
+      /**
+       * Telemetry initialization attributes
+       * @param {Object} telemetryData - Telemetry initialization data
+       * @returns {Object} Telemetry initialization attributes
+       */
+      telemetry: (telemetryData) => ({
+        [`${OTEL.NAMESPACE}.telemetry.sdk_initialized`]: telemetryData.sdkInitialized,
+        [`${OTEL.NAMESPACE}.telemetry.service_name`]: telemetryData.serviceName,
+        [`${OTEL.NAMESPACE}.telemetry.service_version`]: telemetryData.serviceVersion,
+        [`${OTEL.NAMESPACE}.telemetry.otlp_endpoint`]: telemetryData.otlpEndpoint,
+        [`${OTEL.NAMESPACE}.telemetry.console_output`]: telemetryData.consoleOutput,
+        [`${OTEL.NAMESPACE}.telemetry.initialization_duration_ms`]: telemetryData.initializationDuration
+      }),
+
+      /**
+       * Logging initialization attributes
+       * @param {Object} loggingData - Logging initialization data
+       * @returns {Object} Logging initialization attributes
+       */
+      logging: (loggingData) => ({
+        [`${OTEL.NAMESPACE}.logging.provider_initialized`]: loggingData.providerInitialized,
+        [`${OTEL.NAMESPACE}.logging.batch_processor`]: loggingData.batchProcessor,
+        [`${OTEL.NAMESPACE}.logging.otlp_endpoint`]: loggingData.otlpEndpoint,
+        [`${OTEL.NAMESPACE}.logging.max_batch_size`]: loggingData.maxBatchSize,
+        [`${OTEL.NAMESPACE}.logging.scheduled_delay_ms`]: loggingData.scheduledDelayMs,
+        [`${OTEL.NAMESPACE}.logging.initialization_duration_ms`]: loggingData.initializationDuration
+      })
+    },
+
+    /**
+     * Application shutdown operation attributes
+     */
+    shutdown: {
+      /**
+       * Graceful shutdown attributes
+       * @param {Object} shutdownData - Shutdown operation data
+       * @returns {Object} Shutdown attributes
+       */
+      graceful: (shutdownData) => ({
+        [`${OTEL.NAMESPACE}.shutdown.triggered_by`]: shutdownData.triggeredBy,
+        [`${OTEL.NAMESPACE}.shutdown.logs_flushed`]: shutdownData.logsFlushed,
+        [`${OTEL.NAMESPACE}.shutdown.metrics_flushed`]: shutdownData.metricsFlushed,
+        [`${OTEL.NAMESPACE}.shutdown.sdk_shutdown`]: shutdownData.sdkShutdown,
+        [`${OTEL.NAMESPACE}.shutdown.total_duration_ms`]: shutdownData.totalDuration,
+        [`${OTEL.NAMESPACE}.shutdown.errors_encountered`]: shutdownData.errorsEncountered
+      }),
+
+      /**
+       * Log flushing attributes
+       * @param {Object} flushData - Log flush operation data
+       * @returns {Object} Log flush attributes
+       */
+      flushLogs: (flushData) => ({
+        [`${OTEL.NAMESPACE}.shutdown.logs_pending`]: flushData.logsPending,
+        [`${OTEL.NAMESPACE}.shutdown.logs_flushed_count`]: flushData.logsFlushedCount,
+        [`${OTEL.NAMESPACE}.shutdown.flush_logs_duration_ms`]: flushData.flushLogsDuration,
+        [`${OTEL.NAMESPACE}.shutdown.flush_logs_success`]: flushData.flushLogsSuccess
+      }),
+
+      /**
+       * Metrics flushing attributes
+       * @param {Object} flushData - Metrics flush operation data
+       * @returns {Object} Metrics flush attributes
+       */
+      flushMetrics: (flushData) => ({
+        [`${OTEL.NAMESPACE}.shutdown.metrics_pending`]: flushData.metricsPending,
+        [`${OTEL.NAMESPACE}.shutdown.metrics_flushed_count`]: flushData.metricsFlushedCount,
+        [`${OTEL.NAMESPACE}.shutdown.flush_metrics_duration_ms`]: flushData.flushMetricsDuration,
+        [`${OTEL.NAMESPACE}.shutdown.flush_metrics_success`]: flushData.flushMetricsSuccess
       })
     },
 

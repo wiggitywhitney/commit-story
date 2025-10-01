@@ -10,17 +10,33 @@ import './tracing.js';
 
 import { config } from 'dotenv';
 import OpenAI from 'openai';
+import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 import { getConfig } from './utils/config.js';
+import { createNarrativeLogger } from './utils/trace-logger.js';
 
 config({ quiet: true });
 
-// Get configuration
-const { debug: isDebugMode, dev: isDevMode } = getConfig();
+// Get configuration (using sync version for bootstrap)
+const { debug: isDebugMode, dev: isDevMode } = (() => {
+  try {
+    const configPath = './commit-story.config.json';
+    if (fs.existsSync(configPath)) {
+      const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      return {
+        debug: configData.debug === true,
+        dev: configData.dev === true
+      };
+    }
+  } catch (error) {
+    // Silently ignore config file errors - both modes default to false
+  }
+  return { debug: false, dev: false };
+})();
 
 // Debug-only logging
 const debugLog = (message) => {
@@ -34,9 +50,7 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
 
 /**
  * Main entry point - orchestrates the complete journal generation flow
- *
- * @param {string} commitRef - Git commit reference to generate journal for (default: 'HEAD')
- * @param {boolean} isDryRun - If true, generates journal content but doesn't save to file (default: false)
+ * Parses CLI arguments and executes journal generation with full telemetry correlation
  *
  * CLI Usage:
  *   node src/index.js                    # Generate journal for HEAD commit
@@ -51,15 +65,121 @@ const tracer = trace.getTracer('commit-story', '1.0.0');
  *   - Displays generated content instead of saving to file
  *   - Useful for testing without creating files to clean up
  */
-export default async function main(commitRef = 'HEAD', isDryRun = false) {
+export default async function main() {
   return await tracer.startActiveSpan(OTEL.span.main(), {
     attributes: {
       ...OTEL.attrs.repository({ path: process.cwd() }),
-      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef,
-      [`${OTEL.NAMESPACE}.journal.dry_run`]: isDryRun,
       'code.function': 'main'
     }
   }, async (span) => {
+
+    // Parse CLI arguments with full telemetry correlation
+    const { commitRef, isDryRun } = await tracer.startActiveSpan(OTEL.span.cli.parse_arguments(), {
+      attributes: {
+        'code.function': 'cli_argument_parsing'
+      }
+    }, (cliSpan) => {
+      const logger = createNarrativeLogger('cli.parse_arguments');
+      const startTime = Date.now();
+
+      try {
+        const args = process.argv.slice(2);
+        const totalArguments = args.length;
+
+        logger.start('CLI argument parsing', `Parsing ${totalArguments} command line arguments`, {
+          total_args: totalArguments,
+          raw_args: args.join(' ')
+        });
+
+        let commitRef = 'HEAD';
+        let isDryRun = false;
+        let processedArguments = 0;
+        let unknownFlags = 0;
+        let commitRefProvided = false;
+
+        // Process arguments with detailed tracking
+        for (const arg of args) {
+          processedArguments++;
+
+          if (arg === '--dry-run' || arg === '--test') {
+            isDryRun = true;
+            logger.decision('Flag processing', `Dry run mode enabled via ${arg} flag`, {
+              flag: arg,
+              dry_run_enabled: true,
+              flag_type: arg === '--test' ? 'alias' : 'primary'
+            });
+          } else if (!arg.startsWith('--')) {
+            commitRef = arg;
+            commitRefProvided = true;
+            logger.decision('Commit reference', `Using custom commit reference: ${arg}`, {
+              commit_ref: arg,
+              default_overridden: true
+            });
+          } else {
+            unknownFlags++;
+            logger.progress('Unknown flag', `Encountered unknown flag: ${arg}`, {
+              unknown_flag: arg,
+              action: 'ignored'
+            });
+          }
+        }
+
+        const parsingDuration = Date.now() - startTime;
+        const attrs = OTEL.attrs.cli.parseArguments({
+          totalArguments,
+          processedArguments,
+          dryRunFlag: isDryRun,
+          commitRefProvided,
+          commitRef,
+          unknownFlags,
+          parsingDuration
+        });
+
+        cliSpan.setAttributes(attrs);
+
+        // Emit metrics for CLI argument analysis
+        Object.entries(attrs).forEach(([name, value]) => {
+          if (typeof value === 'number') {
+            OTEL.metrics.histogram(name, value);
+          } else if (typeof value === 'boolean') {
+            OTEL.metrics.gauge(name, value ? 1 : 0);
+          }
+        });
+
+        logger.complete('CLI parsing', `Arguments parsed successfully: commit=${commitRef}, dryRun=${isDryRun}`, {
+          final_commit_ref: commitRef,
+          final_dry_run: isDryRun,
+          unknown_flags_count: unknownFlags,
+          parsing_duration_ms: parsingDuration
+        });
+
+        cliSpan.setStatus({ code: SpanStatusCode.OK, message: 'CLI arguments parsed successfully' });
+        cliSpan.end();
+
+        return { commitRef, isDryRun };
+
+      } catch (error) {
+        const parsingDuration = Date.now() - startTime;
+
+        logger.error('CLI parsing', 'Error parsing command line arguments', error, {
+          error_type: 'cli_parsing_error',
+          duration_ms: parsingDuration
+        });
+
+        cliSpan.recordException(error);
+        cliSpan.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+        cliSpan.end();
+
+        throw error;
+      }
+    });
+
+    // Add CLI results to main span
+    span.setAttributes({
+      [`${OTEL.NAMESPACE}.commit.ref`]: commitRef,
+      [`${OTEL.NAMESPACE}.journal.dry_run`]: isDryRun
+    });
+
     try {
       debugLog(`Starting context collection for commit ${commitRef.substring(0, 8)}`);
     
@@ -209,19 +329,5 @@ export default async function main(commitRef = 'HEAD', isDryRun = false) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  // Parse command line arguments
-  const args = process.argv.slice(2);
-  let commitRef = 'HEAD';
-  let isDryRun = false;
-
-  // Process arguments
-  for (const arg of args) {
-    if (arg === '--dry-run' || arg === '--test') {
-      isDryRun = true;
-    } else if (!arg.startsWith('--')) {
-      commitRef = arg;
-    }
-  }
-
-  main(commitRef, isDryRun);
+  main();
 }

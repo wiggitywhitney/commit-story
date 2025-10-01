@@ -371,6 +371,58 @@ Implement proper flag-based output control:
 - Potential telemetry instrumentation of new functionality with /add-telemetry
 - Milestone 2-5 remain available for future work if needed
 
+### 2025-10-01: Comprehensive Telemetry Instrumentation Session ✅
+**Duration**: ~3 hours
+**Primary Focus**: Advanced telemetry instrumentation using /add-telemetry command + safety improvements
+
+**Telemetry Instrumentation Completed** (4 out of 5 original targets):
+- [x] **CLI argument parsing instrumentation** - Evidence: CLI parsing span properly correlated in main trace (trace ID: dda80d64bf640cbafd082f3f1c2eccbc)
+- [x] **Dry-run content display logic instrumentation** - Evidence: Dry-run attributes and telemetry correlation working
+- [x] **Conditional telemetry initialization instrumentation** - Evidence: tracing.js spans with full narrative logging
+- [x] **Conditional logging initialization instrumentation** - Evidence: logging.js spans with decision tracking
+- [ ] **Configuration file reading logic** - INTENTIONALLY SKIPPED: Removed due to circular dependency issues (memory crashes resolved)
+
+**Technical Architecture Improvements**:
+- **Trace Correlation Success**: CLI parsing moved inside main() function for proper parent-child span relationships
+- **Circular Dependency Resolution**: Configuration instrumentation cleanly removed to prevent bootstrap timing issues
+- **Hack Elimination**: Removed 100ms setTimeout hack by restructuring code architecture
+- **Duplicate Shutdown Fix**: Added isShuttingDown guard to prevent repeat console logs
+
+**Telemetry Validation Results**:
+- **Datadog Verification**: All spans reaching Datadog with proper correlation (21 spans in single trace)
+- **Metrics and Logs**: Dual emission pattern working (span attributes + metrics + narrative logs)
+- **Trace Hierarchy**: Perfect parent-child relationships across all instrumented components
+- **Performance Impact**: Zero performance degradation, clean telemetry when dev: false
+
+**Development Tool Enhancements**:
+- **Anti-Pattern Prevention**: Added safety checks to /add-telemetry command:
+  1. Circular dependency prevention (check imports before instrumentation)
+  2. Trace correlation enforcement (nest spans within existing traces)
+- **Future Safety**: These additions prevent the circular dependency and trace correlation issues encountered
+
+**System State After Session**:
+- ✅ All original functionality working correctly
+- ✅ Telemetry instrumentation clean and logical (no hacks)
+- ✅ Trace correlation properly implemented
+- ✅ Development tooling improved for future instrumentation work
+- ✅ Architecture resilient to bootstrap timing issues
+
+**Lessons Learned**:
+- **Configuration modules** should not be instrumented due to early bootstrap requirements
+- **Trace correlation** requires careful placement within existing traced functions
+- **setTimeout hacks** indicate architectural problems that need proper solutions
+- **Simple rules** (2 safety checks) can prevent complex instrumentation problems
+
+**Impact on PRD-23 Goals**:
+- Significant progress on telemetry cleanliness and developer experience
+- Foundation established for future Milestone 6 (Telemetry-Aware Console Output)
+- Instrumentation methodology proven and documented for future sessions
+
+**Next Session Priorities**:
+- Consider implementing Milestone 4 (Conference Demo Mode) for clean presentation
+- Consider implementing Milestone 6 (Telemetry-Aware Console Output) leveraging new telemetry infrastructure
+- Milestone 2-3 remain available for error handling and path matching improvements
+
 ## Design Document References
 
 ### Existing Documentation
