@@ -146,6 +146,14 @@ Implement proper flag-based output control:
 **Rationale**: The root cause of noise pollution is telemetry trying to run when `dev: false`, causing OTLP export failures, shutdown messages, and metric emission errors
 **Tradeoffs**: Slightly more complex initialization logic but eliminates all telemetry noise when disabled
 **Impact**: Solves the conference demo scenario and clean debug experience
+**Status**: ✅ Implemented in Milestone 1
+
+### Decision 5: Telemetry-Aware Console Output Design
+**Choice**: Design console telemetry logs specifically for developers using telemetry to enhance AI coding assistance
+**Rationale**: This repository is an experiment in telemetry-powered AI coding. Developers need actionable telemetry information (trace IDs, export status, service names) to effectively use AI assistant commands like `/trace`. Generic "initialized" messages don't support the core experiment.
+**Tradeoffs**: More complex console output logic but enables the primary use case of correlating AI queries with runtime data
+**Impact**: Enables developers to immediately use trace IDs with AI assistant commands, supporting the telemetry-powered coding experiment
+**Status**: Outstanding - requires implementation
 
 ## Implementation Plan
 
@@ -156,10 +164,10 @@ Implement proper flag-based output control:
 
 **Tasks**:
 - [x] Add `{ quiet: true }` to dotenv config initialization
-- [ ] Make OpenTelemetry initialization conditional on `dev: true` flag
-- [ ] Make logging.js shutdown handlers conditional on `dev: true`
-- [ ] Suppress telemetry metric emission failures when `dev: false`
-- [ ] Test that when `dev: false, debug: true` → zero telemetry messages appear
+- [x] Make OpenTelemetry initialization conditional on `dev: true` flag
+- [x] Make logging.js shutdown handlers conditional on `dev: true`
+- [x] Suppress telemetry metric emission failures when `dev: false`
+- [x] Test that when `dev: false, debug: true` → zero telemetry messages appear
 
 **Documentation Updates**:
 - None required (internal change)
@@ -217,17 +225,47 @@ Implement proper flag-based output control:
 **Documentation Updates**:
 - Update README with example of debug output
 
+### Milestone 6: Telemetry-Aware Console Output (Priority: Medium)
+**Goal**: Design console logs around the needs of developers using telemetry to enhance their AI coding experience
+
+**Context**: This repository is an experiment in whether feeding telemetry back into coding assistants can help the development experience. Developers in dev mode DO care about telemetry working, but they need actionable telemetry information that supports the core experiment.
+
+**Current Problems**:
+- No trace IDs shown (developers can't correlate AI queries with runtime data)
+- No export success/failure confirmation
+- No service name confirmation for Datadog queries
+- No span/metric counts to understand telemetry volume
+- Generic "initialized" messages don't help with telemetry debugging
+
+**Tasks**:
+- [ ] Replace generic "OpenTelemetry initialized" with service-aware message
+- [ ] Add trace ID display for immediate use with `/trace` commands
+- [ ] Show export success/failure with connection status
+- [ ] Display span and metric counts after operations
+- [ ] Add service name confirmation for Datadog correlation
+- [ ] Design output format: `✅ Telemetry: service=commit-story-dev, exported 5 spans (trace: abc123...)`
+- [ ] Ensure trace IDs are easily copyable for AI assistant queries
+- [ ] Test that telemetry console output supports the AI-coding workflow
+
+**Documentation Updates**:
+- Update README with telemetry console output examples
+- Document how to use displayed trace IDs with AI assistant commands
+
 ## Success Metrics
 
 ### Quantitative
-- Zero OpenTelemetry messages in user output
+- Zero OpenTelemetry noise when `dev: false` (clean debug output)
 - 100% of failures exit with code 1
 - Path matching success rate > 95% across different path formats
+- Trace IDs displayed for 100% of telemetry operations when `dev: true`
+- Export success/failure confirmation for all telemetry operations
 
 ### Qualitative
 - Users report easier troubleshooting experience
 - Reduced confusion about journal generation failures
 - Cleaner git commit output
+- Developers can easily correlate AI assistant queries with runtime telemetry data
+- Telemetry console output supports the AI-coding workflow experiment
 
 ## Risk Assessment
 
@@ -260,6 +298,40 @@ Implement proper flag-based output control:
   2. Add useful debug logs when `debug: true`
 - **New Milestone 4**: Added Conference Demo Mode requirements for `dev: true, debug: false`
 - **Strategy Shift**: Make telemetry completely conditional on `dev: true` rather than just suppressing output
+- **Milestone 1 Complete**: Successfully implemented conditional telemetry initialization
+  - Fixed duplicate shutdown messages
+  - Validated `dev: false, debug: true` produces zero telemetry noise
+  - Confirmed `dev: true` still sends telemetry to Datadog correctly
+- **Design Decision 5**: Added Telemetry-Aware Console Output milestone
+  - Recognized need for actionable telemetry info (trace IDs, export status)
+  - Focus on supporting AI-coding workflow with trace correlation
+  - New Milestone 6 addresses telemetry experiment's core needs
+
+### 2025-10-01: Milestone 1 Implementation Complete ✅
+**Duration**: ~2 hours
+**Primary Focus**: Conditional telemetry initialization and duplicate shutdown fix
+
+**Completed PRD Items** (All 5 tasks in Milestone 1):
+- [x] Make OpenTelemetry initialization conditional on `dev: true` flag - Evidence: tracing.js lines 26-102
+- [x] Make logging.js shutdown handlers conditional on `dev: true` - Evidence: logging.js lines 75-113
+- [x] Suppress telemetry metric emission failures when `dev: false` - Evidence: telemetry disabled completely when dev: false
+- [x] Test that when `dev: false, debug: true` → zero telemetry messages appear - Evidence: Manual testing confirmed clean output
+- [x] Fixed duplicate shutdown messages - Evidence: Removed manual gracefulShutdown call from index.js:185
+
+**Technical Implementation**:
+- **tracing.js**: Wrapped entire SDK initialization in `isDevMode` conditional
+- **logging.js**: Made LoggerProvider creation and shutdown handlers conditional on `dev: true`
+- **index.js**: Removed redundant shutdown call to fix duplicate messages
+- **Validation**: Tested both `dev: false` (clean) and `dev: true` (telemetry working) scenarios
+
+**Telemetry Verification**:
+- Datadog logs confirm telemetry still flows correctly when `dev: true`
+- Zero telemetry noise when `dev: false, debug: true`
+- No errors or export failures detected in recent logs
+
+**Next Session Priorities**:
+- Consider implementing Milestone 6 (Telemetry-Aware Console Output)
+- Milestone 2-5 remain available for future work if needed
 
 ## Design Document References
 

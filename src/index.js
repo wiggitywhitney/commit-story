@@ -179,10 +179,9 @@ export default async function main(commitRef = 'HEAD') {
       console.error('❌ Error generating journal entry:', error.message);
       process.exit(1);
     } finally {
-      // End span first, then flush spans and metrics
+      // End span first, then let process handlers handle telemetry shutdown
       span.end();
-      const { gracefulShutdown } = await import('./logging.js');
-      await gracefulShutdown();
+      // Note: gracefulShutdown is handled by process event handlers in logging.js
     }
   });
 }
