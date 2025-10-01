@@ -9,14 +9,38 @@
 ## Overview
 
 ### Problem Statement
-The current debug experience in Commit Story is cluttered with internal implementation details (OpenTelemetry messages, dotenv tips) and lacks clear, actionable feedback when journal generation fails. Users struggle to understand what went wrong and how to fix issues.
+
+**THE BIG THING**: The debug/dev flag combination creates the wrong user experience:
+
+**Current Broken Behavior**:
+- When `dev: false, debug: true` → User gets telemetry noise (OTLP failures, shutdown messages) mixed with helpful debug info
+- When `dev: true, debug: false` → User gets telemetry noise when they want silence for demos
+
+**Root Cause**: Telemetry initializes regardless of `dev` flag, causing noise when `dev: false`
+
+**Two Core Problems**:
+1. **Remove Unhelpful Noise**: Telemetry errors, shutdown messages, and initialization spam appear when `dev: false`
+2. **Add Useful Debug Logs**: Missing clear progress indicators and actionable error guidance
+
+Users can't get clean debug output without telemetry pollution, breaking the conference demo experience and development troubleshooting.
 
 ### Solution
-Implement a clean, user-focused debug experience that:
-1. Shows only relevant progress and error information
-2. Suppresses internal telemetry noise
-3. Provides actionable error messages with clear next steps
-4. Uses appropriate exit codes for proper error handling
+Implement proper flag-based output control:
+
+**When `dev: false, debug: true`**:
+- ✅ Clean progress messages: "Starting context collection", "Found X chat messages"
+- ✅ Clear error messages with actionable next steps
+- ❌ ZERO telemetry noise: no initialization, shutdown, or export failure messages
+
+**When `dev: true, debug: false`**:
+- ✅ Full telemetry collection (for conference demo analysis)
+- ❌ ZERO console output (clean demo presentation)
+
+**When `dev: false, debug: false`**:
+- ❌ Complete silence (production mode)
+
+**When `dev: true, debug: true`**:
+- ✅ Both telemetry AND debug messages (development mode)
 
 ### Key Benefits
 - **Improved User Experience**: Clear feedback without implementation noise
@@ -117,27 +141,38 @@ Implement a clean, user-focused debug experience that:
 **Rationale**: Handles 90% of cases without complex logic
 **Tradeoffs**: May miss edge cases but maintains simplicity
 
+### Decision 4: Conditional Telemetry Initialization
+**Choice**: Make OpenTelemetry initialization completely conditional on `dev: true` flag
+**Rationale**: The root cause of noise pollution is telemetry trying to run when `dev: false`, causing OTLP export failures, shutdown messages, and metric emission errors
+**Tradeoffs**: Slightly more complex initialization logic but eliminates all telemetry noise when disabled
+**Impact**: Solves the conference demo scenario and clean debug experience
+
 ## Implementation Plan
 
-### Milestone 1: Suppress Telemetry Noise (Priority: High)
-**Goal**: Remove OpenTelemetry and dotenv messages from user-visible output
+### Milestone 1: Remove Unhelpful Telemetry Noise (Priority: High)
+**Goal**: Make telemetry completely conditional on `dev: true` to eliminate noise when `dev: false`
+
+**The Core Problem**: Currently telemetry initializes regardless of `dev` flag, causing noise pollution
 
 **Tasks**:
-- [ ] Add `{ quiet: true }` to dotenv config initialization
-- [ ] Redirect OpenTelemetry output to null or suppress initialization messages
-- [ ] Test that telemetry still functions while output is suppressed
+- [x] Add `{ quiet: true }` to dotenv config initialization
+- [ ] Make OpenTelemetry initialization conditional on `dev: true` flag
+- [ ] Make logging.js shutdown handlers conditional on `dev: true`
+- [ ] Suppress telemetry metric emission failures when `dev: false`
+- [ ] Test that when `dev: false, debug: true` → zero telemetry messages appear
 
 **Documentation Updates**:
 - None required (internal change)
 
-### Milestone 2: Fix Exit Codes and Error Messages (Priority: High)
-**Goal**: Ensure failures exit with code 1 and show clear errors
+### Milestone 2: Add Useful Debug Logs (Priority: High)
+**Goal**: Provide clear, helpful progress messages and error guidance when `debug: true`
 
 **Tasks**:
-- [ ] Change "no chat data found" exit from 0 to 1
-- [ ] Add console.error alongside debugLog for this scenario
-- [ ] Update error message format with actionable steps
-- [ ] Verify hook script detects failure correctly
+- [ ] Fix "no chat data found" exit code from 0 to 1
+- [ ] Add console.error alongside debugLog for error scenarios in debug mode
+- [ ] Enhance progress messages with clear phase indicators
+- [ ] Add actionable next steps to all error messages
+- [ ] Verify hook script detects failure correctly with new exit codes
 
 **Documentation Updates**:
 - Update README troubleshooting section with new error messages
@@ -154,8 +189,24 @@ Implement a clean, user-focused debug experience that:
 **Documentation Updates**:
 - Add note about symlink support in README
 
-### Milestone 4: Clean Up Debug Output (Priority: Medium)
-**Goal**: Provide clear progress messages in debug mode
+### Milestone 4: Conference Demo Mode (Priority: High)
+**Goal**: Perfect `dev: true, debug: false` behavior for clean conference presentation
+
+**Requirements**:
+- Full telemetry collection (for demo analysis)
+- Zero console output (professional demo appearance)
+
+**Tasks**:
+- [ ] Audit all console.log/error/warn calls for debug flag conditioning
+- [ ] Ensure telemetry runs silently when `debug: false`
+- [ ] Test conference scenario: `dev: true, debug: false` → no console output
+- [ ] Validate telemetry data still flows to Datadog in demo mode
+
+**Documentation Updates**:
+- Update README with conference demo configuration example
+
+### Milestone 5: Clean Up Debug Output Consistency (Priority: Medium)
+**Goal**: Audit and improve debug message quality
 
 **Tasks**:
 - [ ] Audit all debugLog calls for consistency
@@ -201,6 +252,14 @@ Implement a clean, user-focused debug experience that:
 - PRD created based on debugging session findings
 - Identified key issues: telemetry noise, exit codes, path matching
 - Defined implementation approach prioritizing simplicity
+
+### 2025-10-01
+- **Design Decision 4**: Identified root cause of noise pollution - telemetry initialization regardless of `dev` flag
+- **Problem Clarification**: THE BIG THING is two separate issues:
+  1. Remove unhelpful telemetry noise when `dev: false`
+  2. Add useful debug logs when `debug: true`
+- **New Milestone 4**: Added Conference Demo Mode requirements for `dev: true, debug: false`
+- **Strategy Shift**: Make telemetry completely conditional on `dev: true` rather than just suppressing output
 
 ## Design Document References
 

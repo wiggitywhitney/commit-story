@@ -17,7 +17,7 @@ import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 
-config();
+config({ quiet: true });
 
 // Debug mode detection from config file
 let isDebugMode = false;
