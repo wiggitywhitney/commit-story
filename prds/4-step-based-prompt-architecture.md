@@ -1,13 +1,13 @@
 # PRD-4: Step-Based Prompt Architecture for Section Generators
 
-**GitHub Issue**: [#4](https://github.com/wiggitywhitney/commit-story/issues/4)  
-**Status**: Planning  
-**Created**: 2025-09-05  
-**Last Updated**: 2025-09-05  
+**GitHub Issue**: [#4](https://github.com/wiggitywhitney/commit-story/issues/4)
+**Status**: Planning
+**Created**: 2025-09-05
+**Last Updated**: 2025-10-02  
 
 ## Summary
 
-Restructure the Technical Decisions and Summary generator prompts to follow the successful step-based pattern used in `/prd-create`, `/prd-next`, and `/prd-update-decisions` commands. The current prompts suffer from format-first antipatterns that cause AI to skip critical analysis steps, resulting in lower quality outputs.
+Restructure all three section generator prompts (Technical Decisions, Summary, and Dialogue) to follow the successful step-based pattern used in `/prd-create`, `/prd-next`, and `/prd-update-decisions` commands. The current prompts suffer from format-first antipatterns that cause AI to skip critical analysis steps, resulting in lower quality outputs.
 
 ## Problem Statement
 
@@ -22,12 +22,13 @@ Analysis of existing prompts reveals a clear effectiveness gap:
 ### Problem Pattern (Section Generator Prompts)
 - **Technical Decisions Prompt**: Shows output format at line 13-20 BEFORE analysis steps
 - **Summary Prompt**: Has competing principles that dilute clear process flow
+- **Dialogue Prompt**: Format examples appear mid-prompt (line 77-82); anti-hallucination rules buried as appendix
 - **Result**: AI pattern-matches to format rather than deeply analyzing content
 
 ## Success Criteria
 
 1. **Output Quality**: Restructured prompts produce equivalent or better results than current prompts
-2. **Consistency**: Both prompts follow the same successful step-based pattern
+2. **Consistency**: All three prompts follow the same successful step-based pattern
 3. **Safety**: No critical functionality lost during restructuring
 4. **Validation**: Before/after testing confirms improvement across diverse commit types
 
@@ -60,125 +61,154 @@ Based on analysis of `/prd-create`, `/prd-next`, and `/prd-update-decisions`:
 - Examples shown only after process is complete
 - Prevents premature pattern matching
 
+### 6. Essential Introductory Context
+- Successful prompts include problem framing before steps
+- "Overall Goal" and strategy context help AI understand purpose
+- This is NOT competing principles - it's necessary context setting
+- Steps come after context, not instead of it
+
 ## Implementation Plan
 
-### Milestone 1: Content Preservation Analysis
+### Milestone 1: Technical Decisions Prompt Restructuring (3-4 hours)
 
-#### M1.1 Current Prompt Audit
-- [ ] Map all requirements/rules in Technical Decisions prompt
-- [ ] Map all requirements/rules in Summary prompt  
-- [ ] Document critical elements that must be preserved
-- [ ] Identify elements that can be consolidated or improved
-
-#### M1.2 Restructure Design
-- [ ] Design new step-based structure for Technical Decisions
-- [ ] Design new step-based structure for Summary
-- [ ] Map where each original element moves in new structure
-- [ ] Ensure no critical functionality is lost
-
-### Milestone 2: Technical Decisions Prompt Restructuring
-
-#### Current Problems
-- Format specification at lines 13-20 (too early)
-- Buried critical logic (Implemented vs Discussed determination)
-- Weak analysis steps (lines 27-32 are brief afterthoughts)
-- No verification step
-
-#### New Structure
-- [ ] **Step 1**: Analyze chat for technical discussions
-- [ ] **Step 2**: Analyze git diff for file changes  
-- [ ] **Step 3**: Classify files (documentation vs functional)
-- [ ] **Step 4**: Match discussions to file changes
-- [ ] **Step 5**: Verify classification accuracy
-- [ ] **Step 6**: Format output (ONLY NOW reveal bullet format)
-- [ ] Preserve all anti-hallucination rules and critical instructions
-
-### Milestone 3: Summary Prompt Restructuring  
-
-#### Current Problems
-- Has process steps but immediately dilutes with 7+ competing principles
-- No clear "complete step 1, then step 2" enforcement
-- Output guidance scattered throughout
-
-#### New Structure
-- [ ] **Step 1**: Analyze code changes in diff
-- [ ] **Step 2**: Find related discussions in chat
-- [ ] **Step 3**: Identify significance level
-- [ ] **Step 4**: Match tone to actual work
-- [ ] **Step 5**: Verify authenticity  
-- [ ] **Step 6**: Generate prose output (ONLY NOW reveal format)
-- [ ] Maintain all authenticity principles and significance matching rules
-
-### Milestone 4: Testing and Validation
-
-#### M4.1 Test Commit Selection
-- [ ] Select recent implementation commit with code changes
-- [ ] Select documentation-only commit
-- [ ] Select mixed discussion/implementation commit
-- [ ] Select bug fix or refactoring commit
-- [ ] Select complex multi-file change
-
-#### M4.1.1 Case Study: 2025-09-20 Journal Signal vs Noise
-- [ ] Review @journal/entries/2025-09/2025-09-20.md - 21 commits in one day
-- [ ] Key question: The narrative logger implementation and 3-hour debugging session (commit 5b69636a) were major accomplishments but are they lost in the volume of content?
-- [ ] How can prompts better surface the day's most significant work?
-- [ ] Should summaries prioritize by time spent, code impact, or technical complexity?
-- [ ] Test improved prompts against this day to ensure major accomplishments are immediately obvious
-- [ ] Note: Debugging session journal shows recency bias - emphasizes final timestamp fix over earlier agent config discovery
-
-#### M4.2 Before/After Testing
-- [ ] Run current Technical Decisions prompt on test commits → save outputs
-- [ ] Run restructured Technical Decisions prompt on same commits → compare
+#### Tasks
+- [ ] Analyze current prompt (identify what's worth keeping)
+- [ ] Restructure with proper step-based architecture
+- [ ] Move format specifications to final step (currently at lines 13-20)
+- [ ] Integrate anti-hallucination rules into relevant steps (not appendix)
+- [ ] Add verification step before output generation
+- [ ] Test before/after on 3-5 diverse commits
 - [ ] Present side-by-side comparison for human approval
-- [ ] Only proceed after Technical Decisions approval
-- [ ] Run current Summary prompt on test commits → save outputs
-- [ ] Run restructured Summary prompt on same commits → compare
-- [ ] Present side-by-side comparison for human approval
-- [ ] Only proceed after Summary approval
+- [ ] Update `src/generators/prompts/sections/technical-decisions-prompt.js`
 
-#### M4.3 Implementation
-- [ ] Update `/src/generators/prompts/sections/technical-decisions-prompt.js`
-- [ ] Update `/src/generators/prompts/sections/summary-prompt.js`
-- [ ] Run integration tests to ensure no regressions
+#### Proposed Structure (to be refined during implementation)
+- **Step 1**: Analyze chat for technical discussions
+- **Step 2**: Analyze git diff for file changes
+- **Step 3**: Classify files (documentation vs functional)
+- **Step 4**: Match discussions to file changes
+- **Step 5**: Verify classification accuracy
+- **Step 6**: Format output (ONLY NOW reveal bullet format)
+
+### Milestone 2: Summary Prompt Restructuring (3-4 hours)
+
+#### Tasks
+- [ ] Analyze current prompt (identify what's worth keeping)
+- [ ] Restructure with proper step-based architecture
+- [ ] Move format specifications to final step
+- [ ] Integrate authenticity principles into relevant steps (not scattered)
+- [ ] Add verification step before output generation
+- [ ] Test before/after on same 3-5 commits from Milestone 1
+- [ ] Present side-by-side comparison for human approval
+- [ ] Update `src/generators/prompts/sections/summary-prompt.js`
+
+#### Proposed Structure (to be refined during implementation)
+- **Step 1**: Analyze code changes in diff
+- **Step 2**: Find related discussions in chat
+- **Step 3**: Identify significance level
+- **Step 4**: Match tone to actual work
+- **Step 5**: Verify authenticity
+- **Step 6**: Generate prose output (ONLY NOW reveal format)
+
+### Milestone 3: Dialogue Prompt Refinement (2-3 hours)
+
+#### Tasks
+- [ ] Analyze current prompt (identify specific issues)
+- [ ] Move format examples to very end (currently at line 77-82)
+- [ ] Integrate anti-hallucination rules into Steps 2-3 (not appendix)
+- [ ] Preserve essential introductory context ("Overall Goal", "Summary-Guided Approach")
+- [ ] Ensure true progressive disclosure throughout
+- [ ] Test before/after on same 3-5 commits from previous milestones
+- [ ] Present side-by-side comparison for human approval
+- [ ] Update `src/generators/prompts/sections/dialogue-prompt.js`
+
+#### Key Principle
+The dialogue prompt's introductory context is ESSENTIAL and should be preserved. Each AI instance needs to understand:
+- The problem it's solving (extracting authentic dialogue)
+- The strategy to use (summary-guided approach)
+- Why quality matters (foundation of entire journal)
+
+This framing is not "competing principles" - it's necessary context before steps begin.
 
 ## Technical Decisions
 
 ### DD-001: Sequential Step Architecture
-**Decision**: Restructure both prompts to use numbered steps that must be completed sequentially  
+**Decision**: Restructure all three prompts to use numbered steps that must be completed sequentially
 **Rationale**: Prevents AI from jumping ahead to format generation before completing analysis
 **Impact**: Major structural change requiring complete prompt rewrite
+**Status**: ⏳ Outstanding - See Milestones 1-3 tasks
 
-### DD-002: Progressive Disclosure Pattern  
+### DD-002: Progressive Disclosure Pattern
 **Decision**: Move all format specifications to the final step after analysis is complete
 **Rationale**: Format-first patterns cause premature pattern matching instead of deep analysis
 **Impact**: Requires reorganizing all output formatting instructions
+**Status**: ⏳ Outstanding - See Milestones 1-3 tasks
 
 ### DD-003: Mandatory Human Approval Testing
-**Decision**: Require side-by-side before/after comparison with human approval before implementation
+**Decision**: Require side-by-side before/after comparison with human approval before each prompt implementation
 **Rationale**: Changes to core generation logic are high-risk; quality must be verified
 **Impact**: Extends timeline but ensures quality preservation
+**Status**: ⏳ Outstanding - Each milestone has testing task
 
-### DD-004: Content Preservation Mapping
-**Decision**: Create comprehensive audit of all current prompt elements before restructuring  
-**Rationale**: Prevents accidental loss of critical functionality during rewrite
-**Impact**: Additional upfront analysis work but ensures complete migration
+### DD-004: Eliminate Waterfall Analysis Phase (2025-10-02)
+**Decision**: Remove separate analysis milestones - integrate analysis into each prompt's restructuring work
+**Rationale**: Upfront design documentation is makework; analysis happens naturally during restructuring
+**Impact**: Reduces total effort from 11-16 hours to 8-11 hours; three focused milestones instead of four bloated ones
+**Status**: ✅ Implemented - PRD structure updated per this decision
+
+### DD-005: Include Dialogue Prompt Refinement (2025-10-02)
+**Decision**: Add Milestone 3 to refine dialogue prompt despite it being "close enough" to the pattern
+**Rationale**: All three prompts should follow identical architectural standards for consistency
+**Impact**: Adds 2-3 hours to project scope but ensures uniform quality
+**Status**: ⏳ Outstanding - See Milestone 3 tasks
+
+### DD-006: Preserve Essential Introductory Context (2025-10-02)
+**Decision**: Keep "Overall Goal" and strategy framing in prompts; this is necessary context, not competing principles
+**Rationale**: Each AI instance needs problem framing before executing steps; successful command prompts use this pattern
+**Impact**: Prevents over-correction that would remove valuable context
+**Status**: ✅ Implemented - Documented in Milestone 3 "Key Principle"
 
 ## Dependencies
 
 - No external dependencies
-- Dialogue prompt already follows correct pattern, no changes needed
 - Testing requires access to diverse historical commits
+- Each milestone builds on lessons from previous milestone (test on same commits for consistency)
 
 ## Risks and Mitigation
 
 ### Risk: Quality Regression
-**Mitigation**: Mandatory before/after testing with human approval on diverse commit types
+**Likelihood**: Medium
+**Impact**: High
+**Mitigation**: Mandatory before/after testing with human approval on diverse commit types (each milestone)
 
-### Risk: Lost Functionality  
-**Mitigation**: Comprehensive content mapping before restructuring
+### Risk: Lost Functionality
+**Likelihood**: Low
+**Impact**: High
+**Mitigation**: Analysis integrated into restructuring work; preserve anti-hallucination rules and critical instructions
 
 ### Risk: Over-Engineering
+**Likelihood**: Low
+**Impact**: Medium
 **Mitigation**: Follow existing successful patterns exactly; don't invent new approaches
+
+### Risk: Analysis Paralysis
+**Likelihood**: Medium (eliminated by DD-004)
+**Impact**: Medium
+**Mitigation**: No upfront design phase; learn by doing during each milestone
+
+## Progress Log
+
+### 2025-10-02: Strategic Restructure of Implementation Plan
+**Context**: During PRD-26 conference roadmap analysis, user questioned PRD-4's original structure
+
+**Key Decisions**:
+- Eliminated separate analysis milestone (DD-004) - integrate into each prompt's work
+- Added dialogue prompt to scope (DD-005) - all three prompts should meet same standard
+- Clarified essential introductory context (DD-006) - not competing principles, necessary framing
+- Refined to three self-contained milestones: Technical Decisions (3-4h), Summary (3-4h), Dialogue (2-3h)
+
+**Total Effort**: 8-11 hours (down from original 11-16 hours)
+
+**Status**: PRD restructured, ready for implementation after PRD-24 (Package & Deploy) completes
 
 ## Future Considerations
 
