@@ -221,15 +221,20 @@ sdk = initializeTelemetryConditionally();
  * Gracefully shutdown telemetry with timeout
  * @param {Object} options - Shutdown options
  * @param {number} options.timeoutMs - Maximum time to wait for shutdown (default: 2000ms)
- * @returns {Promise<void>}
+ * @returns {Promise<{success: boolean, error?: Error}>} Export status
  */
 export async function shutdownTelemetry({ timeoutMs = 2000 } = {}) {
   if (!sdk) {
     // Telemetry not initialized (dev mode disabled), nothing to shutdown
-    return;
+    return { success: true };
   }
 
-  await shutdownWithTimeout(() => sdk.shutdown(), timeoutMs, 'Telemetry');
+  try {
+    await shutdownWithTimeout(() => sdk.shutdown(), timeoutMs, 'Telemetry');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error };
+  }
 }
 
 export default sdk;

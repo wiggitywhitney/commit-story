@@ -326,9 +326,46 @@ User suggested simplified session isolation approach: "What if all we do is grou
 - ✅ **Clean status output** - 4-phase progress indicators show exactly what's happening
 - ✅ **Process stability** - No more hanging (was breaking workflows)
 
-**PRD-23 Updated Status**: 60% complete (2/6 milestones done)
+**PRD-23 Updated Status**: 60% complete (2/6 milestones done, 1 cancelled)
 **Overall Conference Progress**: 60% complete (3/5 PRDs)
-**Next Session Priorities**: Milestone 4 (Conference Demo Mode) for silent telemetry OR begin PRD-24 (Package & Deploy)
+**Next Session Priorities**: ~~Milestone 4 (Conference Demo Mode)~~ **CANCELLED** - proceed to Milestone 6 or PRD-24
+
+### 2025-10-02: PRD-23 Design Decision 6 - Milestone 4 Cancelled ✅
+**Duration**: Strategic design discussion during /prd-next-telemetry-powered analysis
+**Primary Focus**: Conference demo mode feasibility assessment
+
+**Critical User Question**: "What if I need to debug dev mode?"
+- Exposed fundamental flaw in Milestone 4 design
+- Silent telemetry mode would prevent debugging telemetry issues
+- Would make trace IDs unavailable for AI assistant queries
+
+**Design Decision 6 Summary**:
+- **Milestone 4 (Conference Demo Mode) cancelled** - unnecessary complexity
+- Background mode (`debug: false`) already provides silence via git hook backgrounding
+- Foreground mode (`debug: true`) provides demo-friendly 4-phase progress indicators
+- Current implementation (Milestones 1 & 2) already conference-ready
+
+**Conference Demo Strategy Clarified**:
+- Use `debug: false` for silent background operation during commits
+- Use `debug: true` for foreground demos with helpful progress visualization
+- Milestone 6 telemetry output will enhance demos, not detract
+
+**Updated PRD-23 Status**: ~70% complete
+- ✅ Milestone 1: Conditional telemetry initialization
+- ✅ Milestone 2: Enhanced debug logging & process exit
+- Milestone 3: Path normalization (lower priority)
+- ❌ Milestone 4: **CANCELLED per Design Decision 6**
+- Milestone 5: Debug output consistency (optional polish)
+- Milestone 6: Telemetry-aware console output (still valuable for experiment)
+
+**Impact on Conference Roadmap**:
+- PRD-23 conference requirements **effectively met** (no blocking work remains)
+- Can proceed to PRD-24 (Package & Deploy) or complete Milestone 6 for enhanced telemetry UX
+- Milestone 6 would support telemetry experiment goals but not required for demo
+
+**Next Session Options**:
+1. **PRD-24 (Package & Deploy v1.1.0)** - Conference distribution critical path
+2. **PRD-23 Milestone 6** - Enhanced telemetry developer experience (nice-to-have)
 
 ## Risk Management
 

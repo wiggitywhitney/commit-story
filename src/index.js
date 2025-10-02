@@ -48,6 +48,9 @@ const debugLog = (message) => {
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
 
+// Module-level variable to store trace ID for telemetry output
+let currentTraceId = null;
+
 /**
  * Main entry point - orchestrates the complete journal generation flow
  * Parses CLI arguments and executes journal generation with full telemetry correlation
@@ -72,6 +75,10 @@ export default async function main() {
       'code.function': 'main'
     }
   }, async (span) => {
+    // Capture trace ID for telemetry output (when dev mode enabled)
+    if (isDevMode) {
+      currentTraceId = span.spanContext().traceId;
+    }
 
     // Parse CLI arguments with full telemetry correlation
     const { commitRef, isDryRun } = await tracer.startActiveSpan(OTEL.span.cli.parse_arguments(), {
@@ -384,6 +391,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       // Run main and get exit code
       const exitCode = await main();
 
+      // Display trace ID for AI queries (only when dev mode enabled)
+      if (isDevMode && currentTraceId) {
+        console.log(`\n📊 Trace: ${currentTraceId}`);
+      }
+
       // Import shutdown functions dynamically to avoid circular dependencies
       const [{ shutdownTelemetry }, { shutdownLogging }] = await Promise.all([
         import('./tracing.js'),
@@ -394,12 +406,52 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       if (isDebugMode) {
         debugLog('\n🔄 Shutting down telemetry...');
       }
-      await Promise.all([
+      const [loggingResult, telemetryResult] = await Promise.all([
         shutdownLogging({ timeoutMs: 2000 }),
         shutdownTelemetry({ timeoutMs: 2000 })
       ]);
       if (isDebugMode) {
         debugLog('✅ Telemetry shutdown complete');
+      }
+
+      // Display export status (only when dev mode enabled)
+      if (isDevMode) {
+        const logsSuccess = loggingResult.success;
+        const tracesSuccess = telemetryResult.success;
+
+        if (logsSuccess && tracesSuccess) {
+          // Success case: simple confirmation
+          console.log('✅ Telemetry exported');
+        } else {
+          // Failure case: detailed diagnostics
+          console.log('\n⚠️  Telemetry export failed:');
+
+          if (!tracesSuccess) {
+            const errorMsg = telemetryResult.error?.message || 'Unknown error';
+            console.log(`   • Traces & Metrics: ❌ Failed - ${errorMsg}`);
+          } else {
+            console.log('   • Traces & Metrics: ✅ Exported');
+          }
+
+          if (!logsSuccess) {
+            const errorMsg = loggingResult.error?.message || 'Unknown error';
+            console.log(`   • Logs: ❌ Failed - ${errorMsg}`);
+          } else {
+            console.log('   • Logs: ✅ Exported');
+          }
+
+          // Check for common error patterns and provide remediation
+          const allErrors = [
+            telemetryResult.error?.message || '',
+            loggingResult.error?.message || ''
+          ].join(' ');
+
+          if (allErrors.includes('ECONNREFUSED') || allErrors.includes('4318')) {
+            console.log('\nCheck: Is Datadog Agent running? (brew services start datadog-agent)');
+          } else if (allErrors.includes('timeout')) {
+            console.log('\nCheck: Datadog Agent may be slow to respond');
+          }
+        }
       }
 
       // Set exit code - process.exit() is safe now because telemetry is flushed

@@ -179,15 +179,20 @@ export { logger };
  * Shutdown logging system with timeout
  * @param {Object} options - Shutdown options
  * @param {number} options.timeoutMs - Maximum time to wait for shutdown (default: 2000ms)
- * @returns {Promise<void>}
+ * @returns {Promise<{success: boolean, error?: Error}>} Export status
  */
 export async function shutdownLogging({ timeoutMs = 2000 } = {}) {
   if (!isDevMode || !batchProcessor) {
     // Logging not initialized, nothing to shutdown
-    return;
+    return { success: true };
   }
 
-  await shutdownWithTimeout(() => batchProcessor.forceFlush(), timeoutMs, 'Logging');
+  try {
+    await shutdownWithTimeout(() => batchProcessor.forceFlush(), timeoutMs, 'Logging');
+    return { success: true };
+  } catch (error) {
+    return { success: false, error };
+  }
 }
 
 // Add graceful shutdown handler to flush logs and metrics (only when dev mode enabled)

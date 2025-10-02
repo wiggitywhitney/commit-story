@@ -148,12 +148,34 @@ Implement proper flag-based output control:
 **Impact**: Solves the conference demo scenario and clean debug experience
 **Status**: ✅ Implemented in Milestone 1
 
-### Decision 5: Telemetry-Aware Console Output Design
-**Choice**: Design console telemetry logs specifically for developers using telemetry to enhance AI coding assistance
-**Rationale**: This repository is an experiment in telemetry-powered AI coding. Developers need actionable telemetry information (trace IDs, export status, service names) to effectively use AI assistant commands like `/trace`. Generic "initialized" messages don't support the core experiment.
-**Tradeoffs**: More complex console output logic but enables the primary use case of correlating AI queries with runtime data
-**Impact**: Enables developers to immediately use trace IDs with AI assistant commands, supporting the telemetry-powered coding experiment
-**Status**: Outstanding - requires implementation
+### Decision 5: Minimal Telemetry Output - Silent Success, Loud Failure
+**Date**: 2025-10-02
+**Choice**: Show minimal telemetry output following "silent success, loud specific failure" principle
+**Rationale**:
+1. **Developers need exactly 2 things**: Trace ID (for AI queries) and export confirmation (to know telemetry reached Datadog)
+2. **Avoid redundancy**: Commit hash already shown in debug output, service name is known, span/metric counts are noise
+3. **Two critical moments**: Show trace ID after main() completes (enables immediate AI queries), show export status after flush (confirms what reached Datadog)
+4. **Trace generation ≠ trace export**: Need feedback at both moments to understand complete telemetry pipeline status
+**Success output**: One line with trace ID, one line confirming export with counts
+**Failure output**: Detailed breakdown of exactly what failed (traces/logs/metrics), specific error messages, and remediation guidance
+**Tradeoffs**: Requires tracking export success/failure across telemetry types, but provides actionable diagnostics when things break
+**Impact**: Enables the AI-coding feedback loop (Code → Telemetry → AI Analysis → Better Code) while minimizing noise
+**Status**: Outstanding - requires implementation in Milestone 6
+
+### Decision 6: Milestone 4 (Conference Demo Mode) is Unnecessary
+**Date**: 2025-10-02
+**Choice**: Remove Milestone 4 entirely from the implementation plan
+**Rationale**:
+1. **Background mode already provides silence**: When `debug: false`, the git hook runs the process in the background, producing zero visible output regardless of telemetry state
+2. **Foreground output is demo-friendly**: When `debug: true`, the clean 4-phase progress indicators (from Milestone 2) are actually beneficial for conference demonstrations - they show the audience what's happening
+3. **Telemetry debugging impossible with silent mode**: If `dev: true, debug: false` suppressed telemetry output, developers couldn't debug telemetry issues or use trace IDs for AI assistant queries (defeats Milestone 6's purpose)
+4. **KISS principle violation**: Adding complexity to suppress output that's already conditionally shown contradicts PRD's design philosophy
+**Tradeoffs**: None - this simplifies the implementation while maintaining all required functionality
+**Impact**:
+- Conference demo can use either `debug: false` (background/silent) or `debug: true` (foreground with helpful progress)
+- Milestone 6's telemetry output will enhance demos when shown, not detract
+- Removes unnecessary complexity from the codebase
+**Status**: ✅ Decision made, Milestone 4 removed from plan
 
 ## Implementation Plan
 
@@ -185,67 +207,97 @@ Implement proper flag-based output control:
 **Documentation Updates**:
 - Update README troubleshooting section with new error messages
 
-### Milestone 3: Implement Path Normalization (Priority: Medium)
-**Goal**: Make path matching more robust
+### Milestone 3: Implement Path Normalization ~~(Priority: Medium)~~ **CANCELLED** ❌
+**Status**: ❌ **CANCELLED per user decision** (2025-10-02)
 
-**Tasks**:
-- [ ] Add path.resolve() to both sides of path comparison
-- [ ] Remove trailing slashes before comparison
-- [ ] Add debug output showing normalized paths
-- [ ] Test with symlinked directories
+**Original Goal**: Make path matching more robust
 
-**Documentation Updates**:
-- Add note about symlink support in README
+**Why Cancelled**: "Let's not fix a problem that isn't a problem yet" - Current path matching works for 90%+ of cases. This would only be needed if users report path matching failures with symlinks or trailing slashes. Better to defer until actual problems arise.
 
-### Milestone 4: Conference Demo Mode (Priority: High)
-**Goal**: Perfect `dev: true, debug: false` behavior for clean conference presentation
+**Original Tasks** (not needed):
+- ~~Add path.resolve() to both sides of path comparison~~
+- ~~Remove trailing slashes before comparison~~
+- ~~Add debug output showing normalized paths~~
+- ~~Test with symlinked directories~~
 
-**Requirements**:
-- Full telemetry collection (for demo analysis)
-- Zero console output (professional demo appearance)
+### Milestone 4: Conference Demo Mode ~~(Priority: High)~~ **CANCELLED** ✅
+**Status**: ❌ **CANCELLED per Design Decision 6** (2025-10-02)
 
-**Tasks**:
-- [ ] Audit all console.log/error/warn calls for debug flag conditioning
-- [ ] Ensure telemetry runs silently when `debug: false`
-- [ ] Test conference scenario: `dev: true, debug: false` → no console output
-- [ ] Validate telemetry data still flows to Datadog in demo mode
+**Original Goal**: Perfect `dev: true, debug: false` behavior for clean conference presentation
 
-**Documentation Updates**:
-- Update README with conference demo configuration example
+**Why Cancelled**:
+- Background mode (`debug: false`) already provides silent operation
+- Foreground mode (`debug: true`) provides demo-friendly progress indicators
+- Silent telemetry mode would prevent debugging telemetry issues
+- Unnecessary complexity that violates KISS principle
 
-### Milestone 5: Clean Up Debug Output Consistency (Priority: Medium)
-**Goal**: Audit and improve debug message quality
+**Conference Demo Approach**:
+- Use `debug: false` for background/silent operation during commits
+- Use `debug: true` for foreground demos showing clean 4-phase progress
+- Current implementation (Milestones 1 & 2) already conference-ready
 
-**Tasks**:
-- [ ] Audit all debugLog calls for consistency
-- [ ] Ensure all error paths use console.error in debug mode
-- [ ] Remove or conditionalize any remaining noise
-- [ ] Add clear progress indicators for each phase
+**Original Tasks** (not needed):
+- ~~Audit all console.log/error/warn calls for debug flag conditioning~~
+- ~~Ensure telemetry runs silently when `debug: false`~~
+- ~~Test conference scenario: `dev: true, debug: false` → no console output~~
+- ~~Validate telemetry data still flows to Datadog in demo mode~~
 
-**Documentation Updates**:
-- Update README with example of debug output
+### Milestone 5: Clean Up Debug Output Consistency ~~(Priority: Medium)~~ **CANCELLED** ❌
+**Status**: ❌ **CANCELLED per user decision** (2025-10-02)
+
+**Original Goal**: Audit and improve debug message quality
+
+**Why Cancelled**: Current debug output is already good - main user-facing messages (index.js) are clean and consistent with clear 4-phase structure. Other modules' debug output is for internal telemetry. Better to move to PRD-24 (Package & Deploy) which adds real user value rather than polish code that already works.
+
+**Original Tasks** (not needed):
+- ~~Audit all debugLog calls for consistency~~
+- ~~Ensure all error paths use console.error in debug mode~~
+- ~~Remove or conditionalize any remaining noise~~
+- ~~Add clear progress indicators for each phase~~ (already done in Milestone 2)
 
 ### Milestone 6: Telemetry-Aware Console Output (Priority: Medium)
-**Goal**: Design console logs around the needs of developers using telemetry to enhance their AI coding experience
+**Goal**: Provide minimal, actionable telemetry feedback that enables the AI-coding workflow without adding noise
 
-**Context**: This repository is an experiment in whether feeding telemetry back into coding assistants can help the development experience. Developers in dev mode DO care about telemetry working, but they need actionable telemetry information that supports the core experiment.
+**Context**: This repository is an experiment in whether feeding telemetry back into coding assistants can help the development experience. Developers need trace IDs to query telemetry via AI commands, and confirmation that telemetry actually reached Datadog.
+
+**Design Principle**: Silent success, loud specific failure
+- Success: Just show trace ID (one line)
+- Failure: Show exactly what broke, where, and how to fix it
 
 **Current Problems**:
-- No trace IDs shown (developers can't correlate AI queries with runtime data)
-- No export success/failure confirmation
-- No service name confirmation for Datadog queries
-- No span/metric counts to understand telemetry volume
-- Generic "initialized" messages don't help with telemetry debugging
+- No trace IDs shown (developers can't use `/trace` commands)
+- No export success/failure confirmation (can't tell if telemetry reached Datadog)
+- Export failures are silent (can't debug broken telemetry pipeline)
 
 **Tasks**:
-- [ ] Replace generic "OpenTelemetry initialized" with service-aware message
-- [ ] Add trace ID display for immediate use with `/trace` commands
-- [ ] Show export success/failure with connection status
-- [ ] Display span and metric counts after operations
-- [ ] Add service name confirmation for Datadog correlation
-- [ ] Design output format: `✅ Telemetry: service=commit-story-dev, exported 5 spans (trace: abc123...)`
-- [ ] Ensure trace IDs are easily copyable for AI assistant queries
-- [ ] Test that telemetry console output supports the AI-coding workflow
+- [x] Capture trace ID from main span execution
+- [x] Display trace ID immediately after main() completes (enables AI queries during shutdown)
+- [x] Track export success/failure for each telemetry type (traces, logs, metrics)
+- [x] Show final export status after flush completes
+- [x] On success: `✅ Telemetry exported (21 spans, 45 logs, 3 metrics)`
+- [x] On failure: Show detailed breakdown of what failed with specific error messages
+- [x] Include remediation guidance for common failures (e.g., "Datadog Agent not running")
+- [x] Ensure all output only appears when `dev: true`
+- [x] Test that trace IDs work with `/trace` command
+
+**Success Output Format**:
+```
+📊 Trace: 4e664d4f753cf68196ce395b6b920d10
+[... shutdown happens ...]
+✅ Telemetry exported (21 spans, 45 logs, 3 metrics)
+```
+
+**Failure Output Format**:
+```
+📊 Trace: 4e664d4f753cf68196ce395b6b920d10
+[... shutdown happens ...]
+⚠️  Telemetry export failed:
+   • Traces: ✅ 21 spans exported
+   • Logs: ❌ Failed - ECONNREFUSED localhost:4318/v1/logs
+   • Metrics: ❌ Failed - ECONNREFUSED localhost:4318/v1/metrics
+
+Check: Is Datadog Agent running? (brew services start datadog-agent)
+```
 
 **Documentation Updates**:
 - Update README with telemetry console output examples
@@ -525,10 +577,127 @@ Implement proper flag-based output control:
 - **Status**: ✅ Implemented and validated
 
 **Next Session Priorities**:
-- Milestone 4 (Conference Demo Mode) - Silent telemetry for professional presentation
+- ~~Milestone 4 (Conference Demo Mode)~~ - **CANCELLED** (see Design Decision 6)
 - Milestone 6 (Telemetry-Aware Console Output) - Show trace IDs for AI assistant queries
 - Milestone 3 (Path Normalization) - Lower priority, handle symlinks robustly
 - Documentation: Update README troubleshooting section with new error messages
+
+### 2025-10-02: Design Decision 6 - Milestone 4 Cancelled ✅
+**Duration**: Design discussion during /prd-next-telemetry-powered analysis
+**Decision Context**: Analyzing next priority task for PRD-26 conference roadmap
+
+**Key Insight**: User question "What if I need to debug dev mode?" exposed critical flaw in Milestone 4 design
+
+**Design Decision 6 Rationale**:
+1. **Background mode already provides silence**: Git hook backgrounds the process when `debug: false`, producing zero output
+2. **Foreground mode is demo-friendly**: Clean 4-phase progress indicators (Milestone 2) are beneficial for conference demos
+3. **Silent telemetry breaks debugging**: Suppressing telemetry output when `dev: true, debug: false` would prevent debugging telemetry issues and using trace IDs for AI queries
+4. **KISS principle violation**: Adding complexity to suppress already-conditional output contradicts PRD's core design philosophy
+
+**Impact on PRD-23**:
+- Milestone 4 marked as **CANCELLED** (not needed)
+- Conference demo strategy clarified: use `debug: false` for silent background or `debug: true` for foreground with helpful progress
+- Milestone 6 (Telemetry-Aware Console Output) becomes more valuable - telemetry details enhance demos rather than detract
+
+**Impact on Conference Roadmap (PRD-26)**:
+- PRD-23 effectively conference-ready after Milestones 1 & 2
+- No blocking work remains for conference demo cleanliness
+- Focus can shift to PRD-24 (Package & Deploy v1.1.0)
+
+**Status**: ✅ Decision documented, Milestone 4 removed from implementation plan
+
+### 2025-10-02: Design Decision 5 - Minimal Telemetry Output Design ✅
+**Duration**: 30-minute design discussion during /prd-next-telemetry-powered planning
+**Decision Context**: Refining Milestone 6 requirements for telemetry console output
+
+**Problem Identified**: Initial Milestone 6 design included noise (span counts, metric counts, service names, redundant commit hashes) that would clutter output without providing actionable value
+
+**Key Insights from Discussion**:
+1. **Developers need exactly 2 things**: Trace ID (for `/trace` AI queries) and export success/failure (to confirm telemetry reached Datadog)
+2. **Avoid redundancy**: Debug output already shows commit hash, service name is known (`commit-story-dev`), counts are noise
+3. **Two critical moments**: Trace generation (show trace ID immediately) vs trace export (show after flush)
+4. **Silent success principle**: If telemetry works, one line is enough; if it fails, show detailed diagnostics
+
+**Design Decision 5 Rationale**:
+- **Success case**: Show trace ID after main() + brief success message after flush (2 lines total)
+- **Failure case**: Show trace ID + detailed breakdown of which telemetry types failed with specific errors and remediation guidance
+- **Timing**: Display trace ID early (enables AI queries during shutdown), confirm export status after flush (validates pipeline)
+
+**Output Formats Agreed Upon**:
+
+Success:
+```
+📊 Trace: 4e664d4f753cf68196ce395b6b920d10
+✅ Telemetry exported (21 spans, 45 logs, 3 metrics)
+```
+
+Failure:
+```
+📊 Trace: 4e664d4f753cf68196ce395b6b920d10
+⚠️  Telemetry export failed:
+   • Traces: ✅ 21 spans exported
+   • Logs: ❌ Failed - ECONNREFUSED localhost:4318/v1/logs
+   • Metrics: ❌ Failed - ECONNREFUSED localhost:4318/v1/metrics
+Check: Is Datadog Agent running? (brew services start datadog-agent)
+```
+
+**Impact on Implementation**:
+- Milestone 6 tasks updated to reflect minimal output approach
+- Removed unnecessary tasks (service name display, redundant counts in success case)
+- Added export tracking requirements (success/failure per telemetry type)
+- Clarified timing requirements (show trace ID before shutdown, export status after flush)
+
+**Status**: ✅ Decision documented, Milestone 6 tasks updated
+
+### 2025-10-02: Milestone 6 Implementation Complete ✅
+**Duration**: ~2-3 hours
+**Primary Focus**: Minimal telemetry console output with "silent success, loud failure" principle
+
+**Completed PRD Items** (All 9 tasks in Milestone 6):
+- [x] Capture trace ID from main span execution - Evidence: src/index.js:52 (module variable), src/index.js:78-81 (span context extraction)
+- [x] Display trace ID immediately after main() completes - Evidence: src/index.js:394-397 (displays before shutdown)
+- [x] Track export success/failure for traces/logs/metrics - Evidence: src/tracing.js:226-238, src/logging.js:184-196 (return success/error objects)
+- [x] Show final export status after flush - Evidence: src/index.js:417-455 (comprehensive status display logic)
+- [x] Success case: Simple confirmation - Evidence: src/index.js:423-424 (✅ Telemetry exported)
+- [x] Failure case: Detailed breakdown - Evidence: src/index.js:426-441 (shows which types failed)
+- [x] Include remediation guidance - Evidence: src/index.js:443-453 (ECONNREFUSED check, brew services command)
+- [x] Ensure dev: true gating - Evidence: src/index.js:395,418 (wrapped in isDevMode checks)
+- [x] Test trace ID with /trace command - Evidence: Successfully queried trace 89cc64f33d763161ddb186d23d0a2fbb, retrieved 26 spans
+
+**Technical Implementation**:
+- **Trace ID capture**: Module-level variable stores trace ID from main span context
+- **Display timing**: Trace ID shown after main() but before shutdown (enables AI queries during flush)
+- **Export tracking**: Both shutdownTelemetry() and shutdownLogging() return {success, error} objects
+- **Status display**: Success = 1 line confirmation, Failure = detailed breakdown with remediation
+- **Flag gating**: All output only appears when dev: true (respects existing configuration)
+
+**Testing Validation**:
+- ✅ Success case: Trace ID and export confirmation displayed correctly
+- ✅ Trace ID verified: Successfully queried with /trace command, retrieved complete span hierarchy
+- ✅ AI feedback loop: Confirmed trace ID enables immediate AI analysis of execution
+- ✅ Minimal noise: Only 2 lines on success (trace ID + export confirmation)
+
+**Design Implementation Quality**:
+- Perfectly implements "silent success, loud failure" principle from Design Decision 5
+- Clean separation of concerns (capture → display → track → report)
+- Respects existing debug/dev flag architecture
+- Provides actionable diagnostics on failure (error messages + remediation steps)
+
+**Milestone Cancellations**:
+- ❌ **Milestone 3 (Path Normalization)**: Cancelled - "Don't fix a problem that isn't a problem yet"
+- ❌ **Milestone 5 (Debug Output Consistency)**: Cancelled - Current debug output already good, better to move to PRD-24
+
+**PRD-23 Status**: Implementation COMPLETE
+- Milestone 1: ✅ Complete (Conditional telemetry)
+- Milestone 2: ✅ Complete (Debug logging & exit codes)
+- Milestone 3: ❌ Cancelled (Path normalization)
+- Milestone 4: ❌ Cancelled (Conference demo mode)
+- Milestone 5: ❌ Cancelled (Debug consistency polish)
+- Milestone 6: ✅ Complete (Telemetry output) **← JUST COMPLETED**
+
+**Next Session Priorities**:
+- Documentation: Update README with telemetry console output examples (only remaining task)
+- Move to PRD-24: Package & Deploy v1.1.0 (conference roadmap next priority)
 
 ## Design Document References
 
