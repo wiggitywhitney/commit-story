@@ -419,7 +419,14 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       const result = {
         commit: {
           data: filteredContext.commit,     // Filtered git data (hash, message, author, timestamp, diff)
-          description: "Git commit: code changes (unified diff), commit message, and technical details of what files were modified"
+          description: `Git commit with fields:
+  - hash: Commit hash string
+  - message: Commit message (may be null)
+  - author: Object with {name, email}
+  - timestamp: ISO 8601 timestamp
+  - diff: Full unified diff showing file changes
+    - File paths in headers: diff --git a/path/to/file b/path/to/file
+    - Lines added (+) and removed (-)`
         },
         previousCommit: {
           data: previousCommit,             // Previous commit data for time window calculation
@@ -431,7 +438,14 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
         },
         chatSessions: {
           data: cleanChatSessions, // Session-grouped chat messages for better AI context understanding
-          description: "Chat messages grouped by session ID to maintain conversation thread context"
+          description: `Chat sessions - array of session objects, each containing:
+  - session_id: "Session 1", "Session 2", etc.
+  - session_start: ISO 8601 timestamp when session began
+  - message_count: Total messages in this session
+  - messages: Array of message objects, each with:
+    - type: "user" (human developer) or "assistant" (AI)
+    - content: The message text
+    - timestamp: ISO 8601 timestamp when message was sent`
         },
         chatMetadata: {
           data: metadata,

@@ -1,9 +1,9 @@
 # PRD-4: Step-Based Prompt Architecture for Section Generators
 
 **GitHub Issue**: [#4](https://github.com/wiggitywhitney/commit-story/issues/4)
-**Status**: Planning
+**Status**: In Progress - Milestone 1 Complete
 **Created**: 2025-09-05
-**Last Updated**: 2025-10-02  
+**Last Updated**: 2025-10-03  
 
 ## Summary
 
@@ -69,17 +69,17 @@ Based on analysis of `/prd-create`, `/prd-next`, and `/prd-update-decisions`:
 
 ## Implementation Plan
 
-### Milestone 1: Technical Decisions Prompt Restructuring (3-4 hours)
+### Milestone 1: Technical Decisions Prompt Restructuring (3-4 hours) ✅ COMPLETE
 
 #### Tasks
-- [ ] Analyze current prompt (identify what's worth keeping)
-- [ ] Restructure with proper step-based architecture
-- [ ] Move format specifications to final step (currently at lines 13-20)
-- [ ] Integrate anti-hallucination rules into relevant steps (not appendix)
-- [ ] Add verification step before output generation
-- [ ] Test before/after on 3-5 diverse commits
-- [ ] Present side-by-side comparison for human approval
-- [ ] Update `src/generators/prompts/sections/technical-decisions-prompt.js`
+- [x] Analyze current prompt (identify what's worth keeping)
+- [x] Restructure with proper step-based architecture
+- [x] Move format specifications to final step (currently at lines 13-20)
+- [x] Integrate anti-hallucination rules into relevant steps (not appendix)
+- [x] Add verification step before output generation
+- [x] Test before/after on 3-5 diverse commits
+- [x] Present side-by-side comparison for human approval
+- [x] Update `src/generators/prompts/sections/technical-decisions-prompt.js`
 
 #### Proposed Structure (to be refined during implementation)
 - **Step 1**: Analyze chat for technical discussions
@@ -196,6 +196,35 @@ This framing is not "competing principles" - it's necessary context before steps
 **Mitigation**: No upfront design phase; learn by doing during each milestone
 
 ## Progress Log
+
+### 2025-10-03: Milestone 1 Complete - Technical Decisions Prompt Restructured
+**Duration**: ~4 hours
+**Commits**: Multiple commits during iterative development
+
+**Completed Work**:
+- [x] Analyzed current prompt and identified format-first antipattern as root cause
+- [x] Restructured prompt with 5-step progressive disclosure architecture
+- [x] Moved format specifications to Step 5 (final step only)
+- [x] Integrated anti-hallucination rules into Step 4 ("Ensure every reason is traceable")
+- [x] Added explicit output-only instruction to Step 5
+- [x] Tested on 4 diverse commits (cf36c06, bbadf8d, 53dbcdb, 28f7a8f)
+- [x] Presented side-by-side comparison and received approval
+- [x] Updated technical-decisions-prompt.js (old backed up to technical-decisions-prompt-old.js)
+
+**Additional Improvements**:
+- Updated context-integrator.js with full data schemas for `git` and `chat_sessions` objects
+- Renamed section to "Technical Decisions and Problem Solving"
+- Added "Code Archivist" role-based framing to Step 1
+- Refined filtering to explicitly exclude bug fixes
+- Removed quotation marks from reasoning output
+- Added explicit fallback to skip to Step 5 when no decisions found
+
+**Key Design Decisions**:
+- Accepted some noise in output for conference deadline - perfect filtering can be refined later
+- IMPLEMENTED vs DISCUSSED classification working correctly based on file changes
+- Progressive disclosure successfully prevents AI from showing intermediate steps
+
+**Next Session**: Begin Milestone 2 (Summary Prompt Restructuring)
 
 ### 2025-10-02: Strategic Restructure of Implementation Plan
 **Context**: During PRD-26 conference roadmap analysis, user questioned PRD-4's original structure
