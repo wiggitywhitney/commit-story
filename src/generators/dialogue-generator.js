@@ -65,17 +65,17 @@ export async function generateDevelopmentDialogue(context, summary) {
       const guidelines = getAllGuidelines();
 
       const systemPrompt = `
-You have access to:
-1. A summary of this development session (as your guide for what matters)
-2. ${selected.description.replace('AVAILABLE DATA:\n- ', '')}
+${selected.description}
 
 ${dialoguePrompt}
+
+${guidelines}
   `.trim();
 
       // Prepare the context for AI processing with session grouping
-      // Calculate maximum quotes based on available content - prevents AI from fabricating
-      // quotes when few meaningful user messages exist. Cap at 25 to maintain quality focus.
-      const maxQuotes = Math.min(context.chatMetadata.data.userMessages.overTwentyCharacters, 25);
+      // Calculate maximum quotes dynamically: 8% of substantial user messages + 1
+      // This scales with session size while encouraging quality over quantity
+      const maxQuotes = Math.ceil(context.chatMetadata.data.userMessages.overTwentyCharacters * 0.08) + 1;
       const contextForAI = {
         summary: summary,
         chat_sessions: formatSessionsForAI(chatSessions),

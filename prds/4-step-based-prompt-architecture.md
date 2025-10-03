@@ -1,7 +1,7 @@
 # PRD-4: Step-Based Prompt Architecture for Section Generators
 
 **GitHub Issue**: [#4](https://github.com/wiggitywhitney/commit-story/issues/4)
-**Status**: In Progress - Milestone 1 Complete, Milestone 2 (Blocker) Added
+**Status**: In Progress - Milestones 1-3 Complete
 **Created**: 2025-09-05
 **Last Updated**: 2025-10-03  
 
@@ -89,44 +89,44 @@ Based on analysis of `/prd-create`, `/prd-next`, and `/prd-update-decisions`:
 - **Step 5**: Verify classification accuracy
 - **Step 6**: Format output (ONLY NOW reveal bullet format)
 
-### Milestone 2: Fix Dialogue Generation Timeout (1-2 hours) 🚨 BLOCKER
+### Milestone 2: Fix Dialogue Generation Timeout (1-2 hours) ✅ COMPLETE
 
 **Context**: Dialogue generation started timing out at 60 seconds after recent changes. Commit a36d3800 (174 messages, 1 session) consistently fails dialogue generation but succeeds for summary and technical decisions.
 
 #### Investigation Tasks
-- [ ] Identify root cause of timeout (likely candidates):
+- [x] Identify root cause of timeout (likely candidates):
   - Recent session grouping changes affecting large chat sessions
   - Context description changes in dialogue-prompt.js
   - Context description prompt helper in `src/integrators/context-integrator.js`
   - Increased token count from session formatting
-- [ ] Test commit a36d3800 specifically (this is the breaking commit)
-- [ ] Compare token counts: dialogue vs summary/technical-decisions prompts
-- [ ] Review recent changes to `src/utils/session-formatter.js`
-- [ ] Review recent changes to `src/generators/dialogue-generator.js`
-- [ ] Review context description generation in `src/integrators/context-integrator.js`
+- [x] Test commit a36d3800 specifically (this is the breaking commit)
+- [x] Compare token counts: dialogue vs summary/technical-decisions prompts
+- [x] Review recent changes to `src/utils/session-formatter.js`
+- [x] Review recent changes to `src/generators/dialogue-generator.js`
+- [x] Review context description generation in `src/integrators/context-integrator.js`
 
 #### Fix Tasks
-- [ ] Implement solution based on root cause analysis
-- [ ] Test fix on a36d3800 (must complete within 60s)
-- [ ] Test fix on 2-3 additional commits with varying session sizes
-- [ ] Verify dialogue quality remains equivalent
+- [x] Implement solution based on root cause analysis
+- [x] Test fix on a36d3800 (must complete within 60s)
+- [x] Test fix on 2-3 additional commits with varying session sizes
+- [x] Verify dialogue quality remains equivalent
 
 #### Success Criteria
 - Dialogue generation completes within 60 seconds for a36d3800
 - No quality degradation in dialogue extraction
 - Solution scales to commits with multiple sessions and high message counts
 
-### Milestone 3: Dialogue Prompt Restructuring (2-3 hours)
+### Milestone 3: Dialogue Prompt Restructuring (2-3 hours) ✅ COMPLETE
 
 #### Tasks
-- [ ] Analyze current prompt (identify specific issues)
-- [ ] Move format examples to very end (currently at line 77-82)
-- [ ] Integrate anti-hallucination rules into Steps 2-3 (not appendix)
-- [ ] Preserve essential introductory context ("Overall Goal", "Summary-Guided Approach")
-- [ ] Ensure true progressive disclosure throughout
-- [ ] Test before/after on same 3-5 commits from previous milestones
-- [ ] Present side-by-side comparison for human approval
-- [ ] Update `src/generators/prompts/sections/dialogue-prompt.js`
+- [x] Analyze current prompt (identify specific issues)
+- [x] Move format examples to very end (currently at line 77-82)
+- [x] Integrate anti-hallucination rules into Steps 2-3 (not appendix)
+- [x] Replace introductory context with journalist role-based framing
+- [x] Ensure true progressive disclosure throughout
+- [x] Test before/after on same 3-5 commits from previous milestones
+- [x] Present side-by-side comparison for human approval
+- [x] Update `src/generators/prompts/sections/dialogue-prompt.js`
 
 #### Key Principle
 The dialogue prompt's introductory context is ESSENTIAL and should be preserved. Each AI instance needs to understand:
@@ -201,12 +201,33 @@ This framing is not "competing principles" - it's necessary context before steps
 **Status**: ✅ Implemented - Updated in commit 6dfa95e5
 **Files**: src/generators/dialogue-generator.js, src/generators/summary-generator.js, src/generators/technical-decisions-generator.js
 
-### DD-008: Investigate Dialogue Timeout Root Cause (2025-10-03)
-**Decision**: Prioritize fixing dialogue generation timeout before continuing with Milestone 3 (dialogue prompt restructuring)
-**Rationale**: Dialogue generation started timing out at 60 seconds after recent changes (session grouping, context description updates); this is a blocker for quality journal generation
-**Impact**: Adds new Milestone 2 (1-2 hours) to investigate and fix root cause before proceeding with prompt restructuring
-**Status**: ⏳ Outstanding - See Milestone 2 tasks
-**Test Commit**: a36d3800 (174 messages, 1 session) - this commit breaks dialogue generation
+### DD-008: Fix Session Grouping Filtering Bypass (2025-10-03)
+**Decision**: Fix filtering bypass introduced by session grouping changes rather than adding new filtering logic
+**Rationale**: Session grouping change in commit 8db5ceb4 bypassed existing message filtering, causing generators to receive unfiltered messages (448) instead of filtered subset (174); this caused dialogue generator timeout
+**Impact**: Restored proper filtering order in context-integrator.js; filtering now happens after session grouping to maintain message integrity
+**Status**: ✅ Implemented - Updated in commit 600ed651
+**Files**: src/integrators/context-integrator.js
+**Verification**: Telemetry traces confirmed fix - generators now receive 175 filtered messages vs 448 unfiltered
+
+### DD-009: Dynamic MaxQuotes Calculation (2025-10-03)
+**Decision**: Implement dynamic maxQuotes calculation using 8% formula: `Math.ceil(userMessages.overTwentyCharacters * 0.08) + 1`
+**Rationale**: Fixed quote cap (25 or 3-8) doesn't scale with session size; large sessions get too few quotes, small sessions get too many
+**Impact**: Quote cap now scales intelligently (174 messages → 15 quotes, 80 messages → 8 quotes, 50 messages → 5 quotes)
+**Status**: ✅ Implemented - Updated in dialogue-generator.js
+**Files**: src/generators/dialogue-generator.js
+
+### DD-010: Journalist Role-Based Framing (2025-10-03)
+**Decision**: Replace abstract "Overall Goal" context with concrete journalist role and metaphor throughout dialogue prompt
+**Rationale**: Journalist role provides clear mental model for quote selection quality, ethics (verbatim extraction, fact-checking), and output purpose
+**Impact**: All 8 steps now use journalist framing ("your article", "your readers", "misquoting someone is not acceptable", "career suicide")
+**Status**: ✅ Implemented - Updated in dialogue-prompt.js
+**Files**: src/generators/prompts/sections/dialogue-prompt.js
+
+### DD-011: Conversation Grouping Emphasis (2025-10-03)
+**Decision**: Emphasize Human-Assistant exchange grouping in 3 places: Step 6 instruction, Step 7 verification, Step 8 formatting
+**Rationale**: Original prompt didn't make exchange grouping clear, resulting in scattered quotes without conversational context
+**Impact**: Human quotes now stay grouped with AI responses as single conversational units with proper blank line spacing
+**Status**: ✅ Implemented - Updated in dialogue-prompt.js
 
 ## Dependencies
 
@@ -237,6 +258,74 @@ This framing is not "competing principles" - it's necessary context before steps
 **Mitigation**: No upfront design phase; learn by doing during each milestone
 
 ## Progress Log
+
+### 2025-10-03 (Afternoon): Milestone 3 Complete - Dialogue Prompt Restructured
+**Duration**: ~5 hours
+**Commits**: Multiple iterations during development, final commit pending
+
+**Completed Work**:
+- [x] Analyzed current dialogue prompt and identified issues: fabrication/misattribution (a36d3800), duplication (6fefb2af)
+- [x] Restructured prompt with 8-step progressive disclosure architecture following technical decisions pattern
+- [x] Moved format examples to Step 8 (final step only)
+- [x] Integrated anti-hallucination rules into Steps 2, 5, 7 (CRITICAL attribution warnings, verification checks)
+- [x] Replaced abstract context with journalist role-based framing throughout all steps
+- [x] Implemented dynamic maxQuotes calculation (8% formula) in dialogue-generator.js
+- [x] Tested on 4 commits from Oct 1-3 after regenerating journal entries
+- [x] Presented side-by-side comparison for evaluation
+- [x] Updated dialogue-prompt.js (old backed up to dialogue-prompt-old.js)
+
+**Key Improvements**:
+- **Journalist metaphor**: "You are a journalist writing about this development session. The summary is your article - already written"
+- **Progressive disclosure**: Steps build sequentially (understand → find ALL → remove boring → narrow to best → verify → add context → quality check → format)
+- **Dynamic scaling**: Quote cap adjusts to session size (8% formula produces 15 quotes for 174 messages, 8 for 80 messages)
+- **Conversation grouping**: Emphasized in 3 places to keep Human-Assistant exchanges together as conversational units
+- **Anti-hallucination**: "Misquoting someone is not acceptable", "Mishandling quotes is career suicide", triple verification (Steps 5, 7)
+- **Summary alignment**: Step 7 verification ensures every quote supports the story told in summary
+
+**Testing Results**:
+- Commit 53dbcdb (Oct 1): 4 human quotes - quality over quantity working correctly
+- Commit cf36c06 (Sep 30): 8 human quotes - exactly on target for session size
+- Commit a36d380 (Oct 3): 8 human quotes - fabrication issue resolved
+- Commit 600ed65 (Oct 3): 7 human quotes - scaling appropriately
+
+**Design Decisions**:
+- Backed up old prompt but activated new one for production use
+- Kept maxQuotes dynamic but encouraged AI to "narrow significantly below {maxQuotes} if needed"
+- Trusted AI intelligence over prescription - avoided scoring rubrics in favor of journalist judgment
+- Fixed journal entry duplication system bug (Oct 2 had 17 entries, cleaned to 6 unique)
+
+**Technical Decisions**:
+- DD-009: Dynamic MaxQuotes Calculation (8% formula)
+- DD-010: Journalist Role-Based Framing (throughout all steps)
+- DD-011: Conversation Grouping Emphasis (3 reinforcement points)
+
+**Future Consideration**:
+- If dialogue quality degrades, consider implementing systematic quote scoring system (1-5 scale on interest, relevance, uniqueness)
+
+**Next Session**: Begin Milestone 4 (Summary Prompt Restructuring)
+
+### 2025-10-03 (Late Morning): Milestone 2 Complete - Dialogue Timeout Fixed
+**Duration**: ~2 hours
+**Commits**: 600ed651 (fix: resolve session grouping filtering bypass and regenerate journals)
+
+**Root Cause Identified**:
+Session grouping changes in commit 8db5ceb4 inadvertently bypassed existing message filtering logic in context-integrator.js. Generators received 448 unfiltered messages instead of 174 filtered messages, causing dialogue generator to timeout due to intensive quote matching across excessive message pool.
+
+**Fix Implementation**:
+- Restored proper filtering order: filtering now happens AFTER session grouping to maintain message integrity
+- Verified fix using OpenTelemetry traces:
+  - Before: trace 8a9349bf showed 448 messages, dialogue timed out at 60s
+  - After: trace 9bc445d5 showed 175 messages, all generators completed successfully
+
+**Key Insight**:
+AI initially proposed adding NEW filtering logic to context-integrator.js, which would have worked but masked the architectural bug. Human developer asked to examine trace data first, revealing existing filtering was being bypassed. This debugging approach prevented unnecessary code additions and fixed the root cause.
+
+**Documentation**:
+- Created blog/debugging-story-dialogue-timeout.md documenting telemetry-driven debugging approach
+- Regenerated journal entries for all commits after 8db5ceb4 (the breaking commit)
+
+**Technical Decisions**:
+- DD-008: Fix Session Grouping Filtering Bypass (avoid adding duplicate filtering)
 
 ### 2025-10-03 (PM): Blocker Identified - Dialogue Generation Timeout
 **Duration**: ~1 hour
