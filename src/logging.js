@@ -105,8 +105,8 @@ function initializeLoggingProvider(narrativeLogger, startTime, span) {
     providerInitialized: true,
     batchProcessor: true,
     otlpEndpoint: 'http://localhost:4318/v1/logs',
-    maxBatchSize: 1,
-    scheduledDelayMs: 0,
+    maxBatchSize: 100,
+    scheduledDelayMs: 1000,
     initializationDuration
   });
 
@@ -128,14 +128,23 @@ function initializeLoggingSystem() {
   // Create OTLP log exporter for local Datadog Agent (same as traces)
   const logExporter = new OTLPLogExporter({
     url: 'http://localhost:4318/v1/logs',
+    concurrencyLimit: 8, // Allow multiple concurrent exports during shutdown
   });
 
   // Add error handler to catch silent export failures
+  // Limit error logging to prevent feedback loop during shutdown
+  let failureCount = 0;
+  const MAX_LOGGED_FAILURES = 3;
+
   const originalExport = logExporter.export.bind(logExporter);
   logExporter.export = function(logs, resultCallback) {
     return originalExport(logs, (result) => {
-      if (result.code !== 0) {
+      if (result.code !== 0 && failureCount < MAX_LOGGED_FAILURES) {
         console.error('❌ OTLP Log Export: FAILED', result);
+        failureCount++;
+        if (failureCount === MAX_LOGGED_FAILURES) {
+          console.error('❌ Further log export failures will be suppressed to prevent feedback loop');
+        }
       }
       resultCallback(result);
     });
@@ -150,10 +159,10 @@ function initializeLoggingSystem() {
 
   const resource = defaultResource().merge(resourceFromAttributes(resourceAttributes));
 
-  // Create batch processor for synchronous log export (race condition test)
+  // Create batch processor for efficient log export
   batchProcessor = new BatchLogRecordProcessor(logExporter, {
-    maxExportBatchSize: 1, // Export each log immediately
-    scheduledDelayMillis: 0, // No delay - synchronous export
+    maxExportBatchSize: 100, // Batch logs to reduce HTTP requests
+    scheduledDelayMillis: 1000, // Export batches every second
   });
 
   // Create LoggerProvider with processor and resource

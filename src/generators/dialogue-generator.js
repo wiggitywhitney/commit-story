@@ -112,11 +112,11 @@ ${dialoguePrompt}
         }
       });
 
-      // Add timeout wrapper (30 seconds)
+      // Add timeout wrapper (60 seconds for large sessions)
       const completion = await Promise.race([
         openai.chat.completions.create(requestPayload),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Request timeout after 30 seconds')), 30000)
+          setTimeout(() => reject(new Error('Request timeout after 60 seconds')), 60000)
         )
       ]);
 
