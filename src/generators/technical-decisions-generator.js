@@ -116,6 +116,8 @@ ${guidelines}
         chat_sessions: formatSessionsForAI(chatSessions)
       };
 
+      const userContentString = `Here is the development session data:\n\n${JSON.stringify(contextForAI, null, 2)}`;
+
       // Prepare request payload
       const requestPayload = {
         model: DEFAULT_MODEL,

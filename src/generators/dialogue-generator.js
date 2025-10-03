@@ -82,6 +82,8 @@ ${dialoguePrompt}
         maxQuotes: maxQuotes
       };
 
+      const userContentString = `Extract supporting dialogue for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`;
+
       const requestPayload = {
         model: DEFAULT_MODEL,
         messages: [
@@ -91,7 +93,7 @@ ${dialoguePrompt}
           },
           {
             role: 'user',
-            content: `Extract supporting dialogue for this development session:\n\n${JSON.stringify(contextForAI, null, 2)}`
+            content: userContentString
           }
         ],
         temperature: 0.7,

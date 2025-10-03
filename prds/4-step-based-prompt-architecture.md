@@ -1,7 +1,7 @@
 # PRD-4: Step-Based Prompt Architecture for Section Generators
 
 **GitHub Issue**: [#4](https://github.com/wiggitywhitney/commit-story/issues/4)
-**Status**: In Progress - Milestone 1 Complete
+**Status**: In Progress - Milestone 1 Complete, Milestone 2 (Blocker) Added
 **Created**: 2025-09-05
 **Last Updated**: 2025-10-03  
 
@@ -89,27 +89,34 @@ Based on analysis of `/prd-create`, `/prd-next`, and `/prd-update-decisions`:
 - **Step 5**: Verify classification accuracy
 - **Step 6**: Format output (ONLY NOW reveal bullet format)
 
-### Milestone 2: Summary Prompt Restructuring (3-4 hours)
+### Milestone 2: Fix Dialogue Generation Timeout (1-2 hours) 🚨 BLOCKER
 
-#### Tasks
-- [ ] Analyze current prompt (identify what's worth keeping)
-- [ ] Restructure with proper step-based architecture
-- [ ] Move format specifications to final step
-- [ ] Integrate authenticity principles into relevant steps (not scattered)
-- [ ] Add verification step before output generation
-- [ ] Test before/after on same 3-5 commits from Milestone 1
-- [ ] Present side-by-side comparison for human approval
-- [ ] Update `src/generators/prompts/sections/summary-prompt.js`
+**Context**: Dialogue generation started timing out at 60 seconds after recent changes. Commit a36d3800 (174 messages, 1 session) consistently fails dialogue generation but succeeds for summary and technical decisions.
 
-#### Proposed Structure (to be refined during implementation)
-- **Step 1**: Analyze code changes in diff
-- **Step 2**: Find related discussions in chat
-- **Step 3**: Identify significance level
-- **Step 4**: Match tone to actual work
-- **Step 5**: Verify authenticity
-- **Step 6**: Generate prose output (ONLY NOW reveal format)
+#### Investigation Tasks
+- [ ] Identify root cause of timeout (likely candidates):
+  - Recent session grouping changes affecting large chat sessions
+  - Context description changes in dialogue-prompt.js
+  - Context description prompt helper in `src/integrators/context-integrator.js`
+  - Increased token count from session formatting
+- [ ] Test commit a36d3800 specifically (this is the breaking commit)
+- [ ] Compare token counts: dialogue vs summary/technical-decisions prompts
+- [ ] Review recent changes to `src/utils/session-formatter.js`
+- [ ] Review recent changes to `src/generators/dialogue-generator.js`
+- [ ] Review context description generation in `src/integrators/context-integrator.js`
 
-### Milestone 3: Dialogue Prompt Refinement (2-3 hours)
+#### Fix Tasks
+- [ ] Implement solution based on root cause analysis
+- [ ] Test fix on a36d3800 (must complete within 60s)
+- [ ] Test fix on 2-3 additional commits with varying session sizes
+- [ ] Verify dialogue quality remains equivalent
+
+#### Success Criteria
+- Dialogue generation completes within 60 seconds for a36d3800
+- No quality degradation in dialogue extraction
+- Solution scales to commits with multiple sessions and high message counts
+
+### Milestone 3: Dialogue Prompt Restructuring (2-3 hours)
 
 #### Tasks
 - [ ] Analyze current prompt (identify specific issues)
@@ -128,6 +135,26 @@ The dialogue prompt's introductory context is ESSENTIAL and should be preserved.
 - Why quality matters (foundation of entire journal)
 
 This framing is not "competing principles" - it's necessary context before steps begin.
+
+### Milestone 4: Summary Prompt Restructuring (3-4 hours)
+
+#### Tasks
+- [ ] Analyze current prompt (identify what's worth keeping)
+- [ ] Restructure with proper step-based architecture
+- [ ] Move format specifications to final step
+- [ ] Integrate authenticity principles into relevant steps (not scattered)
+- [ ] Add verification step before output generation
+- [ ] Test before/after on same 3-5 commits from Milestone 1
+- [ ] Present side-by-side comparison for human approval
+- [ ] Update `src/generators/prompts/sections/summary-prompt.js`
+
+#### Proposed Structure (to be refined during implementation)
+- **Step 1**: Analyze code changes in diff
+- **Step 2**: Find related discussions in chat
+- **Step 3**: Identify significance level
+- **Step 4**: Match tone to actual work
+- **Step 5**: Verify authenticity
+- **Step 6**: Generate prose output (ONLY NOW reveal format)
 
 ## Technical Decisions
 
@@ -167,6 +194,20 @@ This framing is not "competing principles" - it's necessary context before steps
 **Impact**: Prevents over-correction that would remove valuable context
 **Status**: ✅ Implemented - Documented in Milestone 3 "Key Principle"
 
+### DD-007: Increase AI Generator Timeouts (2025-10-03)
+**Decision**: Increase timeout from 30 seconds to 60 seconds for all three generators (dialogue, summary, technical decisions)
+**Rationale**: Large chat sessions (174+ messages) were timing out at 30 seconds; 60 seconds provides better buffer
+**Impact**: Allows generators to handle larger sessions without timeout failures
+**Status**: ✅ Implemented - Updated in commit 6dfa95e5
+**Files**: src/generators/dialogue-generator.js, src/generators/summary-generator.js, src/generators/technical-decisions-generator.js
+
+### DD-008: Investigate Dialogue Timeout Root Cause (2025-10-03)
+**Decision**: Prioritize fixing dialogue generation timeout before continuing with Milestone 3 (dialogue prompt restructuring)
+**Rationale**: Dialogue generation started timing out at 60 seconds after recent changes (session grouping, context description updates); this is a blocker for quality journal generation
+**Impact**: Adds new Milestone 2 (1-2 hours) to investigate and fix root cause before proceeding with prompt restructuring
+**Status**: ⏳ Outstanding - See Milestone 2 tasks
+**Test Commit**: a36d3800 (174 messages, 1 session) - this commit breaks dialogue generation
+
 ## Dependencies
 
 - No external dependencies
@@ -197,7 +238,27 @@ This framing is not "competing principles" - it's necessary context before steps
 
 ## Progress Log
 
-### 2025-10-03: Milestone 1 Complete - Technical Decisions Prompt Restructured
+### 2025-10-03 (PM): Blocker Identified - Dialogue Generation Timeout
+**Duration**: ~1 hour
+**Commits**: 6dfa95e5 (fix: concurrent export limit errors and increase AI timeouts)
+
+**Issue Discovered**:
+After completing Milestone 1 and implementing telemetry fixes, dialogue generation started timing out at 60 seconds for commit a36d3800 (174 messages, 1 session). Summary and technical decisions generators complete successfully for the same commit.
+
+**Hypothesis**:
+Recent changes to session grouping or context description generation may be causing increased token counts or processing time specifically for dialogue generation.
+
+**Actions Taken**:
+- Increased generator timeouts from 30s to 60s (partial mitigation, but timeout still occurs)
+- Fixed concurrent export limit errors in logging system (separate issue)
+- Added Milestone 2 as blocker before continuing with dialogue prompt restructuring
+
+**Next Steps**:
+- Work on Milestone 2 to investigate and fix dialogue timeout root cause
+- Test fix on a36d3800 and other large session commits
+- Continue with Milestone 3 (dialogue prompt restructuring) after blocker is resolved
+
+### 2025-10-03 (AM): Milestone 1 Complete - Technical Decisions Prompt Restructured
 **Duration**: ~4 hours
 **Commits**: Multiple commits during iterative development
 

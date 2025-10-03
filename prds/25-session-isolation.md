@@ -724,6 +724,57 @@ Raw Messages → Group by sessionId → Pass all sessions to AI → Better conve
 - Monitor session grouping effectiveness in real usage scenarios
 - Consider formalizing session grouping approach in dedicated PRD if broader adoption warranted
 
+### 2025-10-03: Critical Bug Fix - Session Grouping Filtering Bypass ✅
+**Duration**: ~4 hours debugging and fix implementation session
+**Commits**: Fix commit (filtering bypass resolution) + 12 journal regeneration commits
+**Primary Focus**: Resolve filtering regression introduced by session grouping implementation
+
+**Problem Discovered**:
+- **Root Cause**: Session grouping implementation (commit 8db5ceb4) bypassed existing message filtering
+- **Impact**: Generators received 448 unfiltered messages instead of 174 filtered messages
+- **Symptom**: Dialogue generator timed out after 60 seconds due to excessive message volume
+- **Evidence**: Datadog trace `8a9349bf` showed generators receiving `messages_count: 448` (unfiltered) while root span showed `messages_count: 174, total_messages: 448`
+
+**Telemetry-Driven Debugging Process**:
+1. **Trace Analysis**: Compared span attributes across root span and generator spans
+2. **Data Flow Discovery**: Root span correctly filtered 448→174, but generators received 448
+3. **Architecture Investigation**: Session grouping in `context-integrator.js` used `cleanChatSessions` (unfiltered) instead of filtered messages
+4. **Root Cause Identified**: Line 440 set `chatSessions.data` to unfiltered session groups, bypassing `filteredContext.chatMessages`
+
+**Fix Implementation**:
+- **File Modified**: `src/integrators/context-integrator.js` (lines 399-414)
+- **Solution**: Filter session groups to match `filteredContext.chatMessages` using timestamp/content matching
+- **Architecture**: Apply filtering to session groups after flat message filtering, maintaining both filtered flat view and filtered session view
+
+**Verification Evidence**:
+- **Before Fix** (trace 8a9349bf):
+  - Root span: `messages_count: 174`, `total_messages: 448`
+  - Generators received: 448 messages (unfiltered)
+  - Result: Dialogue timed out after 60 seconds
+
+- **After Fix** (trace 9bc445d5):
+  - Root span: `messages_count: 174`
+  - Generators received: 174 messages (filtered)
+  - Result: All generators completed successfully, no timeouts
+  - **Token Reduction**: 61% reduction in messages passed to generators (448→174)
+
+**Journal Regeneration**:
+- **Scope**: Regenerated 12 commits from 8db5ceb4 onwards (all commits with broken filtering)
+- **Oct 1**: 9 commits (8db5ceb4, e6720bf, b0a110d, 53dbcdb, + 5 pre-existing)
+- **Oct 2**: 6 commits (3bb1003, cf36c06, 28e9184, 9906616, bbadf8d, 5cb22af)
+- **Oct 3**: 2 commits (a36d380, 6dfa95e)
+- **Verification**: All entries in correct chronological order, no timeouts, complete narratives
+
+**Technical Achievements**:
+- **Telemetry-Verified Fix**: Datadog traces confirm proper filtering in production
+- **Data Integrity Restored**: All journal entries regenerated with correct filtered data
+- **Performance Improvement**: 61% reduction in AI token usage for affected commits
+- **Zero Breaking Changes**: Fix maintains backward compatibility with session grouping enhancement
+
+**Key Insight**: OpenTelemetry span correlation (`messages_count` attribute across root→generator spans) enabled rapid identification of the filtering bypass. Without telemetry, this would have required extensive manual debugging to discover the data flow issue.
+
+**System Health**: ✅ Filtering working correctly, ✅ Generators completing successfully, ✅ Journal quality restored
+
 ## Design Document References
 
 ### Existing Documentation

@@ -396,9 +396,26 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       };
       const filteredContext = filterContext(rawContext);
 
+      // Apply the same filtering to session groups to maintain consistency
+      // Filter messages within each session and remove empty sessions
+      const filteredChatSessions = cleanChatSessions
+        .map(session => {
+          const filteredMessages = session.messages.filter(msg =>
+            filteredContext.chatMessages.some(filtered =>
+              filtered.timestamp === msg.timestamp && filtered.content === msg.content
+            )
+          );
+          return {
+            ...session,
+            messages: filteredMessages,
+            messageCount: filteredMessages.length
+          };
+        })
+        .filter(session => session.messages.length > 0);
+
       // Calculate metadata from cleaned messages (before filtering for richer data)
       const metadata = calculateChatMetadata(flattenedMessages);
-      
+
       // Add final metadata to span
       const finalChatData = {
         total: metadata.totalMessages,
@@ -414,7 +431,7 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       OTEL.metrics.gauge('commit_story.chat.user_messages', finalChatData.userMessages);
       OTEL.metrics.gauge('commit_story.chat.assistant_messages', finalChatData.assistantMessages);
       OTEL.metrics.gauge('commit_story.chat.user_messages_over_twenty', finalChatData.userMessagesOverTwenty);
-      
+
       // Return self-documenting context object for journal generation
       const result = {
         commit: {
@@ -437,7 +454,7 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
           description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"
         },
         chatSessions: {
-          data: cleanChatSessions, // Session-grouped chat messages for better AI context understanding
+          data: filteredChatSessions, // Session-grouped chat messages (filtered to match chatMessages)
           description: `Chat sessions - array of session objects, each containing:
   - session_id: "Session 1", "Session 2", etc.
   - session_start: ISO 8601 timestamp when session began
