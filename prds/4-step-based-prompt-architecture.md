@@ -229,6 +229,35 @@ This framing is not "competing principles" - it's necessary context before steps
 **Impact**: Human quotes now stay grouped with AI responses as single conversational units with proper blank line spacing
 **Status**: ✅ Implemented - Updated in dialogue-prompt.js
 
+### DD-012: Summary Prompt Role Framing - "Developer Explaining to Mentor" (2025-10-03)
+**Decision**: Adopt "developer explaining work to a trusted mentor" as the role framing for summary prompt
+**Rationale**:
+- Complements existing roles (Journalist for Dialogue, Code Archivist for Technical Decisions)
+- Mentor framing naturally enforces: honesty over polish, impact over activity, learning over perfection, clarity over completeness
+- Creates constraint to respect reader's time (get to the point)
+- Encourages genuine reflection on weaknesses/pivots without performance theater
+**Impact**: Will guide summary prompt restructuring in Milestone 4
+**Status**: ⏳ Outstanding - See Milestone 4 tasks
+
+### DD-013: Summary Quality Research Findings (2025-10-03)
+**Decision**: Document analysis of recent summary outputs (Oct 1-3, 2025) to inform Milestone 4 restructuring
+**Rationale**: Research identified strengths to preserve and shortcomings to address:
+
+**Strengths to Preserve**:
+- Strong narrative flow (beginning → middle → end)
+- Technical depth with context (numbers explained, not just stated)
+- Decision documentation (captures *why* not just *what*)
+- Problem-solution structure
+
+**Shortcomings to Address**:
+- Verbosity & repetition (avoid restating what's in other sections)
+- Missing "So What?" early (lead with impact, not "During this development session...")
+- Chronological blow-by-blow vs. thematic organization
+- Inconsistent detail level (meta commits too verbose, bug fixes appropriately detailed)
+
+**Impact**: Research findings will inform step-based architecture during Milestone 4 implementation
+**Status**: ⏳ Outstanding - To be applied during Milestone 4
+
 ## Dependencies
 
 - No external dependencies
