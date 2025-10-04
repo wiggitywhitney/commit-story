@@ -272,6 +272,27 @@ This framing is not "competing principles" - it's necessary context before steps
 **Status**: ✅ Implemented
 **Files**: src/generators/prompts/sections/summary-prompt.js
 
+### DD-014: Quote Scoring System Experiment - REJECTED (2025-10-04)
+**Decision**: Tested and rejected a 1.0-5.0 quote scoring system with 3.0 threshold filter
+**Rationale**:
+- **Goal**: Reduce "meh" quotes, avoid recency bias, prevent AI from always using maxQuotes
+- **Implementation**: Added Steps 4-6 to dialogue prompt:
+  - Step 4: Score each quote 1.0-5.0 (blind scoring before AI knows about filtering)
+  - Step 5: Drop quotes scoring ≤ 3.0
+  - Step 6: Select top maxQuotes by score
+- **Testing**: Compared October 1 and October 3 journal entries before/after scoring
+- **Results**:
+  - ✅ Reduced quote count on large sessions (d16566e7: 21→13 quotes, 38% reduction)
+  - ✅ Natural quantity variation (no artificial padding to maxQuotes)
+  - ❌ **CRITICAL FAILURE**: Eliminated ALL dialogue from commit 75a96420 despite having 6 substantive quotes showing:
+    - Real frustration and tension ("This is getting messy", "feeling pretty bananas")
+    - Critical decision points ("I'm considering reverting everything")
+    - Iterative problem-solving ("Do we need the fallback?", "suggest the simplest solution(s)")
+- **Conclusion**: The 3.0 threshold is too aggressive and incorrectly filters out valuable quotes that show struggle, uncertainty, and decision-making under pressure
+**Impact**: Reverted to pre-scoring dialogue prompt (dialogue-prompt-before-scoring.js); preserved scoring version as dialogue-prompt-with-scoring.js for reference
+**Status**: ✅ Implemented - Restored working prompt, documented experiment failure
+**Files**: src/generators/prompts/sections/dialogue-prompt.js (reverted), dialogue-prompt-with-scoring.js (archived)
+
 ### DD-013: Summary Quality Research Findings (2025-10-03)
 **Decision**: Document analysis of recent summary outputs (Oct 1-3, 2025) to inform Milestone 4 restructuring
 **Rationale**: Research identified strengths to preserve and shortcomings to address:
@@ -320,6 +341,61 @@ This framing is not "competing principles" - it's necessary context before steps
 **Mitigation**: No upfront design phase; learn by doing during each milestone
 
 ## Progress Log
+
+### 2025-10-04 (Evening): Quote Scoring System Experiment - Failed and Reverted
+**Duration**: ~3 hours (implementation, testing, analysis, revert)
+**Commits**: Pending - work reverted before commit
+
+**Experiment Overview**:
+Implemented a 1.0-5.0 quote scoring system with 3.0 threshold filter to address three goals:
+1. Reduce "meh" quotes (quality filtering)
+2. Avoid recency bias (score-based ranking ignores chronology)
+3. Prevent AI's tendency to always use maxQuotes (natural quantity)
+
+**Implementation**:
+- Added Steps 4-6 to dialogue prompt:
+  - Step 4: Blind scoring (1.0-5.0 scale with decimals)
+  - Step 5: Filter threshold (drop ≤ 3.0)
+  - Step 6: Select top maxQuotes by score
+- Backed up working prompt to dialogue-prompt-before-scoring.js
+- Regenerated October 1 (8 commits) and October 3 (5 commits) journals
+
+**Testing Results**:
+- **October 1**: Most commits showed same quote counts but better quality selection
+  - Commit 8db5ceb4: Swapped 4th quote (operational → substantive discussion)
+  - **Commit 75a96420: CRITICAL FAILURE** - Went from 6 substantive quotes to "No significant dialogue found"
+- **October 3**:
+  - Commit d16566e7: 21 → 13 quotes (38% reduction, kept best quotes)
+  - Commits 600ed651, d986749e: Similar quality, appropriate counts
+
+**Critical Failure Analysis**:
+Commit 75a96420 lost ALL dialogue despite having 6 quotes showing valuable content:
+- "This is getting messy. Reread the problem file and summarize..."
+- "What's the hold up?"
+- "This is feeling pretty bananas... I'm considering reverting everything..."
+- "Do we need the fallback? Be critical"
+- "Okay fix it and remove the 100ms timeout"
+- "That seems like a lot. suggest the simplest solution(s)"
+
+These quotes tell the story of debugging circular dependencies, architectural challenges, frustration, and iterative problem-solving - exactly what should be preserved. The scoring system rated all 6 quotes below 3.0.
+
+**Conclusion**:
+The 3.0 threshold is too aggressive. The scoring rubric doesn't properly value quotes that show:
+- Struggle and uncertainty
+- Decision-making under pressure
+- Frustration leading to pivots
+- Questions that drive solution iteration
+
+**Actions Taken**:
+- Reverted to pre-scoring dialogue prompt (dialogue-prompt-before-scoring.js → dialogue-prompt.js)
+- Archived scoring version as dialogue-prompt-with-scoring.js for reference
+- Documented experiment failure in DD-014
+- Will not implement scoring system
+
+**Technical Decisions**:
+- DD-014: Quote Scoring System Experiment - REJECTED
+
+**Next Steps**: Consider alternative approaches if dialogue quality issues arise, but current qualitative approach is superior
 
 ### 2025-10-04: Milestone 4 Implementation Complete - Summary Prompt Restructured
 **Duration**: ~6 hours (extensive iterative refinement)
@@ -406,7 +482,7 @@ This framing is not "competing principles" - it's necessary context before steps
 - DD-011: Conversation Grouping Emphasis (3 reinforcement points)
 
 **Future Consideration**:
-- If dialogue quality degrades, consider implementing systematic quote scoring system (1-5 scale on interest, relevance, uniqueness)
+- ~~If dialogue quality degrades, consider implementing systematic quote scoring system (1-5 scale on interest, relevance, uniqueness)~~ **TESTED AND REJECTED** - See DD-014 below
 
 **Next Session**: Begin Milestone 4 (Summary Prompt Restructuring)
 
