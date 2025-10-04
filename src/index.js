@@ -7,25 +7,19 @@
 
 // Initialize tracing BEFORE any other imports to ensure auto-instrumentation works
 import './tracing.js';
-console.log('[BOOTSTRAP] Tracing imported');
 
 import { config } from 'dotenv';
-console.log('[BOOTSTRAP] Dotenv imported');
 import OpenAI from 'openai';
-console.log('[BOOTSTRAP] OpenAI imported');
 import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
-console.log('[BOOTSTRAP] Context integrator imported');
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 import { getConfig } from './utils/config.js';
 import { createNarrativeLogger } from './utils/trace-logger.js';
-console.log('[BOOTSTRAP] All imports complete');
 
 config({ quiet: true });
-console.log('[BOOTSTRAP] Dotenv configured');
 
 // Get configuration (using sync version for bootstrap)
 const { debug: isDebugMode, dev: isDevMode } = (() => {
@@ -398,15 +392,11 @@ Next steps:
 // Resolve symlinks to compare real paths (e.g., .bin/commit-story -> node_modules/commit-story/src/index.js)
 const scriptPath = fs.realpathSync(process.argv[1]);
 const modulePath = import.meta.url.replace('file://', '');
-debugLog(`🔍 CLI check: modulePath=${modulePath}, scriptPath=${scriptPath}`);
 if (modulePath === scriptPath) {
-  debugLog('✅ CLI boundary matched - starting execution');
   const runCLI = async () => {
     try {
-      debugLog('🎯 Calling main()...');
       // Run main and get exit code
       const exitCode = await main();
-      debugLog(`✅ main() completed with exit code: ${exitCode}`);
 
       // Display trace ID for AI queries (only when dev mode enabled)
       if (isDevMode && currentTraceId) {
@@ -483,6 +473,4 @@ if (modulePath === scriptPath) {
     console.error('❌ Fatal CLI error:', error);
     process.exit(1);
   });
-} else {
-  debugLog('⚠️  CLI boundary NOT matched - module imported, not executed directly');
 }
