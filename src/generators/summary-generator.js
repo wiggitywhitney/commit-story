@@ -7,9 +7,10 @@
 
 import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
-import { summaryPrompt } from './prompts/sections/summary-prompt.js';
+import { summaryPrompt } from './prompts/sections/summary-prompt-new.js';
 import { selectContext } from './utils/context-selector.js';
 import { formatSessionsForAI } from '../utils/session-formatter.js';
+import { analyzeCommitContent } from './utils/commit-content-analyzer.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
@@ -44,13 +45,34 @@ export async function generateSummary(context) {
 
     try {
       // Select commit and chat sessions for summary generation
-      const selected = selectContext(context, ['commit', 'chatSessions']);
+      const selected = selectContext(context, ['commit', 'chatSessions', 'chatMetadata']);
 
       logger.start('summary generation', `Generating summary for commit: ${selected.data.commit.hash.slice(0, 8)}`);
 
       const sessionsCount = selected.data.chatSessions.length;
       const totalMessages = selected.data.chatSessions.reduce((sum, session) => sum + session.messageCount, 0);
       logger.progress('summary generation', `Using ${totalMessages} chat messages across ${sessionsCount} sessions and git diff for context`);
+
+      // Analyze commit content to determine what changed
+      const { functionalFiles, docFiles, hasFunctionalCode } = analyzeCommitContent(selected.data.commit.diff);
+      const hasSubstantialChat = context.chatMetadata.data.userMessages.overTwentyCharacters > 0;
+
+      logger.progress('summary generation', `Content analysis: ${functionalFiles.length} functional files, ${docFiles.length} doc files, ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages`);
+
+      // Build conditional prompt instructions based on commit content
+      let conditionalInstructions = '\n\nCONDITIONAL INSTRUCTIONS FOR THIS COMMIT:\n';
+
+      if (!hasFunctionalCode) {
+        conditionalInstructions += `- SKIP step 3.2 entirely because this commit has no functional code changes (only ${docFiles.join(', ')}).\n`;
+      }
+
+      if (!hasSubstantialChat) {
+        conditionalInstructions += `- SKIP step 3.3 entirely because there are no substantial discussions in the chat.\n`;
+      }
+
+      if (conditionalInstructions === '\n\nCONDITIONAL INSTRUCTIONS FOR THIS COMMIT:\n') {
+        conditionalInstructions = ''; // No conditional instructions needed
+      }
 
       // Create fresh OpenAI instance (DD-016: prevent context bleeding)
       const openai = new OpenAI({
@@ -59,11 +81,11 @@ export async function generateSummary(context) {
 
       // Build the complete prompt (DD-018: compose guidelines + section prompt)
       const guidelines = getAllGuidelines();
-  
+
   const systemPrompt = `
 ${selected.description}
 
-${summaryPrompt}
+${summaryPrompt}${conditionalInstructions}
 
 ${guidelines}
   `.trim();

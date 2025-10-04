@@ -63,7 +63,7 @@ export function getLatestCommitData(commitRef = 'HEAD') {
         hash,
         message,
         author: {
-          name: authorName,
+          name: '[REDACTED_NAME]',
           email: '[REDACTED_EMAIL]'
         },
         timestamp: new Date(parseInt(timestamp) * 1000),

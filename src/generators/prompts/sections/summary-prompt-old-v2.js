@@ -23,21 +23,20 @@ When deciding what to emphasize, consider:
 - Complex problem-solving deserves more attention than routine implementation
 - Learning moments and decisions are often more valuable than the final code
 
+DESCRIBE WHAT ACTUALLY HAPPENED:
+Tell the story of this development session factually, without adding drama or invented connections. If multiple activities occurred, give them proportional attention based on their actual significance.
+
 PLANNING vs IMPLEMENTATION:
 - Creating PRDs, documentation, or design documents = planning/design work
 - Writing functional code that changes system behavior = implementation work
 - Use accurate verbs: "planned", "designed", "documented" for documentation work; "implemented", "built", "coded" for functional code changes
 
 SIGNIFICANCE MATCHING:
-- Routine work gets straightforward, factual description.
-- Small changes can be ignored or can get one short sentence.
-- Medium changes deserve 2-4 paragraphs with more context
-- Complex work gets more detailed explanation. Large changes can have as much detail as needed.
+- Routine work gets straightforward, factual description
+- Small changes get a short description
+- Complex work gets more detailed explanation  
 - Don't inflate ordinary tasks with dramatic language
 - Don't minimize genuinely complex work
-
-OPENING SENTENCES:
-Lead with impact - what changed and why it matters. Avoid weak openings like "During this development session..." or "In this commit..."
 
 THE TEST:
 What would you actually tell someone about this work session? Say that.

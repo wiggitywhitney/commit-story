@@ -11,6 +11,7 @@ import { technicalDecisionsPrompt } from './prompts/sections/technical-decisions
 import { extractTextFromMessages } from '../integrators/context-integrator.js';
 import { selectContext } from './utils/context-selector.js';
 import { formatSessionsForAI } from '../utils/session-formatter.js';
+import { analyzeCommitContent } from './utils/commit-content-analyzer.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { DEFAULT_MODEL } from '../config/openai.js';
 import { OTEL, getProviderFromModel } from '../telemetry/standards.js';
@@ -58,30 +59,19 @@ export async function generateTechnicalDecisions(context) {
 
       logger.progress('technical decisions generation', `Found ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages for analysis`);
 
-      // Analyze file types to determine implementation status
-      const diffLines = selected.data.commit.diff.split('\n');
-      const changedFiles = diffLines
-        .filter(line => line.startsWith('diff --git'))
-        .map(line => line.match(/diff --git a\/(.+) b\/.+/)?.[1])
-        .filter(Boolean);
-
-      // Simple approach: documentation files are .md, .txt, README, CHANGELOG
-      const docFiles = changedFiles.filter(file =>
-        file.endsWith('.md') || file.endsWith('.txt') ||
-        file.includes('README') || file.includes('CHANGELOG')
-      );
-      const nonDocFiles = changedFiles.filter(file => !docFiles.includes(file));
+      // Analyze commit content to determine implementation status
+      const { docFiles, functionalFiles } = analyzeCommitContent(selected.data.commit.diff);
 
       // Generate dynamic prompt addition based on file analysis
       let implementationGuidance = '';
-      if (nonDocFiles.length > 0) {
+      if (functionalFiles.length > 0) {
         implementationGuidance = `
 
 IMPLEMENTED vs DISCUSSED:
-- "Implemented" = Related to changed non-documentation files: ${nonDocFiles.join(', ')}
+- "Implemented" = Related to changed non-documentation files: ${functionalFiles.join(', ')}
 - "Discussed" = Related only to documentation files (${docFiles.join(', ')}) or no related files changed
 
-INSTRUCTION: Mark decisions as "Implemented" only if they relate to these changed files: ${nonDocFiles.join(', ')}`;
+INSTRUCTION: Mark decisions as "Implemented" only if they relate to these changed files: ${functionalFiles.join(', ')}`;
       } else {
         implementationGuidance = `
 
