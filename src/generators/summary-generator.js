@@ -7,7 +7,7 @@
 
 import OpenAI from 'openai';
 import { getAllGuidelines } from './prompts/guidelines/index.js';
-import { summaryPrompt } from './prompts/sections/summary-prompt-new.js';
+import { summaryPrompt } from './prompts/sections/summary-prompt.js';
 import { selectContext } from './utils/context-selector.js';
 import { formatSessionsForAI } from '../utils/session-formatter.js';
 import { analyzeCommitContent } from './utils/commit-content-analyzer.js';
@@ -59,13 +59,6 @@ export async function generateSummary(context) {
 
       logger.progress('summary generation', `Content analysis: ${functionalFiles.length} functional files, ${docFiles.length} doc files, ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages`);
 
-      // DEBUG: Log conditional logic
-      console.log('\n=== CONDITIONAL LOGIC DEBUG ===');
-      console.log('hasFunctionalCode:', hasFunctionalCode);
-      console.log('hasSubstantialChat:', hasSubstantialChat);
-      console.log('overTwentyCharacters:', context.chatMetadata.data.userMessages.overTwentyCharacters);
-      console.log('=== END CONDITIONAL DEBUG ===\n');
-
       // Create fresh OpenAI instance (DD-016: prevent context bleeding)
       const openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
@@ -81,11 +74,6 @@ ${summaryPrompt(hasFunctionalCode, hasSubstantialChat)}
 
 ${guidelines}
   `.trim();
-
-  // DEBUG: Log the full system prompt
-  console.log('\n\n=== SUMMARY SYSTEM PROMPT DEBUG ===');
-  console.log(systemPrompt);
-  console.log('=== END PROMPT DEBUG ===\n\n');
 
   // Prepare the filtered context for the AI with session grouping
   const contextForAI = {

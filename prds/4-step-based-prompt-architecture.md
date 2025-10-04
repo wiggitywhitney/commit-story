@@ -1,9 +1,9 @@
 # PRD-4: Step-Based Prompt Architecture for Section Generators
 
 **GitHub Issue**: [#4](https://github.com/wiggitywhitney/commit-story/issues/4)
-**Status**: In Progress - Milestones 1-3 Complete
+**Status**: Complete - All 4 Milestones Done
 **Created**: 2025-09-05
-**Last Updated**: 2025-10-03  
+**Last Updated**: 2025-10-04  
 
 ## Summary
 
@@ -136,17 +136,17 @@ The dialogue prompt's introductory context is ESSENTIAL and should be preserved.
 
 This framing is not "competing principles" - it's necessary context before steps begin.
 
-### Milestone 4: Summary Prompt Restructuring (3-4 hours)
+### Milestone 4: Summary Prompt Restructuring (3-4 hours) ✅ COMPLETE
 
 #### Tasks
-- [ ] Analyze current prompt (identify what's worth keeping)
-- [ ] Restructure with proper step-based architecture
-- [ ] Move format specifications to final step
-- [ ] Integrate authenticity principles into relevant steps (not scattered)
-- [ ] Add verification step before output generation
-- [ ] Test before/after on same 3-5 commits from Milestone 1
-- [ ] Present side-by-side comparison for human approval
-- [ ] Update `src/generators/prompts/sections/summary-prompt.js`
+- [x] Analyze current prompt (identify what's worth keeping)
+- [x] Restructure with proper step-based architecture
+- [x] Move format specifications to final step
+- [x] Integrate authenticity principles into relevant steps (not scattered)
+- [x] Add verification step before output generation
+- [x] Test before/after on same 3-5 commits from Milestone 1
+- [x] Present side-by-side comparison for human approval
+- [x] Update `src/generators/prompts/sections/summary-prompt.js`
 
 #### Proposed Structure (to be refined during implementation)
 - **Step 1**: Analyze code changes in diff
@@ -265,6 +265,13 @@ This framing is not "competing principles" - it's necessary context before steps
 **Status**: ✅ Implemented
 **Files**: src/generators/summary-generator.js
 
+### DD-057: Opening Sentence Instruction Refinement (2025-10-04)
+**Decision**: Update opening sentence instruction to emphasize leading with "the thing that changed" while allowing "The developer" for variety
+**Rationale**: User feedback indicated strict avoidance of "The developer" was too rigid; variation in sentence structure is desirable
+**Impact**: Opening sentence instruction now says "Lead with the thing that changed as the subject" but allows flexibility
+**Status**: ✅ Implemented
+**Files**: src/generators/prompts/sections/summary-prompt.js
+
 ### DD-013: Summary Quality Research Findings (2025-10-03)
 **Decision**: Document analysis of recent summary outputs (Oct 1-3, 2025) to inform Milestone 4 restructuring
 **Rationale**: Research identified strengths to preserve and shortcomings to address:
@@ -347,11 +354,16 @@ This framing is not "competing principles" - it's necessary context before steps
 - DD-055: Commit Content Analyzer Utility (DRY)
 - DD-056: Chat Threshold Alignment (>= 3 messages)
 
-**Remaining Tasks**:
-- Present formal before/after comparison for human approval
-- Activate new prompt by updating production file
+**Completion Activities**:
+- [x] Presented side-by-side comparison (September vs October 1 entries)
+- [x] Activated new prompt (renamed summary-prompt-new.js → summary-prompt.js)
+- [x] Updated import in summary-generator.js
+- [x] Refined opening sentence instruction based on user feedback
+- [x] Regenerated all October 1 entries with new prompt (8 commits)
+- [x] Cleaned up unused prompt files (deleted 3 intermediate versions)
+- [x] Preserved original September prompt as summary-prompt-old.js for reference
 
-**Next Steps**: Obtain formal approval and activate summary-prompt-new.js as production prompt
+**Milestone 4 Status**: ✅ COMPLETE - PRD-4 is now fully complete
 
 ### 2025-10-03 (Afternoon): Milestone 3 Complete - Dialogue Prompt Restructured
 **Duration**: ~5 hours

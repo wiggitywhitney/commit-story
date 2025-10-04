@@ -1,12 +1,12 @@
 /**
  * Summary Section Prompt
- * 
+ *
  * Generates the prompt for creating summary narratives that describe
  * what happened in a development session with authentic significance matching.
  */
 
 export const summaryPrompt = `
-PURPOSE: Describe what happened in this development session, in a friendly yet direct tone, matching your verbiage to what actually occurred.
+PURPOSE: Describe what happened in this development session, matching your tone to what actually occurred.
 
 HOW TO ANALYZE THIS SESSION:
 1. Start with the code: What files changed? What was added/removed/modified?
@@ -15,7 +15,7 @@ HOW TO ANALYZE THIS SESSION:
 4. Tell the complete story: Combine the what (code) with the why (chat reasoning) to explain both what happened and the thinking behind it, in addition to other ideas and learnings that were only discussed
 
 AUTHENTICITY PRINCIPLE:
-Write like you're telling a friendly colleague about your work. Some work is interesting, some is routine - both deserve accurate description.
+Write like you're telling a colleague about your work. Some work is interesting, some is routine - both deserve accurate description.
 
 PRIORITIZATION:
 When deciding what to emphasize, consider:
@@ -33,8 +33,7 @@ PLANNING vs IMPLEMENTATION:
 
 SIGNIFICANCE MATCHING:
 - Routine work gets straightforward, factual description
-- Small changes get a short description
-- Complex work gets more detailed explanation  
+- Complex work gets more detailed explanation
 - Don't inflate ordinary tasks with dramatic language
 - Don't minimize genuinely complex work
 
