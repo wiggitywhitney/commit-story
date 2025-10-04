@@ -38,13 +38,6 @@ Every commit triggers a background process that creates a narrative record of yo
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 - Active Claude Code usage
 
-## Optimal Workflow Design
-
-Commit Story is designed to work best with **one Claude Code session per project** at a time. This ensures:
-
-- **Clean narrative coherence**: Each journal entry tells a focused story of your development decisions
-- **Accurate conversation capture**: Your discussions are precisely connected to the resulting code changes
-
 ## Quick Start
 
 ### 1. Install the Package
@@ -132,16 +125,6 @@ Edit `commit-story.config.json` in your project root:
 }
 ```
 
-## Development
-
-### Telemetry Standards
-
-This project uses OpenTelemetry for comprehensive observability. For development and contributing:
-
-- See [TELEMETRY.md](./TELEMETRY.md) for telemetry patterns and conventions
-- Run `npm run validate:telemetry` to check telemetry compliance
-- All telemetry follows OpenTelemetry semantic conventions
-
 ## Troubleshooting
 
 ### First Step: Enable Debug Mode
@@ -153,11 +136,12 @@ For any issue, start by enabling debug mode to see exactly what's happening:
 3. Watch the output for detailed status information
 
 The debug output will show you:
-- Whether the hook is running ("Post-commit hook triggered")
-- If Commit Story is enabled for this repository (runs vs skips)
-- OpenAI API connectivity status ("✅ connectivity confirmed" or error details)
-- Chat data availability ("X messages found" or "No chat data found")
-- Detailed error messages for any failures
+- Git hook execution (`🪝 Git Hook: Commit Story starting`)
+- Config and app startup (`⚙️ Config loaded`, `🚀 Main app started`)
+- Context collection (`🔍 Collecting context...`, `💬 Claude: Found X messages`)
+- OpenAI connectivity (`✅ OpenAI connectivity confirmed`)
+- Journal generation progress (`🤖 Generating journal sections...`)
+- Detailed error messages with next steps for any failures
 
 ### Common Issues
 
@@ -174,22 +158,7 @@ The debug output will show you:
 - Check `journal/entries/YYYY-MM/YYYY-MM-DD.md`
 - Journal directory is in `.gitignore` by default (private)
 
-### Connectivity Test
-
-Verify your OpenAI setup works:
-```bash
-npm run commit-story:test
-```
-
 ## Uninstalling
-
-### Temporary Disable
-
-To temporarily stop journal generation without uninstalling:
-
-Edit `commit-story.config.json` and set `"enabled": false`
-
-### Complete Removal
 
 To fully remove Commit Story from your project:
 
@@ -199,3 +168,43 @@ npm uninstall commit-story
 ```
 
 This removes the git hook, optionally removes the configuration file, and uninstalls the package. Your existing journal entries are preserved.
+
+## MCP Server Integration
+
+Commit Story includes a Model Context Protocol (MCP) server that lets Claude Code add reflections to your journal during development sessions.
+
+### What is the MCP Server?
+
+The MCP server provides a `journal_add_reflection` tool that Claude Code can use to capture your thoughts, decisions, and insights in real-time. These reflections are automatically included in your commit journal entries.
+
+### Setup Instructions
+
+Create a `.mcp.json` file in your project root:
+
+```json
+{
+  "mcpServers": {
+    "commit-story": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "node_modules/commit-story/src/mcp/server.js"
+      ]
+    }
+  }
+}
+```
+
+### Using Reflections
+
+Once configured, you can ask Claude Code to add reflections during your development:
+
+```
+"Add a reflection: I thought of this idea and I want to jot it down
+so I don't forget! What if we bypass the orchestration layer altogether
+and call the service directly? Could reduce latency by 50%."
+```
+
+Reflections are saved with timestamps to `journal/entries/YYYY-MM/YYYY-MM-DD.md` for easy access, and are automatically included in your commit journal entries when you commit. This captures those "aha!" moments and design ideas as they happen, creating a continuous development narrative.
+
+**Tip:** Your journal entries are perfect for catching up. Try asking Claude Code: "Read my journal and summarize what I worked on yesterday"

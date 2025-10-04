@@ -140,45 +140,49 @@ This PRD requires completion of PRD-23 (Debug Experience Improvements):
 
 ## Implementation Plan
 
-### Milestone 1: Conditional Telemetry Implementation (Priority: High)
+### Milestone 1: Conditional Telemetry Implementation (Priority: High) ✅ COMPLETE
 **Goal**: Make OpenTelemetry conditional on `dev: true` configuration
 
 **Tasks**:
-- [ ] Modify tracing.js to check dev mode before initialization
-- [ ] Add conditional imports/initialization for all OTel components
-- [ ] Test telemetry works when dev: true
-- [ ] Test graceful operation when dev: false
-- [ ] Verify no telemetry messages appear for public users
+- [x] Modify tracing.js to check dev mode before initialization
+- [x] Add conditional imports/initialization for all OTel components
+- [x] Test telemetry works when dev: true
+- [x] Test graceful operation when dev: false
+- [x] Verify no telemetry messages appear for public users
 
 **Dependencies**: PRD-23 completion
 **Documentation Updates**: None required (internal change)
+**Status**: Completed via PRD-23
 
-### Milestone 2: Package Preparation (Priority: High)
+### Milestone 2: Package Preparation (Priority: High) ✅ COMPLETE
 **Goal**: Prepare package for v1.1.0 release
 
 **Tasks**:
-- [ ] Update version number in package.json
-- [ ] Verify all files are included in npm package (check .npmignore)
-- [ ] Test CLI binaries work from installed package
-- [ ] Update any hardcoded version references
-- [ ] Prepare release notes documenting improvements
+- [x] Update version number in package.json (1.0.0 → 1.1.0)
+- [x] Verify all files are included in npm package (.npmignore updated, package.json files array configured)
+- [x] Test CLI binaries work from installed package (Fixed symlink resolution bug - commit 91376b2e)
+- [x] Update hardcoded version references (All references updated)
+- [x] Documentation updates (README updated with MCP documentation, troubleshooting verified)
 
 **Documentation Updates**:
-- Update README with new version features
-- Add troubleshooting section reflecting PRD-23 improvements
+- [x] Updated README with MCP server integration documentation
+- [x] Verified and corrected troubleshooting section (debug output, chronological order)
+- [x] Removed non-user-facing sections (Development/Telemetry, Temporary Disable)
+- [x] Fixed MCP configuration to use local .mcp.json (project-specific setup)
 
-### Milestone 3: Local Testing and Validation (Priority: High)
+### Milestone 3: Local Testing and Validation (Priority: High) ✅ COMPLETE
 **Goal**: Validate package works correctly before publishing
 
 **Tasks**:
-- [ ] Create local package with `npm pack`
-- [ ] Install local package in test directory
-- [ ] Verify hook installation works
-- [ ] Test journal generation with debug modes
-- [ ] Validate no telemetry noise in public mode
+- [x] Create local package with `npm pack` (commit-story-1.1.0.tgz - 67.5 kB)
+- [x] Install local package in test directory (content-manager repository)
+- [x] Verify hook installation works (npx commit-story-init tested successfully)
+- [x] Test journal generation with debug modes (Both debug: true and debug: false validated)
+- [x] Validate no telemetry noise in public mode (dev: false confirmed clean)
 
 **Documentation Updates**:
-- Test installation instructions in README
+- [x] Validated installation instructions in README work correctly
+- [x] Fixed first-commit bug discovered during testing (commit 449c093)
 
 ### Milestone 4: Publishing and External Validation (Priority: Medium)
 **Goal**: Publish package and validate in external repository
@@ -250,6 +254,46 @@ This PRD requires completion of PRD-23 (Debug Experience Improvements):
 3. **Backwards Compatibility**: Test with existing configuration files
 
 ## Progress Log
+
+### 2025-10-04: Milestone 2 & 3 Complete - Package Ready for Publication
+**Duration**: ~8 hours (based on commit timestamps)
+**Commits**: 8 commits
+**Primary Focus**: Package preparation, external testing, bug fixes
+
+**Completed PRD Items**:
+- ✅ Milestone 2: Package Preparation (5/5 items complete)
+  - Updated package.json to v1.1.0
+  - Configured .npmignore and package files array
+  - Created final package: commit-story-1.1.0.tgz (67.5 kB)
+  - Updated README with MCP server documentation
+  - Verified troubleshooting section accuracy
+
+- ✅ Milestone 3: Local Testing and Validation (5/5 items complete)
+  - Created and tested local package with npm pack
+  - Successfully installed in external repository (content-manager)
+  - Verified hook installation with npx commit-story-init
+  - Tested journal generation in both debug modes
+  - Confirmed clean output in production mode (dev: false)
+
+**Critical Bug Fixes Completed**:
+- Fixed npm bin symlink resolution bug (commit 91376b2e) - CLI boundary check now resolves symlinks with fs.realpathSync()
+- Fixed first-commit crash bug (commit 449c093) - Handles repositories with only one commit gracefully, collects all session messages
+- Updated chat collector to handle null previousCommitTime for first commits
+
+**Additional Work Done**:
+- Removed "Optimal Workflow Design" section from README (rudimentary multi-session support exists)
+- Removed "Development/Telemetry Standards" section from README (user-focused, not contributor-focused)
+- Removed "Temporary Disable" section from Uninstalling (redundant with Configuration section)
+- Fixed troubleshooting section debug output descriptions (chronological order, accurate messages)
+- Removed non-existent connectivity test reference (tests/ not in package)
+- Updated MCP server configuration to use local .mcp.json (project-specific, not global)
+- Added more colorful reflection example
+- Added tip about using journal with Claude Code for daily summaries
+
+**Next Session Priorities**:
+- Publish v1.1.0 to npm registry (Milestone 4)
+- Final validation with real npm install (not local tarball)
+- Update PRD-26 conference roadmap status
 
 ### 2025-09-26
 - PRD created based on packaging and deployment requirements

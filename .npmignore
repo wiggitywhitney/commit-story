@@ -20,7 +20,15 @@ tests/
 # Configuration files
 commit-story.config.json
 .env
-.env.example
+
+# Development scripts
+scripts/test-otel.js
+scripts/validate-telemetry.js
+
+# Old prompt files (not used in production)
+**/*-old.js
+**/dialogue-prompt-before-scoring.js
+**/dialogue-prompt-with-scoring.js
 
 # Build artifacts and packages
 commit_story-*.tgz

@@ -1,6 +1,6 @@
 {
   "name": "commit-story",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Automated Git Journal System with AI Assistant Context Integration",
   "main": "src/index.js",
   "bin": {
@@ -39,8 +39,8 @@
   "homepage": "https://github.com/wiggitywhitney/commit-story#readme",
   "files": [
     "src/",
-    "scripts/",
-    ".env.example",
+    "scripts/install-commit-journal-hook.sh",
+    "scripts/uninstall-commit-journal-hook.sh",
     "README.md"
   ],
   "engines": {
