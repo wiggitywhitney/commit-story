@@ -389,11 +389,15 @@ Next steps:
 }
 
 // CLI boundary - handles process lifecycle and telemetry shutdown
+debugLog(`🔍 CLI check: import.meta.url=${import.meta.url}, process.argv[1]=${process.argv[1]}`);
 if (import.meta.url === `file://${process.argv[1]}`) {
+  debugLog('✅ CLI boundary matched - starting execution');
   const runCLI = async () => {
     try {
+      debugLog('🎯 Calling main()...');
       // Run main and get exit code
       const exitCode = await main();
+      debugLog(`✅ main() completed with exit code: ${exitCode}`);
 
       // Display trace ID for AI queries (only when dev mode enabled)
       if (isDevMode && currentTraceId) {
@@ -470,4 +474,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error('❌ Fatal CLI error:', error);
     process.exit(1);
   });
+} else {
+  debugLog('⚠️  CLI boundary NOT matched - module imported, not executed directly');
 }
