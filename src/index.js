@@ -403,15 +403,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       ]);
 
       // Gracefully shutdown telemetry with timeout
-      if (isDebugMode) {
-        debugLog('\n🔄 Shutting down telemetry...');
+      if (isDevMode) {
+        console.log('\n🔄 Shutting down telemetry...');
       }
       const [loggingResult, telemetryResult] = await Promise.all([
         shutdownLogging({ timeoutMs: 2000 }),
         shutdownTelemetry({ timeoutMs: 2000 })
       ]);
-      if (isDebugMode) {
-        debugLog('✅ Telemetry shutdown complete');
+      if (isDevMode) {
+        console.log('✅ Telemetry shutdown complete');
       }
 
       // Display export status (only when dev mode enabled)
