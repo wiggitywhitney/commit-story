@@ -55,24 +55,16 @@ export async function generateSummary(context) {
 
       // Analyze commit content to determine what changed
       const { functionalFiles, docFiles, hasFunctionalCode } = analyzeCommitContent(selected.data.commit.diff);
-      const hasSubstantialChat = context.chatMetadata.data.userMessages.overTwentyCharacters > 0;
+      const hasSubstantialChat = context.chatMetadata.data.userMessages.overTwentyCharacters >= 3;
 
       logger.progress('summary generation', `Content analysis: ${functionalFiles.length} functional files, ${docFiles.length} doc files, ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages`);
 
-      // Build conditional prompt instructions based on commit content
-      let conditionalInstructions = '\n\nCONDITIONAL INSTRUCTIONS FOR THIS COMMIT:\n';
-
-      if (!hasFunctionalCode) {
-        conditionalInstructions += `- SKIP step 3.2 entirely because this commit has no functional code changes (only ${docFiles.join(', ')}).\n`;
-      }
-
-      if (!hasSubstantialChat) {
-        conditionalInstructions += `- SKIP step 3.3 entirely because there are no substantial discussions in the chat.\n`;
-      }
-
-      if (conditionalInstructions === '\n\nCONDITIONAL INSTRUCTIONS FOR THIS COMMIT:\n') {
-        conditionalInstructions = ''; // No conditional instructions needed
-      }
+      // DEBUG: Log conditional logic
+      console.log('\n=== CONDITIONAL LOGIC DEBUG ===');
+      console.log('hasFunctionalCode:', hasFunctionalCode);
+      console.log('hasSubstantialChat:', hasSubstantialChat);
+      console.log('overTwentyCharacters:', context.chatMetadata.data.userMessages.overTwentyCharacters);
+      console.log('=== END CONDITIONAL DEBUG ===\n');
 
       // Create fresh OpenAI instance (DD-016: prevent context bleeding)
       const openai = new OpenAI({
@@ -85,10 +77,15 @@ export async function generateSummary(context) {
   const systemPrompt = `
 ${selected.description}
 
-${summaryPrompt}${conditionalInstructions}
+${summaryPrompt(hasFunctionalCode, hasSubstantialChat)}
 
 ${guidelines}
   `.trim();
+
+  // DEBUG: Log the full system prompt
+  console.log('\n\n=== SUMMARY SYSTEM PROMPT DEBUG ===');
+  console.log(systemPrompt);
+  console.log('=== END PROMPT DEBUG ===\n\n');
 
   // Prepare the filtered context for the AI with session grouping
   const contextForAI = {
