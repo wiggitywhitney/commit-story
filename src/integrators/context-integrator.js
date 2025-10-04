@@ -339,7 +339,7 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
 
       // Get previous commit data for time window
       const previousCommit = await getPreviousCommitData(commitRef);
-      
+
       if (previousCommit) {
         const prevCommitAttrs = {
           [`${OTEL.NAMESPACE}.previous_commit.hash`]: previousCommit.hash,
@@ -508,10 +508,48 @@ async function getPreviousCommitData(commitRef = 'HEAD') {
       });
 
       // Get previous commit hash and timestamp (one commit before the specified commit)
-      const previousCommitInfo = execSync(
-        `git log -1 --format="%H|%ct" ${commitRef}~1`,
-        { encoding: 'utf8', cwd: process.cwd() }
-      ).trim();
+      let previousCommitInfo;
+      try {
+        previousCommitInfo = execSync(
+          `git log -1 --format="%H|%ct" ${commitRef}~1`,
+          { encoding: 'utf8', cwd: process.cwd() }
+        ).trim();
+      } catch (gitError) {
+        // No parent commit exists (first commit in repository)
+        const executionDuration = Date.now() - startTime;
+
+        logger.decision('No previous commit found', 'Git command failed - this is the first commit in repository', {
+          commitRef,
+          executionTime: executionDuration,
+          result: 'no_previous_commit',
+          error: gitError.message
+        });
+
+        // Add attributes for null result case
+        const gitAttrs = OTEL.attrs.gitCollection({
+          commitRef,
+          command: `git log -1 --format="%H|%ct" ${commitRef}~1`,
+          previousCommitFound: false,
+          previousCommitHash: null,
+          previousCommitTimestamp: null,
+          executionDuration
+        });
+        span.setAttributes(gitAttrs);
+
+        // Emit metrics for null result
+        OTEL.metrics.gauge('commit_story.git.execution_duration_ms', executionDuration);
+        OTEL.metrics.gauge('commit_story.git.previous_commit_found', 0); // 0 for false
+        OTEL.metrics.counter('commit_story.git.no_previous_commit_total', 1);
+
+        logger.complete('Previous commit data retrieval completed', 'No previous commit found - returning null for first commit', {
+          result: null,
+          executionTime: executionDuration,
+          reason: 'first_commit_in_repo'
+        });
+
+        span.setStatus({ code: SpanStatusCode.OK, message: 'No previous commit found (first commit)' });
+        return null; // No previous commit (first commit in repo)
+      }
 
       const executionDuration = Date.now() - startTime;
 

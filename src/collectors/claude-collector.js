@@ -17,7 +17,7 @@ const tracer = trace.getTracer('commit-story-claude-collector', '1.0.0');
 /**
  * Extract chat messages for a specific commit time window, grouped by session
  * @param {Date} commitTime - Current commit timestamp (UTC)
- * @param {Date} previousCommitTime - Previous commit timestamp (UTC)
+ * @param {Date|null} previousCommitTime - Previous commit timestamp (UTC), or null for first commit
  * @param {string} repoPath - Full path to repository (for cwd filtering)
  * @returns {Array} Array of session objects, each containing sessionId, messages array, startTime, and messageCount
  */
@@ -25,7 +25,7 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
   return tracer.startActiveSpan(OTEL.span.collectors.claude(), {
     attributes: {
       [`${OTEL.NAMESPACE}.collector.repo_path`]: repoPath,
-      [`${OTEL.NAMESPACE}.collector.time_window_start`]: previousCommitTime.toISOString(),
+      [`${OTEL.NAMESPACE}.collector.time_window_start`]: previousCommitTime?.toISOString() || 'session_start',
       [`${OTEL.NAMESPACE}.collector.time_window_end`]: commitTime.toISOString(),
       'code.function': 'extractChatForCommit'
     }
@@ -35,8 +35,12 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
     try {
       const messages = [];
 
-      const timeWindowMinutes = Math.round((commitTime - previousCommitTime) / (1000 * 60));
-      logger.start('chat message collection', `Collecting Claude messages for ${timeWindowMinutes}-minute commit window`);
+      // For first commit (no previous commit), collect all messages from session start
+      // For subsequent commits, collect messages since previous commit
+      const windowStart = previousCommitTime;
+      const isFirstCommit = !previousCommitTime;
+      const timeWindowMinutes = windowStart ? Math.round((commitTime - windowStart) / (1000 * 60)) : 'all';
+      logger.start('chat message collection', `Collecting Claude messages for ${isFirstCommit ? 'entire session (first commit)' : `${timeWindowMinutes}-minute commit window`}`);
 
       // 1. Find all Claude JSONL files
       const files = findClaudeFiles();
@@ -86,7 +90,13 @@ export function extractChatForCommit(commitTime, previousCommitTime, repoPath) {
               const messageTime = parseTimestamp(message.timestamp);
               if (!messageTime) continue;
 
-              if (previousCommitTime <= messageTime && messageTime <= commitTime) {
+              // For first commit (no previous commit), include all messages up to commit time
+              // For subsequent commits, only include messages between previous and current commit
+              const inTimeWindow = previousCommitTime
+                ? (previousCommitTime <= messageTime && messageTime <= commitTime)
+                : (messageTime <= commitTime);
+
+              if (inTimeWindow) {
                 messages.push(message); // Full message object
                 validMessages++;
               } else {
