@@ -45,6 +45,8 @@ const debugLog = (message) => {
   }
 };
 
+debugLog('⚙️  Config loaded');
+
 // Get tracer instance for manual instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
 
@@ -75,6 +77,8 @@ export default async function main() {
       'code.function': 'main'
     }
   }, async (span) => {
+    debugLog('🚀 Main app started');
+
     // Capture trace ID for telemetry output (when dev mode enabled)
     if (isDevMode) {
       currentTraceId = span.spanContext().traceId;
