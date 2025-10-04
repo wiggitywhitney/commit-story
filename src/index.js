@@ -7,19 +7,25 @@
 
 // Initialize tracing BEFORE any other imports to ensure auto-instrumentation works
 import './tracing.js';
+console.log('[BOOTSTRAP] Tracing imported');
 
 import { config } from 'dotenv';
+console.log('[BOOTSTRAP] Dotenv imported');
 import OpenAI from 'openai';
+console.log('[BOOTSTRAP] OpenAI imported');
 import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { gatherContextForCommit } from './integrators/context-integrator.js';
+console.log('[BOOTSTRAP] Context integrator imported');
 import { generateJournalEntry } from './generators/journal-generator.js';
 import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 import { getConfig } from './utils/config.js';
 import { createNarrativeLogger } from './utils/trace-logger.js';
+console.log('[BOOTSTRAP] All imports complete');
 
 config({ quiet: true });
+console.log('[BOOTSTRAP] Dotenv configured');
 
 // Get configuration (using sync version for bootstrap)
 const { debug: isDebugMode, dev: isDevMode } = (() => {
