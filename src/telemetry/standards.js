@@ -91,6 +91,13 @@ export const OTEL = {
       technical: () => 'technical_decisions.generate'
     },
 
+    // Prompt construction operations
+    prompts: {
+      summary: () => 'prompts.summary_construction',
+      dialogue: () => 'prompts.dialogue_construction',
+      technical: () => 'prompts.technical_construction'
+    },
+
     // Data collection operations
     collectors: {
       claude: () => 'claude.collect_messages',
@@ -127,6 +134,7 @@ export const OTEL = {
     utils: {
       contextSelect: () => 'utils.select_context',
       sessionFormat: () => 'utils.session_format',
+      commitContentAnalyzer: () => 'utils.commit_content_analyzer.analyze',
       journal_paths: {
         generate_path: () => 'utils.journal_paths.generate_path',
         create_directory: () => 'utils.journal_paths.create_directory',
@@ -223,6 +231,38 @@ export const OTEL = {
       [`${OTEL.NAMESPACE}.chat.user_messages`]: chatData.userMessages,
       [`${OTEL.NAMESPACE}.chat.assistant_messages`]: chatData.assistantMessages,
       [`${OTEL.NAMESPACE}.chat.user_messages_over_twenty`]: chatData.userMessagesOverTwenty
+    }),
+
+    /**
+     * Prompt construction attributes
+     * @param {Object} promptData - Prompt construction parameters
+     * @returns {Object} Prompt attributes with commit_story namespace
+     */
+    prompts: {
+      /**
+       * Summary prompt construction attributes
+       * @param {Object} params - Summary prompt parameters
+       * @returns {Object} Summary prompt attributes
+       */
+      summary: (params) => ({
+        [`${OTEL.NAMESPACE}.prompt.has_functional_code`]: params.hasFunctionalCode,
+        [`${OTEL.NAMESPACE}.prompt.has_substantial_chat`]: params.hasSubstantialChat,
+        [`${OTEL.NAMESPACE}.prompt.scenario`]: params.scenario,
+        [`${OTEL.NAMESPACE}.prompt.length`]: params.length
+      })
+    },
+
+    /**
+     * File analysis attributes
+     * @param {Object} fileData - File analysis results
+     * @returns {Object} File attributes with commit_story namespace
+     */
+    files: (fileData) => ({
+      [`${OTEL.NAMESPACE}.files.total`]: fileData.total,
+      [`${OTEL.NAMESPACE}.files.documentation`]: fileData.documentation,
+      [`${OTEL.NAMESPACE}.files.functional`]: fileData.functional,
+      [`${OTEL.NAMESPACE}.files.has_functional_code`]: fileData.hasFunctionalCode,
+      [`${OTEL.NAMESPACE}.files.only_documentation`]: fileData.onlyDocumentation
     }),
 
     /**
