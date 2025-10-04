@@ -395,8 +395,11 @@ Next steps:
 }
 
 // CLI boundary - handles process lifecycle and telemetry shutdown
-debugLog(`🔍 CLI check: import.meta.url=${import.meta.url}, process.argv[1]=${process.argv[1]}`);
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Resolve symlinks to compare real paths (e.g., .bin/commit-story -> node_modules/commit-story/src/index.js)
+const scriptPath = fs.realpathSync(process.argv[1]);
+const modulePath = import.meta.url.replace('file://', '');
+debugLog(`🔍 CLI check: modulePath=${modulePath}, scriptPath=${scriptPath}`);
+if (modulePath === scriptPath) {
   debugLog('✅ CLI boundary matched - starting execution');
   const runCLI = async () => {
     try {
