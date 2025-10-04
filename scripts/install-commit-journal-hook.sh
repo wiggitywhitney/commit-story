@@ -35,16 +35,16 @@ create_hook_content() {
 debug_log() {
     if [[ -f "commit-story.config.json" ]] && command -v node >/dev/null 2>&1; then
         DEBUG_ENABLED=$(node -e "
-            try { 
-                const config = require('./commit-story.config.json'); 
-                console.log(config.debug || false); 
-            } catch(e) { 
-                console.log(false); 
+            try {
+                const config = require('./commit-story.config.json');
+                console.log(config.debug || false);
+            } catch(e) {
+                console.log(false);
             }
         " 2>/dev/null || echo "false")
-        
+
         if [[ "$DEBUG_ENABLED" == "true" ]]; then
-            echo "[DEBUG] $1" >&2
+            echo "🪝 Git Hook: $1" >&2
         fi
     fi
 }
@@ -59,14 +59,14 @@ is_commit_story_enabled() {
 is_debug_enabled() {
     if [[ -f "commit-story.config.json" ]] && command -v node >/dev/null 2>&1; then
         DEBUG_ENABLED=$(node -e "
-            try { 
-                const config = require('./commit-story.config.json'); 
-                console.log(config.debug || false); 
-            } catch(e) { 
-                console.log(false); 
+            try {
+                const config = require('./commit-story.config.json');
+                console.log(config.debug || false);
+            } catch(e) {
+                console.log(false);
             }
         " 2>/dev/null || echo "false")
-        
+
         [[ "$DEBUG_ENABLED" == "true" ]]
     else
         return 1  # Debug disabled if no config or node
@@ -74,16 +74,12 @@ is_debug_enabled() {
 }
 
 # Main execution
-debug_log "Post-commit hook triggered"
+debug_log "Commit Story starting"
 
 # Only run if Commit Story is configured for this repository
 if is_commit_story_enabled; then
-    debug_log "Commit Story enabled, starting journal generation"
-    debug_log "Starting journal generation for commit $(git rev-parse HEAD)"
-    
     # Run in foreground if debug mode, background otherwise
     if is_debug_enabled; then
-        debug_log "Debug mode enabled - running in foreground"
         if [[ -f "node_modules/.bin/commit-story" ]]; then
             ./node_modules/.bin/commit-story HEAD
             EXIT_CODE=$?
@@ -92,23 +88,17 @@ if is_commit_story_enabled; then
             EXIT_CODE=$?
         fi
 
-        # Only show success if it actually succeeded
+        # Only show completion message if it succeeded
         if [[ $EXIT_CODE -eq 0 ]]; then
-            debug_log "Journal generation completed successfully"
-        else
-            debug_log "Journal generation failed with exit code $EXIT_CODE"
+            debug_log "Commit Story completed"
         fi
     else
-        debug_log "Running in background"
         if [[ -f "node_modules/.bin/commit-story" ]]; then
             (./node_modules/.bin/commit-story HEAD >/dev/null 2>&1 &)
         else
             (node src/index.js HEAD >/dev/null 2>&1 &)
         fi
-        debug_log "Journal generation started in background"
     fi
-else
-    debug_log "Commit Story not configured for this repository, skipping"
 fi
 
 exit 0
