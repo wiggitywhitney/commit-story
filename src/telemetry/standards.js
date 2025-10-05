@@ -18,14 +18,16 @@
  */
 
 import { metrics } from '@opentelemetry/api';
-import {
-  SEMATTRS_CODE_FUNCTION,
-  SEMATTRS_CODE_FILEPATH,
-  SEMATTRS_CODE_LINENO,
-  SEMATTRS_RPC_SYSTEM,
-  SEMATTRS_RPC_SERVICE,
-  SEMATTRS_RPC_METHOD
-} from '@opentelemetry/semantic-conventions';
+
+// OpenTelemetry semantic convention constants (v1.37.0)
+// Defined inline to avoid 10MB @opentelemetry/semantic-conventions dependency
+// Spec: https://opentelemetry.io/docs/specs/semconv/
+const SEMATTRS_CODE_FUNCTION = 'code.function';
+const SEMATTRS_CODE_FILEPATH = 'code.filepath';
+const SEMATTRS_CODE_LINENO = 'code.lineno';
+const SEMATTRS_RPC_SYSTEM = 'rpc.system';
+const SEMATTRS_RPC_SERVICE = 'rpc.service';
+const SEMATTRS_RPC_METHOD = 'rpc.method';
 
 /**
  * Detects AI provider from model name for telemetry

@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-// Initialize OpenTelemetry BEFORE any other imports
-import sdk from '../tracing.js';
-
 /**
  * Commit Story MCP Server
  *
@@ -18,7 +15,14 @@ import { OTEL } from '../telemetry/standards.js';
 import { createNarrativeLogger } from '../utils/trace-logger.js';
 import { createReflectionTool } from './tools/reflection-tool.js';
 
-// Initialize telemetry
+// Initialize telemetry conditionally (non-blocking)
+import('../tracing.js')
+  .then(({ initializeTelemetry }) => initializeTelemetry())
+  .catch(() => {
+    // Silently fail - telemetry is optional for MCP server
+  });
+
+// Initialize telemetry API (works without SDK)
 const tracer = trace.getTracer('commit-story', '1.0.0');
 const logger = createNarrativeLogger('mcp.server');
 

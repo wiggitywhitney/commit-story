@@ -5,9 +5,6 @@
  * Main entry point for CLI usage and git hook integration
  */
 
-// Initialize tracing BEFORE any other imports to ensure auto-instrumentation works
-import './tracing.js';
-
 import { config } from 'dotenv';
 import OpenAI from 'openai';
 import fs from 'fs';
@@ -37,6 +34,17 @@ const { debug: isDebugMode, dev: isDevMode } = (() => {
   }
   return { debug: false, dev: false };
 })();
+
+// Initialize telemetry in background if dev mode enabled
+if (isDevMode) {
+  import('./tracing.js')
+    .then(({ initializeTelemetry }) => initializeTelemetry())
+    .catch(err => {
+      if (isDebugMode) {
+        console.log('Telemetry initialization skipped:', err.message);
+      }
+    });
+}
 
 // Debug-only logging
 const debugLog = (message) => {

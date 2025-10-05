@@ -10,9 +10,32 @@
  */
 
 import { trace } from '@opentelemetry/api';
-import { logger } from '../logging.js';
-import { SeverityNumber } from '@opentelemetry/api-logs';
 import { getConfig } from './config.js';
+
+// Lazy-loaded logger and SeverityNumber
+let logger = null;
+let SeverityNumber = null;
+let loggingInitialized = false;
+
+// Initialize logging dependencies lazily
+async function ensureLoggingDeps() {
+  if (loggingInitialized) return;
+
+  try {
+    const [loggingModule, apiLogsModule] = await Promise.all([
+      import('../logging.js'),
+      import('@opentelemetry/api-logs')
+    ]);
+    logger = loggingModule.logger;
+    SeverityNumber = apiLogsModule.SeverityNumber;
+    loggingInitialized = true;
+  } catch (err) {
+    // SDK packages not available, use noop
+    logger = { emit: () => {} };
+    SeverityNumber = { INFO: 9, WARN: 13, ERROR: 17, DEBUG: 5 };
+    loggingInitialized = true;
+  }
+}
 
 /**
  * Check if we're in dev mode using centralized config
@@ -37,6 +60,15 @@ function narrativeLog(level, operation, message, context = {}) {
     return;
   }
 
+  // Ensure logging dependencies are loaded (fire and forget)
+  ensureLoggingDeps().then(() => {
+    emitLog(level, operation, message, context);
+  }).catch(err => {
+    // Silently fail if logging unavailable
+  });
+}
+
+function emitLog(level, operation, message, context) {
   // Capture timestamp at start for consistency
   const timestamp = Date.now();
   const span = trace.getActiveSpan();

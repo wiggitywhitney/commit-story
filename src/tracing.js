@@ -1,9 +1,3 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { PeriodicExportingMetricReader, AggregationTemporality } from '@opentelemetry/sdk-metrics';
 import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from './telemetry/standards.js';
@@ -33,8 +27,39 @@ const { debug: isDebugMode, dev: isDevMode } = (() => {
 // Only initialize telemetry when dev mode is enabled
 let sdk = null;
 
+/**
+ * Dynamically load OpenTelemetry SDK packages
+ * Returns null if packages are not available (production install)
+ */
+async function loadOTelSDK() {
+  try {
+    const modules = await Promise.all([
+      import('@opentelemetry/sdk-node'),
+      import('@opentelemetry/auto-instrumentations-node'),
+      import('@opentelemetry/sdk-trace-base'),
+      import('@opentelemetry/exporter-trace-otlp-http'),
+      import('@opentelemetry/exporter-metrics-otlp-http'),
+      import('@opentelemetry/sdk-metrics')
+    ]);
+
+    return {
+      NodeSDK: modules[0].NodeSDK,
+      getNodeAutoInstrumentations: modules[1].getNodeAutoInstrumentations,
+      BatchSpanProcessor: modules[2].BatchSpanProcessor,
+      ConsoleSpanExporter: modules[2].ConsoleSpanExporter,
+      OTLPTraceExporter: modules[3].OTLPTraceExporter,
+      OTLPMetricExporter: modules[4].OTLPMetricExporter,
+      PeriodicExportingMetricReader: modules[5].PeriodicExportingMetricReader,
+      AggregationTemporality: modules[5].AggregationTemporality
+    };
+  } catch (error) {
+    // SDK packages not available (production install without devDependencies)
+    return null;
+  }
+}
+
 // Instrument conditional telemetry initialization
-function initializeTelemetryConditionally() {
+async function initializeTelemetryConditionally() {
   // We need to use a simple tracer since the SDK might not be initialized yet
   const simpleTracer = {
     startActiveSpan: (name, options, fn) => {
@@ -75,7 +100,7 @@ function initializeTelemetryConditionally() {
     attributes: {
       'code.function': 'initializeTelemetryConditionally'
     }
-  }, (span) => {
+  }, async (span) => {
     const logger = createNarrativeLogger('initialization.telemetry_setup');
     const startTime = Date.now();
 
@@ -93,12 +118,29 @@ function initializeTelemetryConditionally() {
         return null;
       }
 
-      logger.progress('Starting initialization', 'Dev mode enabled, initializing telemetry stack', {
+      // Try to load SDK packages
+      logger.progress('Loading SDK', 'Attempting to load OpenTelemetry SDK packages', {
+        packages: ['sdk-node', 'auto-instrumentations', 'exporters']
+      });
+
+      const sdkModules = await loadOTelSDK();
+
+      if (!sdkModules) {
+        logger.decision('Skip initialization', 'SDK packages not available (production install)', {
+          skip_reason: 'sdk_packages_missing',
+          sdk_initialized: false
+        });
+        span.setStatus({ code: SpanStatusCode.OK, message: 'SDK packages not available' });
+        span.end();
+        return null;
+      }
+
+      logger.progress('Starting initialization', 'Dev mode enabled and SDK available, initializing telemetry stack', {
         service_name: 'commit-story-dev',
         service_version: '1.0.0'
       });
 
-      return initializeSDK(logger, startTime, span);
+      return initializeSDK(logger, startTime, span, sdkModules);
 
     } catch (error) {
       const initializationDuration = Date.now() - startTime;
@@ -108,14 +150,24 @@ function initializeTelemetryConditionally() {
 
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
-      throw error;
-    } finally {
       span.end();
+      throw error;
     }
   });
 }
 
-function initializeSDK(logger, startTime, span) {
+function initializeSDK(logger, startTime, span, sdkModules) {
+  const {
+    NodeSDK,
+    getNodeAutoInstrumentations,
+    BatchSpanProcessor,
+    ConsoleSpanExporter,
+    OTLPTraceExporter,
+    OTLPMetricExporter,
+    PeriodicExportingMetricReader,
+    AggregationTemporality
+  } = sdkModules;
+
   logger.progress('OTLP configuration', 'Configuring OTLP exporters for Datadog Agent', {
     trace_endpoint: 'http://localhost:4318/v1/traces',
     metrics_endpoint: 'http://localhost:4318/v1/metrics'
@@ -192,6 +244,7 @@ function initializeSDK(logger, startTime, span) {
 
   span.setAttributes(attrs);
   span.setStatus({ code: SpanStatusCode.OK, message: 'Telemetry initialized successfully' });
+  span.end();
 
   logger.complete('SDK initialization', 'OpenTelemetry SDK initialized successfully', {
     service_name: 'commit-story-dev',
@@ -214,8 +267,14 @@ function initializeSDK(logger, startTime, span) {
   return sdk;
 }
 
-// Execute conditional initialization
-sdk = initializeTelemetryConditionally();
+/**
+ * Initialize telemetry if dev mode is enabled and SDK packages are available
+ * This is the main entry point for telemetry initialization
+ * @returns {Promise<Object|null>} SDK instance or null if not initialized
+ */
+export async function initializeTelemetry() {
+  return await initializeTelemetryConditionally();
+}
 
 /**
  * Gracefully shutdown telemetry with timeout

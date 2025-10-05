@@ -1,14 +1,13 @@
-import { LoggerProvider, BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
-import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
-import resourcePkg from '@opentelemetry/resources';
-const { resourceFromAttributes, defaultResource } = resourcePkg;
-import pkg from '@opentelemetry/semantic-conventions';
-const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } = pkg;
 import fs from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from './telemetry/standards.js';
-import { createNarrativeLogger } from './utils/trace-logger.js';
 import { shutdownWithTimeout } from './utils/shutdown-helper.js';
+
+// Dynamic imports for SDK packages (only loaded when dev mode enabled)
+let LoggerProvider, BatchLogRecordProcessor, OTLPLogExporter;
+let resourceFromAttributes, defaultResource;
+let SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION;
+let createNarrativeLogger;
 
 // Get tracer instance for instrumentation
 const tracer = trace.getTracer('commit-story', '1.0.0');
@@ -35,27 +34,16 @@ let logger = null;
 let batchProcessor = null;
 
 // Instrument conditional logging initialization
-function initializeLoggingConditionally() {
+async function initializeLoggingConditionally() {
   return tracer.startActiveSpan(OTEL.span.initialization.logging(), {
     attributes: {
       'code.function': 'initializeLoggingConditionally'
     }
-  }, (span) => {
-    const narrativeLogger = createNarrativeLogger('initialization.logging_setup');
+  }, async (span) => {
     const startTime = Date.now();
 
     try {
-      narrativeLogger.decision('Condition check', `Logging initialization condition: dev mode = ${isDevMode}`, {
-        dev_mode_enabled: isDevMode,
-        condition_met: isDevMode
-      });
-
       if (!isDevMode) {
-        narrativeLogger.decision('Skip initialization', 'Logging initialization skipped - dev mode is false', {
-          skip_reason: 'dev_mode_disabled',
-          logger_type: 'noop'
-        });
-
         const skipDuration = Date.now() - startTime;
         const attrs = OTEL.attrs.initialization.logging({
           providerInitialized: false,
@@ -71,6 +59,26 @@ function initializeLoggingConditionally() {
         return { logger: { emit: () => {} }, batchProcessor: null };
       }
 
+      // Load SDK packages dynamically
+      const [sdkLogs, exporterLogs, resources, semconv, traceLogger] = await Promise.all([
+        import('@opentelemetry/sdk-logs'),
+        import('@opentelemetry/exporter-logs-otlp-http'),
+        import('@opentelemetry/resources'),
+        import('@opentelemetry/semantic-conventions'),
+        import('./utils/trace-logger.js')
+      ]);
+
+      LoggerProvider = sdkLogs.LoggerProvider;
+      BatchLogRecordProcessor = sdkLogs.BatchLogRecordProcessor;
+      OTLPLogExporter = exporterLogs.OTLPLogExporter;
+      resourceFromAttributes = resources.resourceFromAttributes;
+      defaultResource = resources.defaultResource;
+      SEMRESATTRS_SERVICE_NAME = semconv.SEMRESATTRS_SERVICE_NAME;
+      SEMRESATTRS_SERVICE_VERSION = semconv.SEMRESATTRS_SERVICE_VERSION;
+      createNarrativeLogger = traceLogger.createNarrativeLogger;
+
+      const narrativeLogger = createNarrativeLogger('initialization.logging_setup');
+
       narrativeLogger.progress('Starting initialization', 'Dev mode enabled, initializing logging system', {
         service_name: 'commit-story-dev',
         service_version: '1.0.0'
@@ -80,9 +88,7 @@ function initializeLoggingConditionally() {
 
     } catch (error) {
       const initializationDuration = Date.now() - startTime;
-      narrativeLogger.error('Logging initialization', 'Failed to initialize logging', error, {
-        initialization_duration_ms: initializationDuration
-      });
+      console.error('Failed to initialize logging:', error);
 
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
@@ -177,10 +183,16 @@ function initializeLoggingSystem() {
   return { logger: loggerInstance, batchProcessor };
 }
 
-// Execute conditional initialization
-const loggingResult = initializeLoggingConditionally();
-logger = loggingResult.logger;
-batchProcessor = loggingResult.batchProcessor;
+// Execute conditional initialization (async)
+const loggingPromise = initializeLoggingConditionally();
+loggingPromise.then(result => {
+  logger = result.logger;
+  batchProcessor = result.batchProcessor;
+}).catch(err => {
+  console.error('Failed to initialize logging:', err);
+  logger = { emit: () => {} };
+  batchProcessor = null;
+});
 
 export { logger };
 
