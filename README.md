@@ -111,20 +111,6 @@ Edit `commit-story.config.json` in your project root:
 
 - **`debug`**: Set to `true` to see journal generation output during commits. Set to `false` (default) to run silently in background.
 
-- **`enabled`**: Set to `false` to temporarily disable journal generation while keeping the hook installed. Set to `true` (default) to enable.
-
-### Example Configuration
-
-```json
-{
-  "debug": true,
-  "_debug_help": "Set to true to run journal generation in foreground with detailed logging visible during commits.",
-  
-  "enabled": true,
-  "_enabled_help": "Set to false to temporarily disable automatic journal generation while keeping the hook installed."
-}
-```
-
 ## Troubleshooting
 
 ### First Step: Enable Debug Mode
