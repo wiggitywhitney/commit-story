@@ -33,12 +33,17 @@ Every commit triggers a background process that creates a narrative record of yo
 
 ## Prerequisites
 
-- Node.js 18.0.0 or higher
+**Important:** Run all commands from your git repository root directory.
+
+- [Node.js 18.0.0 or higher](https://nodejs.org/en/download)
 - Git repository
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
-- Active Claude Code usage
+  - Uses GPT-4o-mini (~$3/month for typical usage)
+- Claude Code
 
 ## Quick Start
+
+**All commands below work the same on macOS, Windows, and Linux. Run them from your project root directory.**
 
 ### 1. Install the Package
 
@@ -48,13 +53,10 @@ npm install --save-dev commit-story
 
 ### 2. Set Up Your OpenAI API Key
 
-Add your OpenAI API key to your `.env` file:
-
-```bash
+Add to your `.env` file in your project root (create it if it doesn't exist):
+```
 OPENAI_API_KEY=your-api-key-here
 ```
-
-Need an API key? Get one at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 
 ### 3. Activate Git Hook
 

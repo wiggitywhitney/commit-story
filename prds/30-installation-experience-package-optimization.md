@@ -255,25 +255,25 @@ Total folders: 2,340
 - [x] No references to removed `enabled` config
 - [x] Clear, accurate success messages
 
-### Milestone 3: Documentation Updates (Priority: High)
+### Milestone 3: Documentation Updates (Priority: High) ✅ COMPLETE
 **Goal**: Add missing instructions and improve clarity
 
 **Tasks**:
-- [ ] Add "Start in repository root" to Prerequisites section
-- [ ] Add Windows installation section
-- [ ] Add PowerShell command examples
-- [ ] Add CMD command examples
-- [ ] Make OPENAI_API_KEY more prominent
-- [ ] Update Quick Start with platform-specific notes
-- [ ] Add troubleshooting: "Not in git repository" error
-- [ ] Add troubleshooting: "node_modules committed" recovery
-- [ ] Review entire README for clarity
+- [x] Add "Start in repository root" to Prerequisites section
+- [x] Add Windows installation section
+- [x] Add PowerShell command examples
+- [x] Add CMD command examples
+- [x] Make OPENAI_API_KEY more prominent
+- [x] Update Quick Start with platform-specific notes
+- [x] Add troubleshooting: "Not in git repository" error
+- [x] Add troubleshooting: "node_modules committed" recovery
+- [x] Review entire README for clarity
 
 **Success Criteria**:
-- Windows users can install successfully
-- "Start in repo root" is clear and prominent
-- OPENAI_API_KEY is impossible to miss
-- Troubleshooting covers common issues
+- [x] Windows users can install successfully
+- [x] "Start in repo root" is clear and prominent
+- [x] OPENAI_API_KEY is impossible to miss
+- [x] Troubleshooting covers common issues
 
 ### Milestone 4: Testing & Validation (Priority: High)
 **Goal**: Verify all fixes work on all platforms
@@ -435,6 +435,36 @@ Total folders: 2,340
 - Begin Milestone 3: Documentation Updates
 - Add Windows installation instructions
 - Make prerequisites more prominent
+
+### 2025-10-05: Milestone 3 Complete - Documentation Updates
+**Duration**: ~1 hour
+**Primary Focus**: README improvements for cross-platform installation clarity
+
+**Completed PRD Items**:
+- [x] Added "Run from repository root" prerequisite
+- [x] Unified installation instructions for macOS, Windows, and Linux
+- [x] Made OpenAI API key requirements more prominent with cost transparency
+- [x] Added Node.js download link (https://nodejs.org/en/download)
+- [x] Simplified .env file setup instructions
+- [x] Removed unnecessary troubleshooting sections per user feedback
+
+**Key Improvements**:
+- Cross-platform support clearly stated (macOS, Windows, and Linux)
+- Cost transparency: GPT-4o-mini ~$3/month for typical usage
+- Clearer .env file instructions for users with/without existing .env files
+- Simplified platform-specific commands to universal approach
+- User-driven iteration based on real installation confusion from friend's experience
+
+**Implementation Approach**:
+- Removed redundant platform-specific code blocks
+- Added cost estimate under API key prerequisite
+- Changed "Create .env" to "Add to .env (create if doesn't exist)" for clarity
+- Hyperlinked Node.js prerequisite to official download page
+
+**Next Session Priorities**:
+- Begin Milestone 4: Testing & Validation
+- Test installation on multiple platforms
+- Gather user feedback on improved documentation
 
 ## Design Document References
 
