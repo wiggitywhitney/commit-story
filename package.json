@@ -13,7 +13,6 @@
     "commit-story:run": "node src/index.js",
     "commit-story:test": "node tests/connectivity.js",
     "commit-story:init-hook": "bash scripts/install-commit-journal-hook.sh",
-    "commit-story:remove-hook": "bash scripts/uninstall-commit-journal-hook.sh",
     "secrets:pull": "teller env",
     "test:trace": "node scripts/test-otel.js",
     "validate:telemetry": "node scripts/validate-telemetry.js",

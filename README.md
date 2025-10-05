@@ -148,14 +148,25 @@ The debug output will show you:
 
 ## Uninstalling
 
-To fully remove Commit Story from your project:
+To fully remove Commit Story:
+
+### 1. Remove the Git Hook
 
 ```bash
 npx commit-story-remove
+```
+
+This removes the post-commit hook from `.git/hooks/post-commit` and optionally deletes the `commit-story.config.json` file.
+
+### 2. Uninstall the Package
+
+```bash
 npm uninstall commit-story
 ```
 
-This removes the git hook, optionally removes the configuration file, and uninstalls the package. Your existing journal entries are preserved.
+Your journal entries in the `journal/` directory are preserved.
+
+**Important:** Remove the hook BEFORE uninstalling the package. If you already ran `npm uninstall`, you'll need to manually delete `.git/hooks/post-commit`.
 
 ## MCP Server Integration
 
