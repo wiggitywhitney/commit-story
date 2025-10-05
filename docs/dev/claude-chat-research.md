@@ -20,7 +20,7 @@ Research findings for understanding Claude Code chat storage structure and time-
   "cwd": "/working/directory/path",
   "sessionId": "session-uuid",
   "version": "1.0.85",
-  "gitBranch": "master",
+  "gitBranch": "main",
   "type": "user|assistant",
   "message": {
     "role": "user|assistant",
