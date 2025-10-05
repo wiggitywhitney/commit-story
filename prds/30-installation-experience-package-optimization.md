@@ -236,6 +236,23 @@ Total folders: 2,340
 - [x] Package count: ~150 packages → 3 packages
 - [x] Production installation verified working
 
+### Milestone 1.5: Production Compatibility Fix (Priority: Critical) ✅ COMPLETE
+**Goal**: Make SDK imports dynamic so production installs work without devDependencies
+
+**Tasks**:
+- [x] Move @opentelemetry/api to dependencies
+- [x] Refactor tracing.js to use dynamic SDK imports
+- [x] Update index.js to conditionally initialize telemetry
+- [x] Update mcp/server.js for conditional initialization
+- [x] Test telemetry works in dev mode (with devDependencies)
+- [x] Test journal generation works in production mode (without devDependencies)
+
+**Success Criteria**:
+- [x] Production installs work with only openai + dotenv + @opentelemetry/api
+- [x] Telemetry initializes correctly when SDK packages available
+- [x] Journal generation works without errors when SDK packages absent
+- [x] No breaking changes to existing functionality
+
 ### Milestone 2: Install Script Hardening (Priority: High) ✅ COMPLETE
 **Goal**: Prevent node_modules/ git disasters and fix outdated messages
 
@@ -465,6 +482,44 @@ Total folders: 2,340
 - Begin Milestone 4: Testing & Validation
 - Test installation on multiple platforms
 - Gather user feedback on improved documentation
+
+### 2025-10-05: Milestone 1.5 Complete - Production Compatibility Fix
+**Duration**: ~3 hours
+**Primary Focus**: Fix production installation by making SDK imports dynamic
+
+**Problem Discovered**:
+- Moving OTel packages to devDependencies (Milestone 1) broke production installs
+- Code still had top-level imports of SDK packages → MODULE_NOT_FOUND errors
+- Users without devDependencies couldn't run the tool
+
+**Solution Implemented**:
+- Kept `@opentelemetry/api` (~1.2MB) in dependencies for no-op safety
+- Created dynamic `loadOTelSDK()` function in tracing.js
+- Made SDK initialization async and conditional
+- Updated 3 files: tracing.js, index.js, mcp/server.js
+
+**Testing Evidence**:
+- Dev mode ON: Telemetry SDK loads, traces captured successfully
+- Dev mode OFF: Journal generation works, no telemetry overhead, zero errors
+- Package remains lightweight: 4 packages total (~1.5MB)
+
+**Key Technical Decisions**:
+- Chose to keep @opentelemetry/api in dependencies vs removing entirely
+- Rationale: Tool calls external OpenAI API; 1.2MB acceptable for AI tool
+- Avoided touching 22 business logic files by keeping API package
+- Used plan mode to carefully design 3-file refactor
+
+**Files Modified**:
+- src/tracing.js: Dynamic SDK imports with async initialization
+- src/index.js: Conditional telemetry initialization
+- src/mcp/server.js: Conditional telemetry initialization
+- package.json: Moved @opentelemetry/api to dependencies
+
+**Next Session Priorities**:
+- Create fresh v1.2.0 package with dynamic imports
+- Test production install in isolated environment
+- Test with friend on Linux machine
+- Complete Milestone 4: Testing & Validation
 
 ## Design Document References
 
