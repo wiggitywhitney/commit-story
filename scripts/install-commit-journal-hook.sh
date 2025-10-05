@@ -110,13 +110,9 @@ if [[ ! -f "commit-story.config.json" ]]; then
     echo "📝 Creating commit-story.config.json..."
     cat > commit-story.config.json << 'EOF'
 {
-  "_instructions": "Commit Story Configuration - Place your OpenAI API key in .env file as OPENAI_API_KEY=your_key_here",
-  
-  "debug": false,
-  "_debug_help": "Set to true to run journal generation in foreground with detailed logging visible during commits. Use for troubleshooting hook execution.",
-  
-  "enabled": true,
-  "_enabled_help": "Set to false to temporarily disable automatic journal generation while keeping the hook installed."
+  "_instructions": "Commit Story Configuration - Place your OpenAI API key in .env file as OPENAI_API_KEY=your_key_here. Set debug to true to run journal generation in foreground with detailed logging visible during commits. Use for troubleshooting execution.",
+
+  "debug": false
 }
 EOF
     echo "   ✅ Configuration file created"
@@ -124,25 +120,51 @@ else
     echo "📝 Using existing commit-story.config.json"
 fi
 
-# Add journal/ to .gitignore for privacy by default
-echo "🔒 Adding journal/ to .gitignore for privacy..."
-if [[ -f ".gitignore" ]]; then
-    # Check if journal/ is already ignored
-    if ! grep -q "^journal/" .gitignore; then
+# Add essential entries to .gitignore
+echo "🔒 Configuring .gitignore..."
+
+# Function to add entry to .gitignore if not present
+add_to_gitignore() {
+    local pattern="$1"
+    local comment="$2"
+
+    if ! grep -q "^${pattern}" .gitignore 2>/dev/null; then
         echo "" >> .gitignore
-        echo "# Journal entries (private by default - remove this line to make journals public)" >> .gitignore
-        echo "journal/" >> .gitignore
-        echo "   ✅ Added journal/ to .gitignore"
+        [[ -n "$comment" ]] && echo "# $comment" >> .gitignore
+        echo "$pattern" >> .gitignore
+        return 0  # Added
     else
-        echo "   📝 journal/ already in .gitignore"
+        return 1  # Already exists
     fi
-else
-    # Create .gitignore if it doesn't exist
+}
+
+# Create .gitignore if it doesn't exist
+if [[ ! -f ".gitignore" ]]; then
     cat > .gitignore << 'EOF'
+# Node modules (dependencies)
+node_modules/
+
 # Journal entries (private by default - remove this line to make journals public)
 journal/
 EOF
-    echo "   ✅ Created .gitignore with journal/ entry"
+    echo "   ✅ Created .gitignore with node_modules/ and journal/"
+else
+    # Add entries if missing
+    changes_made=false
+
+    if add_to_gitignore "node_modules/" "Node modules (dependencies)"; then
+        echo "   ✅ Added node_modules/ to .gitignore"
+        changes_made=true
+    fi
+
+    if add_to_gitignore "journal/" "Journal entries (private by default - remove this line to make journals public)"; then
+        echo "   ✅ Added journal/ to .gitignore"
+        changes_made=true
+    fi
+
+    if [[ "$changes_made" == "false" ]]; then
+        echo "   📝 node_modules/ and journal/ already in .gitignore"
+    fi
 fi
 
 # Install the hook
@@ -156,8 +178,7 @@ echo "📋 Next steps:"
 echo "   • Ensure OPENAI_API_KEY is set in your .env file"
 echo "   • Make a commit to test the automated journal generation"
 echo ""
-echo "🔧 Other available actions:"
-echo "   • Enable debug mode: Edit commit-story.config.json and set debug: true"
-echo "   • Disable journal generation: Edit commit-story.config.json and set enabled: false"
+echo "🔧 Configuration options:"
+echo "   • Enable debug output: Edit commit-story.config.json and set debug: true"
 echo "   • Make journals public: Remove journal/ from .gitignore"
-echo "   • Uninstall hook completely: npm run commit-story:remove-hook"
+echo "   • Uninstall hook: npm run commit-story:remove-hook"

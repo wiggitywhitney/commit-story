@@ -236,24 +236,24 @@ Total folders: 2,340
 - [x] Package count: ~150 packages → 3 packages
 - [x] Production installation verified working
 
-### Milestone 2: Install Script Hardening (Priority: High)
+### Milestone 2: Install Script Hardening (Priority: High) ✅ COMPLETE
 **Goal**: Prevent node_modules/ git disasters and fix outdated messages
 
 **Tasks**:
-- [ ] Add node_modules/ to .gitignore in install script
-- [ ] Handle .gitignore doesn't exist case
-- [ ] Handle .gitignore exists but missing node_modules/ case
-- [ ] Handle .gitignore exists with node_modules/ already there
-- [ ] Remove all `enabled: false` references from output
-- [ ] Update success message with current config options only
-- [ ] Test on repo with no .gitignore
-- [ ] Test on repo with .gitignore but no node_modules/ entry
-- [ ] Test on repo with .gitignore that has node_modules/
+- [x] Add node_modules/ to .gitignore in install script
+- [x] Handle .gitignore doesn't exist case
+- [x] Handle .gitignore exists but missing node_modules/ case
+- [x] Handle .gitignore exists with node_modules/ already there
+- [x] Remove all `enabled: false` references from output
+- [x] Update success message with current config options only
+- [x] Test on repo with no .gitignore
+- [x] Test on repo with .gitignore but no node_modules/ entry
+- [x] Test on repo with .gitignore that has node_modules/
 
 **Success Criteria**:
-- node_modules/ always in .gitignore after init
-- No references to removed `enabled` config
-- Clear, accurate success messages
+- [x] node_modules/ always in .gitignore after init
+- [x] No references to removed `enabled` config
+- [x] Clear, accurate success messages
 
 ### Milestone 3: Documentation Updates (Priority: High)
 **Goal**: Add missing instructions and improve clarity
@@ -410,11 +410,31 @@ Total folders: 2,340
 - ✅ Verified package count reduction: ~150 packages → 3 packages
 - **Result**: Users now only get openai + dotenv, massive installation improvement
 
+### 2025-10-05: Milestone 2 Complete - Install Script Hardening
+**Duration**: ~2 hours
+**Primary Focus**: Git disaster prevention and config cleanup
+
+**Completed PRD Items**:
+- [x] node_modules/ protection - Enhanced script with `add_to_gitignore()` function handling all scenarios
+- [x] All 3 .gitignore scenarios - Tested: no .gitignore, existing without entries, existing with entries
+- [x] Removed `enabled` field - Simplified config to just `{"debug": false}` with inline instructions
+- [x] Updated success messages - Removed outdated `enabled: false` reference, streamlined output
+- [x] Fixed bash bug - Removed `local` keyword from non-function scope (line 153)
+
+**Testing Evidence**:
+- Scenario 1 (no .gitignore): Creates new file with both node_modules/ and journal/
+- Scenario 2 (.gitignore exists, missing entries): Successfully adds both missing entries
+- Scenario 3 (both entries exist): Correctly detects and skips with appropriate message
+
+**Key Implementation Details**:
+- Created reusable `add_to_gitignore()` function for DRY pattern matching
+- Handles all edge cases: missing file, partial entries, complete entries
+- Provides clear user feedback for each scenario
+
 **Next Session Priorities**:
-- Begin Milestone 2: Install Script Hardening
-- Add node_modules/ to .gitignore protection
-- Remove outdated `enabled: false` message
-- Update success messages
+- Begin Milestone 3: Documentation Updates
+- Add Windows installation instructions
+- Make prerequisites more prominent
 
 ## Design Document References
 
