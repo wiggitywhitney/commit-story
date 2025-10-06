@@ -325,6 +325,34 @@ Total folders: 2,340
 - [x] Package installs successfully (verified in isolation and different repo)
 - [x] No installation errors
 
+### Milestone 6: Post-Release Security & UX Enhancements (v1.2.1) ✅ COMPLETE
+**Goal**: Address security concerns and fix MCP server dependency issue discovered in production
+
+**Background**:
+After v1.2.0 release, Cris Nevares provided critical feedback:
+1. Installation script should automatically protect `.env` files in `.gitignore`
+2. Install script should create `.env` with placeholder to reduce user friction
+3. Linux testing revealed MCP server broken due to missing SDK dependency
+
+**Tasks**:
+- [x] Add `.env` to `.gitignore` automatically during installation
+- [x] Create `.env` file with commented `OPENAI_API_KEY` placeholder if missing
+- [x] Append placeholder to existing `.env` files that don't have `OPENAI_API_KEY`
+- [x] Update README to reflect new automatic `.env` setup
+- [x] Move `@modelcontextprotocol/sdk` back to dependencies (runtime requirement)
+- [x] Add `*.tgz` to `.gitignore` (prevent committing package tarballs)
+- [x] Remove old tarball files from repository
+- [x] Test MCP server functionality with fixed dependencies
+- [x] Publish v1.2.1 to npm
+
+**Success Criteria**:
+- [x] `.env` files never accidentally committed (automatic `.gitignore` protection)
+- [x] Users guided to set API key with clear placeholder and instructions
+- [x] MCP server works out of the box without "Cannot find module" errors
+- [x] Repository stays clean (no committed tarballs)
+- [x] Package size remains acceptable: 69.1 kB (4 core deps + 89 MCP SDK deps = 93 total)
+- [x] v1.2.1 published and tested on Linux (WSL Ubuntu 22.04)
+
 ## Success Metrics ✅ ACHIEVED
 
 ### Quantitative
@@ -591,6 +619,67 @@ Successfully published v1.2.0 to npm with all PRD goals exceeded. Real-world val
 - Update CHANGELOG with breaking changes note (optional)
 - Update GitHub issue #30 with release notes (optional)
 
+### 2025-10-06: v1.2.1 Release - Security & MCP Server Fix
+**Duration**: ~3 hours
+**Primary Focus**: Address post-release feedback and fix critical MCP server dependency issue
+
+**Problem Discovery**:
+After v1.2.0 release, Cris Nevares reported two critical issues:
+1. **Security concern**: Install script doesn't add `.env` to `.gitignore`, risking API key exposure
+2. **MCP server broken**: Linux testing revealed "Cannot find module @modelcontextprotocol/sdk" error
+
+**Root Cause Analysis**:
+- **Security**: PRD-30 Milestone 2 added `node_modules/` and `journal/` to `.gitignore`, but missed `.env`
+- **MCP SDK**: Milestone 1 moved MCP SDK to devDependencies, but MCP servers require SDK at runtime per official patterns
+- **Insight**: We incorrectly assumed MCP SDK was dev-only; all MCP servers include SDK in dependencies
+
+**Solutions Implemented**:
+
+1. **Enhanced Install Script** (suggested by Cris):
+   - Added `.env` to `.gitignore` with idempotent pattern matching
+   - Created `.env` file with commented `OPENAI_API_KEY` placeholder
+   - Smart appending: checks if `OPENAI_API_KEY` exists before adding
+   - Updated README to reflect automatic `.env` setup in 4-step flow
+
+2. **MCP SDK Dependency Fix**:
+   - Moved `@modelcontextprotocol/sdk` back to dependencies (^1.18.1)
+   - Verified against official MCP server examples (all use dependencies, not devDependencies)
+   - Package now includes 93 packages (4 core + 89 MCP transitive dependencies)
+   - MCP is core feature for commit-story (PRD-18 plans expansion)
+
+3. **Repository Cleanup**:
+   - Added `*.tgz` to `.gitignore` (packages belong on npm, not in git)
+   - Removed 4 old tarball files from repository history
+
+**Testing Evidence**:
+- ✅ Tested in content-manager repo - MCP server works correctly
+- ✅ Install script handles all `.env` scenarios (missing, existing, has key)
+- ✅ Package size acceptable: 69.1 kB tarball
+- ✅ Published to npm as commit-story@1.2.1
+
+**Key Technical Decision**:
+Kept MCP SDK in dependencies despite 89 transitive deps because:
+- MCP reflection tool is documented core feature
+- PRD-18 plans additional MCP tools (context capture)
+- Conference demo relies on MCP functionality
+- Better UX: works out of the box
+- 93 packages still reasonable for AI development tool
+
+**Impact**:
+- **Security**: Users can no longer accidentally commit API keys
+- **UX**: Installation smoother with automatic `.env` creation
+- **Reliability**: MCP server works for all users without manual setup
+- **Credit**: Both improvements suggested/reported by Cris Nevares during Linux testing
+
+**Final Package Stats**:
+- **v1.2.0**: 4 packages (openai, dotenv, @opentelemetry/api) - MCP broken
+- **v1.2.1**: 93 packages (added @modelcontextprotocol/sdk) - MCP working
+- **Tradeoff**: +89 packages for working MCP server (worth it for core feature)
+
+**Next Session Priorities**:
+- Consider if PRD-30 needs status update (all goals achieved, MCP decision documented)
+- Monitor user feedback on v1.2.1 installation experience
+
 ## Design Document References
 
 ### Package Configuration
@@ -620,8 +709,12 @@ Successfully published v1.2.0 to npm with all PRD goals exceeded. Real-world val
 ### Breaking Changes
 - v1.2.0 because dependency changes are breaking
 - Users who have `dev: true` will need to `npm install --save-dev` OTel packages
-- MCP reflection tool will require manual MCP SDK installation for dev
+- ~~MCP reflection tool will require manual MCP SDK installation for dev~~ **REVERTED in v1.2.1** - MCP SDK back in dependencies
 - Documented in CHANGELOG with migration instructions
+
+### Version History
+- **v1.2.0** (2025-10-05): Initial package optimization - reduced to 4 packages, MCP broken
+- **v1.2.1** (2025-10-06): Added `.env` automation, fixed MCP SDK dependency - 93 packages, MCP working
 
 ### Future Considerations
 - Consider separate `commit-story-dev` package with all dev tools
