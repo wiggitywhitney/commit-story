@@ -1,6 +1,6 @@
 {
   "name": "commit-story",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Automated Git Journal System with AI Assistant Context Integration",
   "main": "src/index.js",
   "bin": {
@@ -46,12 +46,12 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.1",
     "@opentelemetry/api": "^1.9.0",
     "dotenv": "^17.2.2",
     "openai": "^5.19.1"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.1",
     "@opentelemetry/api-logs": "^0.56.0",
     "@opentelemetry/auto-instrumentations-node": "^0.63.0",
     "@opentelemetry/exporter-logs-otlp-http": "^0.205.0",

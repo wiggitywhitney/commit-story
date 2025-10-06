@@ -20,3 +20,6 @@ npm-debug.log*
 
 # Commit Story Configuration (repository-specific)
 commit-story.config.json
+
+# NPM package tarballs (published to npm, don't commit to git)
+*.tgz
