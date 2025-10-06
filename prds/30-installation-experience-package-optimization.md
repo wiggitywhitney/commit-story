@@ -2,11 +2,13 @@
 
 ## Metadata
 - **Issue**: [#30](https://github.com/wiggitywhitney/commit-story/issues/30)
-- **Status**: Active
+- **Status**: Complete
 - **Created**: 2025-10-05
+- **Completed**: 2025-10-06
 - **Author**: Whitney Lee
 - **Priority**: P0 (Blocks Adoption)
 - **Target Version**: 1.2.0
+- **Shipped Version**: 1.2.1
 
 ## Overview
 
