@@ -146,8 +146,11 @@ node_modules/
 
 # Journal entries (private by default - remove this line to make journals public)
 journal/
+
+# Environment variables (API keys and secrets)
+.env
 EOF
-    echo "   ✅ Created .gitignore with node_modules/ and journal/"
+    echo "   ✅ Created .gitignore with node_modules/, journal/, and .env"
 else
     # Add entries if missing
     changes_made=false
@@ -162,9 +165,35 @@ else
         changes_made=true
     fi
 
-    if [[ "$changes_made" == "false" ]]; then
-        echo "   📝 node_modules/ and journal/ already in .gitignore"
+    if add_to_gitignore ".env" "Environment variables (API keys and secrets)"; then
+        echo "   ✅ Added .env to .gitignore"
+        changes_made=true
     fi
+
+    if [[ "$changes_made" == "false" ]]; then
+        echo "   📝 node_modules/, journal/, and .env already in .gitignore"
+    fi
+fi
+
+# Create or update .env file with OPENAI_API_KEY placeholder
+echo "🔑 Configuring .env file..."
+if [[ ! -f ".env" ]]; then
+    cat > .env << 'EOF'
+# OpenAI API Key for Commit Story journal generation
+# Get your API key from: https://platform.openai.com/api-keys
+# OPENAI_API_KEY="your-api-key-here"
+EOF
+    echo "   ✅ Created .env file with API key placeholder (commented out)"
+    echo "   ⚠️  Uncomment and add your OpenAI API key to .env before first commit"
+elif ! grep -q "OPENAI_API_KEY" .env; then
+    echo "" >> .env
+    echo "# OpenAI API Key for Commit Story journal generation" >> .env
+    echo "# Get your API key from: https://platform.openai.com/api-keys" >> .env
+    echo "# OPENAI_API_KEY=\"your-api-key-here\"" >> .env
+    echo "   ✅ Added API key placeholder to existing .env file (commented out)"
+    echo "   ⚠️  Uncomment and add your OpenAI API key to .env before first commit"
+else
+    echo "   📝 OPENAI_API_KEY already present in .env"
 fi
 
 # Install the hook
@@ -175,10 +204,10 @@ chmod +x ".git/hooks/post-commit"
 echo "✅ Commit Story post-commit hook installed successfully!"
 echo ""
 echo "📋 Next steps:"
-echo "   • Ensure OPENAI_API_KEY is set in your .env file"
-echo "   • Make a commit to test the automated journal generation"
+echo "   1. Edit .env file and uncomment/add your OpenAI API key"
+echo "   2. Make a commit to test the automated journal generation"
 echo ""
 echo "🔧 Configuration options:"
 echo "   • Enable debug output: Edit commit-story.config.json and set debug: true"
 echo "   • Make journals public: Remove journal/ from .gitignore"
-echo "   • Uninstall hook: npm run commit-story:remove-hook"
+echo "   • Uninstall: npx commit-story-remove"

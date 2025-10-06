@@ -51,14 +51,7 @@ Every commit triggers a background process that creates a narrative record of yo
 npm install --save-dev commit-story
 ```
 
-### 2. Set Up Your OpenAI API Key
-
-Add to your `.env` file in your project root (create it if it doesn't exist):
-```
-OPENAI_API_KEY=your-api-key-here
-```
-
-### 3. Activate Git Hook
+### 2. Initialize Commit Story
 
 **Note:** This will overwrite any existing `.git/hooks/post-commit` file in this repository. If you have other post-commit hooks in this repo, you'll need to merge them manually.
 
@@ -66,7 +59,17 @@ OPENAI_API_KEY=your-api-key-here
 npx commit-story-init
 ```
 
-This installs a git hook that automatically generates journal entries after each commit.
+This command:
+- Installs a git hook that automatically generates journal entries after each commit
+- Creates a `.env` file with a placeholder for your OpenAI API key (if one doesn't exist)
+- Adds `.env`, `node_modules/`, and `journal/` to your `.gitignore` (if not already present)
+
+### 3. Add Your OpenAI API Key
+
+Edit the `.env` file in your project root and uncomment/add your API key:
+```
+OPENAI_API_KEY=your-api-key-here
+```
 
 ### 4. Start Developing
 

@@ -1,6 +1,6 @@
 {
   "name": "commit-story",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Automated Git Journal System with AI Assistant Context Integration",
   "main": "src/index.js",
   "bin": {
