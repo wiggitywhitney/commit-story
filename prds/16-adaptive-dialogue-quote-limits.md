@@ -1,7 +1,8 @@
 # PRD-16: Adaptive Dialogue Quote Limits
 
-**Status**: Planning
+**Status**: Superseded
 **Created**: 2025-09-20
+**Superseded**: 2025-10-06
 **GitHub Issue**: [#16](https://github.com/wiggitywhitney/commit-story/issues/16)
 **Dependencies**: PRD-15 (Queryable Metrics)
 
@@ -307,3 +308,28 @@ function calculateAdaptiveQuoteLimit(context) { ... }
 - Researched session complexity patterns from telemetry data
 - Designed adaptive algorithm with quality safeguards
 - Created phased implementation plan with proper dependencies
+
+### 2025-10-06: PRD Superseded
+**Status**: This PRD has been superseded by simpler implementation already in production
+
+**Reason for Superseding**:
+The core problem identified in this PRD (fixed 8-quote limit) was already solved during PRD-1 implementation with a simpler adaptive formula:
+
+```javascript
+// src/generators/dialogue-generator.js:78
+const maxQuotes = Math.ceil(context.chatMetadata.data.userMessages.overTwentyCharacters * 0.08) + 1;
+```
+
+**Implemented Solution**:
+- **Formula**: 8% of substantial user messages + 1
+- **Scales naturally**: More messages → more quotes
+- **No hard cap**: Grows with session complexity
+- **Simple and maintainable**: No complexity scoring or duration bonuses needed
+
+**Why Simpler is Better**:
+- PRD-16 proposed a complex multi-phase implementation with complexity scoring, duration bonuses, A/B testing, etc.
+- The 8% formula solves the stated problem: "quotes scale with session complexity"
+- Production usage shows this simple approach works well without additional complexity
+- YAGNI principle: Don't build elaborate features until proven necessary
+
+**Decision**: Close as superseded rather than implement the more complex approach proposed in this PRD. If future data shows the simple formula is inadequate, this PRD provides a roadmap for enhancements.
