@@ -56,7 +56,9 @@ async function initializeLoggingConditionally() {
 
         span.setAttributes(attrs);
         span.setStatus({ code: SpanStatusCode.OK, message: 'Logging skipped - dev mode disabled' });
-        return { logger: { emit: () => {} }, batchProcessor: null };
+        logger = { emit: () => {} };
+        batchProcessor = null;
+        return { logger, batchProcessor };
       }
 
       // Load SDK packages dynamically
@@ -84,7 +86,13 @@ async function initializeLoggingConditionally() {
         service_version: '1.0.0'
       });
 
-      return initializeLoggingProvider(narrativeLogger, startTime, span);
+      const result = await initializeLoggingProvider(narrativeLogger, startTime, span);
+
+      // Store logger and batchProcessor in module-level variables
+      logger = result.logger;
+      batchProcessor = result.batchProcessor;
+
+      return result;
 
     } catch (error) {
       const initializationDuration = Date.now() - startTime;
@@ -183,18 +191,14 @@ function initializeLoggingSystem() {
   return { logger: loggerInstance, batchProcessor };
 }
 
-// Execute conditional initialization (async)
-const loggingPromise = initializeLoggingConditionally();
-loggingPromise.then(result => {
-  logger = result.logger;
-  batchProcessor = result.batchProcessor;
-}).catch(err => {
-  console.error('Failed to initialize logging:', err);
-  logger = { emit: () => {} };
-  batchProcessor = null;
-});
+// Export initialization function for use by tracing.js
+// Logging will be initialized by tracing.js after SDK is ready
+// Export logger as a getter function so it always returns the current value
+export function getLogger() {
+  return logger;
+}
 
-export { logger };
+export { initializeLoggingConditionally };
 
 /**
  * Shutdown logging system with timeout

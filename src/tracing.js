@@ -140,7 +140,7 @@ async function initializeTelemetryConditionally() {
         service_version: '1.0.0'
       });
 
-      return initializeSDK(logger, startTime, span, sdkModules);
+      return await initializeSDK(logger, startTime, span, sdkModules);
 
     } catch (error) {
       const initializationDuration = Date.now() - startTime;
@@ -156,7 +156,7 @@ async function initializeTelemetryConditionally() {
   });
 }
 
-function initializeSDK(logger, startTime, span, sdkModules) {
+async function initializeSDK(logger, startTime, span, sdkModules) {
   const {
     NodeSDK,
     getNodeAutoInstrumentations,
@@ -254,11 +254,23 @@ function initializeSDK(logger, startTime, span, sdkModules) {
     initialization_duration_ms: initializationDuration
   });
 
+  // Initialize logging after tracing SDK is ready
+  try {
+    logger.progress('Logging initialization', 'Starting logging initialization after SDK ready');
+    const loggingModule = await import('./logging.js');
+    await loggingModule.initializeLoggingConditionally();
+    logger.complete('Logging initialization', 'Logging system initialized successfully');
+  } catch (error) {
+    logger.error('Logging initialization', 'Failed to initialize logging', error);
+    // Don't fail telemetry initialization if logging fails
+  }
+
   // Only show initialization messages in test script or debug mode
   if (isTestScript) {
     console.log('🔭 OpenTelemetry observability stack initialized:');
     console.log('  ✅ Traces: Console + OTLP to Datadog Agent (localhost:4318)');
     console.log('  ✅ Metrics: OTLP to Datadog Agent (localhost:4318)');
+    console.log('  ✅ Logs: OTLP to Datadog Agent (localhost:4318)');
     console.log('  📊 Service: commit-story-dev');
   } else if (isDebugMode) {
     console.log('OpenTelemetry initialized');

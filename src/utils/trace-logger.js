@@ -12,8 +12,8 @@
 import { trace } from '@opentelemetry/api';
 import { getConfig } from './config.js';
 
-// Lazy-loaded logger and SeverityNumber
-let logger = null;
+// Lazy-loaded logger getter and SeverityNumber
+let getLogger = null;
 let SeverityNumber = null;
 let loggingInitialized = false;
 
@@ -26,12 +26,12 @@ async function ensureLoggingDeps() {
       import('../logging.js'),
       import('@opentelemetry/api-logs')
     ]);
-    logger = loggingModule.logger;
+    getLogger = loggingModule.getLogger;
     SeverityNumber = apiLogsModule.SeverityNumber;
     loggingInitialized = true;
   } catch (err) {
     // SDK packages not available, use noop
-    logger = { emit: () => {} };
+    getLogger = () => ({ emit: () => {} });
     SeverityNumber = { INFO: 9, WARN: 13, ERROR: 17, DEBUG: 5 };
     loggingInitialized = true;
   }
@@ -95,21 +95,24 @@ function emitLog(level, operation, message, context) {
       'error': SeverityNumber.ERROR
     };
 
-    logger.emit({
-      severityNumber: severityMap[level] || SeverityNumber.INFO,
-      severityText: level.toUpperCase(),
-      body: message,
-      attributes: {
-        'operation': operation,
-        'service.name': 'commit-story',
-        'trace_id': spanContext.traceId,
-        'span_id': spanContext.spanId,
-        'dd.trace_id': spanContext.traceId,  // Datadog format
-        'dd.span_id': spanContext.spanId,    // Datadog format
-        ...context
-      },
-      timestamp: timestamp, // Milliseconds - SDK converts to nanoseconds
-    });
+    const logger = getLogger();
+    if (logger) {
+      logger.emit({
+        severityNumber: severityMap[level] || SeverityNumber.INFO,
+        severityText: level.toUpperCase(),
+        body: message,
+        attributes: {
+          'operation': operation,
+          'service.name': 'commit-story',
+          'trace_id': spanContext.traceId,
+          'span_id': spanContext.spanId,
+          'dd.trace_id': spanContext.traceId,  // Datadog format
+          'dd.span_id': spanContext.spanId,    // Datadog format
+          ...context
+        },
+        timestamp: timestamp, // Milliseconds - SDK converts to nanoseconds
+      });
+    }
   }
 
   // Narrative logs only emit to OpenTelemetry/Datadog, no console output

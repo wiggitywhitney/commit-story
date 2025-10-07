@@ -35,9 +35,11 @@ const { debug: isDebugMode, dev: isDevMode } = (() => {
   return { debug: false, dev: false };
 })();
 
-// Initialize telemetry in background if dev mode enabled
+// Initialize telemetry synchronously if dev mode enabled
+// This must complete before main() executes to ensure tracer is ready
+let telemetryInitialized = Promise.resolve();
 if (isDevMode) {
-  import('./tracing.js')
+  telemetryInitialized = import('./tracing.js')
     .then(({ initializeTelemetry }) => initializeTelemetry())
     .catch(err => {
       if (isDebugMode) {
@@ -403,6 +405,9 @@ const modulePath = import.meta.url.replace('file://', '');
 if (modulePath === scriptPath) {
   const runCLI = async () => {
     try {
+      // Wait for telemetry initialization before running main (if dev mode enabled)
+      await telemetryInitialized;
+
       // Run main and get exit code
       const exitCode = await main();
 
