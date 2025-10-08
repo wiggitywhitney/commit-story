@@ -204,7 +204,7 @@ Once configured, you can ask Claude Code to add reflections during your developm
 ```
 "Add a reflection: I thought of this idea and I want to jot it down
 so I don't forget! What if we bypass the orchestration layer altogether
-and call the service directly? Could reduce latency by 50%."
+and call the service directly?"
 ```
 
 Reflections are saved with timestamps to `journal/entries/YYYY-MM/YYYY-MM-DD.md` for easy access, and are automatically included in your commit journal entries when you commit. This captures those "aha!" moments and design ideas as they happen, creating a continuous development narrative.
