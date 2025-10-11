@@ -189,9 +189,7 @@ This PRD establishes the foundation for:
 - ✅ No sensitive data in git history (`.teller.env` excluded)
 
 **Technical Decisions Made**:
-- Used personal Google Cloud project (`demoo-ooclock`) for development
-- Mapped `datadog-commit-story-dev` secret (corrected from wrong API key)
-- Kept `OpenAI-API-Key` secret mapping for existing OpenAI integration
+- Used personal Google Cloud project for development
 - Added development-only npm script without `commit-story:` prefix
 
 ### September 8, 2025: M2 Dual OpenTelemetry Exporters - COMPLETE ✅
