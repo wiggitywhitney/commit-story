@@ -1,7 +1,7 @@
 # File/Directory Exclusion System for Journal Noise Reduction
 
 **Issue**: [#2](https://github.com/wiggitywhitney/commit_story/issues/2)  
-**Status**: Planning  
+**Status**: Not Planning to Implement (2025-10-12 - Not a problem worth solving for current workflow)  
 **Created**: 2025-09-02  
 **Last Updated**: 2025-09-02  
 

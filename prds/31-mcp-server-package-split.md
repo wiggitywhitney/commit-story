@@ -2,11 +2,12 @@
 
 ## Metadata
 - **Issue**: [#31](https://github.com/wiggitywhitney/commit-story/issues/31)
-- **Status**: Planning
+- **Status**: Planning (Deferred until after Nov 15, 2025)
 - **Created**: 2025-10-06
 - **Author**: Whitney Lee
 - **Priority**: P1 (High - Impacts All New Users)
 - **Target Version**: 2.0.0
+- **Do Not Consider Before**: 2025-11-15
 
 ## Problem Statement
 
