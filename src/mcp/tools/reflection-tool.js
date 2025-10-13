@@ -6,6 +6,7 @@
  */
 
 import { promises as fs } from 'fs';
+import fsSync from 'fs';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
 import { createNarrativeLogger } from '../../utils/trace-logger.js';
@@ -14,6 +15,18 @@ import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } fr
 // Initialize telemetry
 const tracer = trace.getTracer('commit-story', '1.0.0');
 const logger = createNarrativeLogger('reflection.creation');
+
+// Dev mode detection from config file
+let isDevMode = false;
+try {
+  const configPath = './commit-story.config.json';
+  if (fsSync.existsSync(configPath)) {
+    const configData = JSON.parse(fsSync.readFileSync(configPath, 'utf8'));
+    isDevMode = configData.dev === true;
+  }
+} catch (error) {
+  // Silently ignore config file errors - dev mode defaults to false
+}
 
 /**
  * Create a journal reflection with full telemetry
@@ -170,10 +183,16 @@ ${reflectionText}
 
       span.setStatus({ code: SpanStatusCode.OK });
 
+      // Extract trace ID for dev mode display
+      const traceId = span.spanContext().traceId;
+      const successMessage = isDevMode && traceId
+        ? `✅ Reflection added successfully!\n📊 Trace: ${traceId}`
+        : '✅ Reflection added successfully!';
+
       return {
         content: [{
           type: 'text',
-          text: '✅ Reflection added successfully!'
+          text: successMessage
         }],
         isError: false
       };

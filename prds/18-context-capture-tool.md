@@ -293,6 +293,43 @@ journal_capture_context({
 
 **Status**: ⏳ Outstanding - Requires M2 implementation
 
+### DD-010: Dev Mode Trace ID Display for MCP Tools
+**Decision**: Add trace ID to MCP tool responses when dev mode is enabled
+**Date**: 2025-10-13
+
+**Implementation Pattern**:
+```javascript
+// Read config for dev mode
+const isDevMode = configData.dev === true;
+
+// Extract trace ID from span
+const traceId = span.spanContext().traceId;
+
+// Conditional message
+const message = isDevMode && traceId
+  ? `✅ Success!\n📊 Trace: ${traceId}`
+  : '✅ Success!';
+```
+
+**Rationale**:
+- **Demo/testing support**: Provides trace ID for immediate Datadog queries
+- **Zero production impact**: Only shows in dev mode (`dev: true` in config)
+- **Consistent pattern**: Same approach for all MCP tools (reflection, context)
+- **User experience**: Silent success in prod, detailed feedback in dev
+
+**Status**:
+- ✅ **Implemented for reflection tool** (2025-10-13)
+  - File: `src/mcp/tools/reflection-tool.js` (lines 19-29, 186-190)
+  - Working and tested with both `dev: true` and `dev: false`
+- ⏳ **Outstanding for context tool** - Will be added in Phase 3 (per DD-006)
+  - Already documented in Phase 3 tasks (line 390-394)
+  - Pattern ready to copy from reflection tool
+
+**Impact**:
+- Enables easier demos by providing trace IDs for querying Datadog
+- No additional configuration needed (reuses existing `dev` flag)
+- Consistent debugging experience across all MCP tools
+
 ## Implementation Plan
 
 ### Phase 1: Core MCP Tool (Milestone-Based per DD-005)
@@ -387,6 +424,11 @@ journal_capture_context({
 ### Phase 3: Telemetry & Advanced Features (per DD-006)
 - [ ] Run `/add-telemetry` on `src/mcp/tools/context-tool.js`
 - [ ] Verify telemetry follows reflection-tool.js patterns
+- [ ] Add dev mode trace ID output (pattern from reflection-tool.js lines 19-29, 186-190)
+  - Read config for `dev: true` flag
+  - Extract trace ID from span context: `span.spanContext().traceId`
+  - Include in success message when dev mode enabled: `✅ Context captured!\n📊 Trace: {traceId}`
+  - Enables easier demo/debugging by providing trace ID for Datadog queries
 - [ ] Add `journal_append_context` for session continuity
 - [ ] Implement context file listing/browsing utilities
 - [ ] Create context file preview/summary functionality
