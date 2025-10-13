@@ -13,7 +13,7 @@
  * - Use hierarchical naming: commit_story.category.metric_name
  * - Follow OpenTelemetry units: milliseconds for duration, dimensionless "1" for counts
  * - Gauge: Point-in-time values (message counts, current state)
- * - Counter: Incrementing values (total operations, cumulative errors)
+ * - Counter: Incrementing values (total operations, cumulative errors) - MUST end with "_total" suffix
  * - Histogram: Distribution data (durations, payload sizes)
  */
 

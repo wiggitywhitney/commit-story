@@ -32,13 +32,22 @@ try {
  * @returns {Object} Path components {year, month, day, monthDir, fileName}
  */
 export function formatDateComponents(date) {
+  // TRACE: Create span to track this function's execution
   return tracer.startActiveSpan(OTEL.span.utils.journal_paths.format_date(), {
+    // ATTRIBUTES: Add initial span attributes (function name and input)
     attributes: {
       [`${OTEL.NAMESPACE}.date.input`]: date.toISOString(),
       'code.function': 'formatDateComponents'
     }
   }, (span) => {
+    // LOGS: Create logger for narrative logging throughout function execution
+    const logger = createNarrativeLogger('journal.date_formatting');
+
     try {
+      // LOGS: Record function start with context
+      logger.start('date formatting', `Formatting date components for ${date.toISOString()}`);
+
+      // Business logic: Extract date components
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
@@ -48,6 +57,7 @@ export function formatDateComponents(date) {
 
       const components = { year, month, day, monthDir, fileName };
 
+      // ATTRIBUTES: Add detailed span attributes with computed values
       span.setAttributes({
         [`${OTEL.NAMESPACE}.date.year`]: year,
         [`${OTEL.NAMESPACE}.date.month`]: month,
@@ -56,13 +66,29 @@ export function formatDateComponents(date) {
         [`${OTEL.NAMESPACE}.path.file_name`]: fileName
       });
 
+      // METRICS: Track date formatting operations with counter and gauge
+      OTEL.metrics.counter('commit_story.utils.date_format_operations_total', 1);
+      OTEL.metrics.gauge('commit_story.utils.date_year', year);
+
+      // LOGS: Record successful completion
+      logger.complete('date formatting', `Formatted to ${fileName}`);
+
+      // TRACE: Mark span as successful
       span.setStatus({ code: SpanStatusCode.OK });
       return components;
     } catch (error) {
+      // LOGS: Record error with context
+      logger.error('date formatting', 'Failed to format date', error);
+
+      // METRICS: Track error occurrence
+      OTEL.metrics.counter('commit_story.utils.date_format_errors_total', 1);
+
+      // TRACE: Record exception and mark span as failed
       span.recordException(error);
       span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
       throw error;
     } finally {
+      // TRACE: Close span to complete the trace
       span.end();
     }
   });
