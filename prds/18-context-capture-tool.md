@@ -176,6 +176,47 @@ journal/
 - Phase 4 will include telemetry addition via `/add-telemetry` command
 - Estimated time savings: ~30-45 minutes in initial implementation
 
+### DD-007: Code Reuse for Journal Integration (DRY Principle)
+**Decision**: Generalize existing reflection discovery/parsing code to work for both reflections AND context files
+**Date**: 2025-10-13
+
+**Current State**:
+- `journal-manager.js` has `discoverReflections()` and `parseReflectionFile()`
+- These functions find and parse reflection files within commit time windows
+- Context files need identical discovery/parsing logic (same file format, same time windows)
+
+**Refactoring Approach**:
+```javascript
+// BEFORE (reflection-specific)
+discoverReflections(commitTime, previousCommitTime)
+parseReflectionFile(content, fileDate, startTime, endTime)
+
+// AFTER (generalized)
+discoverJournalFiles(type, commitTime, previousCommitTime)  // type = 'reflections' | 'context'
+parseJournalFile(type, content, fileDate, startTime, endTime)
+```
+
+**Implementation Tasks** (Phase 2, M2.1):
+1. Extract common logic from `discoverReflections()` into `discoverJournalFiles(type, ...)`
+2. Extract common logic from `parseReflectionFile()` into `parseJournalFile(type, ...)`
+3. Update existing reflection code to use new generic functions (ensure no regression)
+4. Add context file support using same functions
+5. Test both reflections and context discovery/parsing
+
+**Rationale**:
+- **DRY**: Single implementation for file discovery and parsing logic
+- **Consistency**: Reflections and context handled identically
+- **Maintainability**: Bug fixes/improvements apply to both file types
+- **Reduced complexity**: Less code to maintain and test
+- **Safe refactoring**: Existing reflection code tested first, then generalized
+
+**Risk Mitigation**:
+- Test existing reflection functionality after refactoring (no regression)
+- Keep file format identical between reflections and context for easy reuse
+- If generalization proves complex, fall back to separate `discoverContext()` function
+
+**Impact**: Phase 2 milestones must include refactoring tasks, not just new code
+
 ## Implementation Plan
 
 ### Phase 1: Core MCP Tool (Milestone-Based per DD-005)
@@ -208,11 +249,56 @@ journal/
 - [ ] Test edge cases (empty text, invalid timestamps, etc.)
 - **Success Criteria**: Files match PRD format specification exactly
 
-### Phase 2: Journal Integration
-- [ ] Enhance journal generator to discover context files
-- [ ] Implement context file parsing and integration
-- [ ] Add context references to generated journal entries when used
-- [ ] Test integration with various context scenarios
+#### Milestone 5: README Documentation (15-20 min)
+- [ ] Add `journal_capture_context` tool to README
+- [ ] Mirror documentation style from reflection tool section
+- [ ] Include basic usage example
+- **Success Criteria**: Tool documented in README, simple and straightforward
+
+### Phase 2: Journal Integration (Milestone-Based per DD-007)
+
+#### Milestone 2.1: Refactor for DRY (45-60 min)
+- [ ] Extract `discoverReflections()` → `discoverJournalFiles(type, commitTime, previousCommitTime)`
+- [ ] Extract `parseReflectionFile()` → `parseJournalFile(type, content, fileDate, startTime, endTime)`
+- [ ] Update existing reflection code to use new generic functions
+- [ ] Test reflection discovery/parsing (ensure no regression)
+- **Success Criteria**: Reflections still work using generalized functions
+
+#### Milestone 2.2: Context Discovery (20-30 min)
+- [ ] Add 'context' type support to `discoverJournalFiles()`
+- [ ] Use existing path utilities with type='context'
+- [ ] Test context file discovery for commit time windows
+- **Success Criteria**: Context files discovered correctly for given commit dates
+
+#### Milestone 2.3: Narrative Integration Planning (Discussion & Design - 30-45 min)
+**Purpose**: Design how context integrates into journal generation before implementing
+
+**Current Understanding**:
+- Journal generation has 3 separate generators: summary, dialogue, technical decisions
+- Context likely NOT needed for dialogue generator
+- Context format can be consistent (no special formatting per generator)
+
+**Design Questions to Discuss:**
+- [ ] Which generators get context? (Summary + Technical Decisions? Just one?)
+- [ ] How is context formatted and presented in prompts?
+- [ ] What instructions do we add to generator prompts about using context?
+- [ ] How do we handle multiple context sessions for same commit?
+
+**Context Attribution Approach**:
+- Add a "Context Files" section at the end of journal entries
+- Include clickable links to context files generated during that commit window
+- Format: `### Context Files - {hash}\n\n- [session-name](../context/YYYY-MM-DD-session-name.md)`
+
+**Deliverable**: Design decisions documented, ready for M2.4 implementation
+**Success Criteria**: Clear plan for which generators get context and how
+
+#### Milestone 2.4: Implementation (30-45 min, after M2.3 planning)
+- [ ] Implement context integration per M2.3 design decisions
+- [ ] Modify relevant generator prompts with context instructions
+- [ ] Add context discovery calls before journal generation
+- [ ] Add "Context Files" section at end of journal entry with links to relevant context files
+- [ ] Test with various scenarios (no context, single session, multiple sessions)
+- **Success Criteria**: Journals include context appropriately, links to context files visible
 
 ### Phase 3: Telemetry & Advanced Features (per DD-006)
 - [ ] Run `/add-telemetry` on `src/mcp/tools/context-tool.js`
