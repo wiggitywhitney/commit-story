@@ -1,9 +1,10 @@
 # PRD-18: Context Capture Tool for AI Working Memory
 
 **GitHub Issue**: [#18](https://github.com/wiggitywhitney/commit-story/issues/18)
-**Status**: Planning
+**Status**: In Progress (Started 2025-10-13)
 **Created**: 2025-09-21
-**Last Updated**: 2025-09-21
+**Last Updated**: 2025-10-13
+**Priority**: Active Development - Core functionality implementation
 
 ## Summary
 
@@ -37,7 +38,7 @@ But it's not appropriate for permanent storage like reflections or journal entri
 
 1. **Seamless Capture**: MCP tool accessible directly from AI assistant interface
 2. **Automatic Organization**: Context organized by date and optional session naming
-3. **Configurable Cleanup**: User-configurable auto-deletion after N days (default 7)
+3. **Manual Management**: Context files kept indefinitely, users delete when needed
 4. **Journal Integration**: Journal generator can read context files for enhanced narratives
 5. **Clean Separation**: Context files clearly distinguished from permanent content
 6. **Session Management**: Support for multiple concurrent work sessions
@@ -49,13 +50,12 @@ But it's not appropriate for permanent storage like reflections or journal entri
 - **Storage**: Save to dedicated context directory (`journal/context/`)
 - **Naming**: Timestamp-based with optional session identifier
 - **Format**: Consistent visual formatting matching journal style
-- **Auto-cleanup**: Configurable retention period (1-365 days, default 7)
+- **Retention**: Files kept indefinitely, manual deletion by user
 
 ### Integration Points
 - **Journal Generator Enhancement**: Read available context files during journal creation
-- **Configuration System**: Respect existing config patterns, add cleanup settings
+- **Configuration System**: Respect existing config patterns (minimal config needed)
 - **Directory Management**: Create and maintain context directory structure
-- **Cleanup Scheduler**: Background process or trigger-based cleanup of expired files
 
 ### MCP Tool Interface
 
@@ -93,22 +93,23 @@ journal/
 - Session suffix allows multiple contexts per day
 - Consistent with existing journal directory patterns
 
-### DD-002: Auto-Cleanup Strategy
-**Decision**: Configurable retention with default 7 days, cleanup on tool usage
-
-**Implementation**:
-```json
-{
-  "contextRetentionDays": 7,
-  "contextCleanupOnUse": true
-}
-```
+### DD-002: Context File Retention - Keep Forever (Updated 2025-10-13)
+**Decision**: Context files are kept indefinitely. Users manually delete files when no longer needed.
 
 **Rationale**:
-- Prevents accumulation of stale context files
-- User control over retention based on workflow needs
-- Cleanup on usage ensures active maintenance
-- Conservative default prevents accidental data loss
+- **Simplicity**: No auto-deletion logic, configuration, or edge cases to handle
+- **User control**: Users decide what to keep, when to delete
+- **Low friction**: Manual file deletion is trivial (`rm journal/context/old-file.md`)
+- **No surprises**: Files never disappear unexpectedly
+- **Appropriate scope**: Auto-deletion adds complexity for uncertain value
+
+**User Experience**:
+- Context files accumulate in `journal/context/`
+- Users can manually delete old files anytime
+- No configuration needed for retention
+- Clear, predictable behavior
+
+**Future Consideration**: If auto-deletion becomes needed, see "Deferred Features" section for a designed approach.
 
 ### DD-003: Session Management
 **Decision**: Optional session naming with automatic fallback
@@ -135,30 +136,89 @@ journal/
 - Maintains journal generator autonomy in content selection
 - Creates valuable feedback loop between working memory and final narrative
 
+### DD-005: Milestone-Based Implementation Strategy
+**Decision**: Break Phase 1 into four incremental milestones instead of single monolithic implementation
+**Date**: 2025-10-13
+
+**Milestones**:
+1. **M1: Basic Context Tool** (30-45 min) - Minimal working tool with file creation
+2. **M2: Session Management** (20-30 min) - Handle multiple sessions and appending
+3. **M3: MCP Server Integration** (15-20 min) - Register tool and make callable
+4. **M4: Format & Polish** (20-30 min) - Match PRD format specifications
+
+**Rationale**:
+- Incremental progress with testable checkpoints at each milestone
+- Reduces risk by validating each piece before moving forward
+- Easier to pause/resume work between milestones
+- Clear definition of "done" for each step
+- Enables early testing of core functionality before polish
+
+**Impact**: Phase 1 tasks reorganized into milestone structure (see Implementation Plan below)
+
+### DD-006: Telemetry-Last Approach
+**Decision**: Implement core functionality first, add telemetry separately afterward
+**Date**: 2025-10-13
+
+**Approach**:
+- Build context tool without OpenTelemetry instrumentation initially
+- Use `/add-telemetry` slash command after core functionality works
+- Follow same telemetry patterns as reflection-tool.js once added
+
+**Rationale**:
+- Separates concerns: get feature working first, then add observability
+- Leverages existing `/add-telemetry` automation for consistent patterns
+- Reduces initial implementation complexity
+- Allows focus on business logic without telemetry boilerplate
+- Proven reflection-tool.js pattern available as reference when adding telemetry
+
+**Impact**:
+- Removes telemetry implementation from Phase 1 milestones
+- Phase 4 will include telemetry addition via `/add-telemetry` command
+- Estimated time savings: ~30-45 minutes in initial implementation
+
 ## Implementation Plan
 
-### Phase 1: Core MCP Tool
-- [ ] Create `journal_capture_context` MCP tool implementation
-- [ ] Implement context directory management (`journal/context/`)
-- [ ] Add basic file creation and content formatting
-- [ ] Implement session naming and timestamp handling
+### Phase 1: Core MCP Tool (Milestone-Based per DD-005)
 
-### Phase 2: Auto-Cleanup System
-- [ ] Add configuration options for retention period
-- [ ] Implement cleanup logic (delete files older than retention period)
-- [ ] Add cleanup trigger on tool usage
-- [ ] Create manual cleanup utility if needed
+#### Milestone 1: Basic Context Tool (30-45 min)
+- [ ] Create `src/mcp/tools/context-tool.js` with basic structure
+- [ ] Implement input validation (text required, optional session/timestamp)
+- [ ] Create basic context file writer
+- [ ] Use existing `journal-paths.js` utilities for path generation
+- [ ] Return success/error messages
+- **Success Criteria**: Tool creates a context file in `journal/context/`
 
-### Phase 3: Journal Integration
+#### Milestone 2: Session Management (20-30 min)
+- [ ] Implement session naming logic: `YYYY-MM-DD-{session || 'context'}.md`
+- [ ] Handle file existence check (append vs create new)
+- [ ] Add timestamp headers for each capture
+- [ ] Add separator bars between entries
+- **Success Criteria**: Multiple sessions per day work, appending to same session works
+
+#### Milestone 3: MCP Server Integration (15-20 min)
+- [ ] Import context tool in `src/mcp/server.js`
+- [ ] Add to tool handlers registry
+- [ ] Add tool description and schema to tools list
+- **Success Criteria**: Tool appears in AI assistant and can be invoked
+
+#### Milestone 4: Format & Polish (20-30 min)
+- [ ] Format headers: `## HH:MM:SS [TIMEZONE] - Context Capture: {session-name}`
+- [ ] Ensure separator bars match reflection format
+- [ ] Add clear error messages for validation failures
+- [ ] Test edge cases (empty text, invalid timestamps, etc.)
+- **Success Criteria**: Files match PRD format specification exactly
+
+### Phase 2: Journal Integration
 - [ ] Enhance journal generator to discover context files
 - [ ] Implement context file parsing and integration
 - [ ] Add context references to generated journal entries when used
 - [ ] Test integration with various context scenarios
 
-### Phase 4: Advanced Features
+### Phase 3: Telemetry & Advanced Features (per DD-006)
+- [ ] Run `/add-telemetry` on `src/mcp/tools/context-tool.js`
+- [ ] Verify telemetry follows reflection-tool.js patterns
 - [ ] Add `journal_append_context` for session continuity
 - [ ] Implement context file listing/browsing utilities
-- [ ] Add telemetry for usage patterns and optimization
 - [ ] Create context file preview/summary functionality
 
 ## Technical Architecture
@@ -167,19 +227,18 @@ journal/
 ```
 src/
   mcp/
-    context-tool.js             # MCP tool implementation
+    tools/
+      context-tool.js           # MCP tool implementation
   managers/
-    context-manager.js          # Context directory and file management
-    journal-manager.js          # Enhanced to read context files
-  utils/
-    context-formatter.js        # Format context entries consistently
-    context-cleanup.js          # Handle auto-cleanup logic
+    journal-manager.js          # Enhanced to read context files (Phase 2)
 
 journal/
   context/                      # Context files directory
     2025-09-21-debugging.md     # Session-based context files
     2025-09-21-feature-work.md
 ```
+
+Note: Uses existing utilities from `src/utils/journal-paths.js` for path generation and directory management.
 
 ### Context File Format
 ```markdown
@@ -197,37 +256,58 @@ journal/
 ```
 
 ### Configuration Integration
-```json
-{
-  "contextRetentionDays": 7,
-  "contextCleanupOnUse": true,
-  "contextDirectory": "journal/context",
-  "contextMaxFileSize": "1MB"
-}
-```
+No configuration required. Context files are saved to `journal/context/` using the same path management utilities as reflections.
 
 ## Success Metrics
 
 ### Functional Metrics
-- **Clean Directory Management**: Context files properly organized and cleaned up
+- **Clean Directory Management**: Context files properly organized by date and session
 - **Integration Success**: Journal generator successfully utilizes context when available
 - **Session Management**: Multiple sessions per day handled without conflicts
-- **Configuration Compliance**: Cleanup behavior follows user settings
 
 ### Usage Metrics
 - **Capture Frequency**: How often context capture is used during development
 - **Session Patterns**: Average sessions per day, session duration patterns
 - **Journal Enhancement**: Correlation between context availability and journal quality
-- **Cleanup Effectiveness**: Files properly cleaned up according to retention settings
 
 ## Risks and Mitigations
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| Context files accumulate without cleanup | Medium | Medium | Robust auto-cleanup with multiple triggers |
-| Large context files impact performance | Low | Low | File size limits and efficient parsing |
+| Context files accumulate over time | Low | High | Users manually delete old files when needed; minimal storage impact |
+| Large context files impact performance | Low | Low | Efficient file I/O; files naturally bounded by session scope |
 | Context integration breaks journal generation | High | Low | Fallback to standard generation, comprehensive testing |
 | User confusion about context vs reflections | Medium | Medium | Clear documentation and different directory structures |
+
+## Deferred Features
+
+### Auto-Deletion (Deferred per DD-002)
+If automatic context file deletion becomes needed in the future, here's a safe approach:
+
+**Configuration:**
+```json
+{
+  "contextRetentionDays": 7,  // User sets: days to retain (0 = keep forever)
+  "_contextAutoDeleteStartDate": "2025-10-13"  // System-managed: DO NOT EDIT
+}
+```
+
+**Forward-Only Deletion Logic:**
+- Only files created on/after `_contextAutoDeleteStartDate` are subject to auto-deletion
+- Files created before the start date are grandfathered (exempt forever)
+- System automatically sets/updates `_contextAutoDeleteStartDate` when user changes `contextRetentionDays`
+- `_` prefix indicates system-managed field (user never sets this manually)
+- Cleanup runs when context tool is invoked
+
+**Why This Works:**
+- No retroactive deletion: changing retention from 0 to 7 days won't nuke months of existing files
+- Simple mental model: "only files created under current retention rules get deleted"
+- Config as single source of truth: all settings in one file
+- Non-destructive: changing retention settings is safe
+
+**Deferred Rationale:** Auto-deletion adds complexity without clear current need. Manual deletion is simple and sufficient for now.
+
+---
 
 ## Future Enhancements
 
