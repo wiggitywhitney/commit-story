@@ -60,38 +60,34 @@ But it's not appropriate for permanent storage like reflections or journal entri
 ### MCP Tool Interface
 
 ```javascript
-// Primary context capture
+// Primary context capture (session ID auto-detected)
 journal_capture_context({
   text: "Current debugging context: tried X, found Y, next attempting Z",
-  session: "datadog-integration",  // Optional session identifier
   timestamp: "optional-override"   // Defaults to current time
-})
-
-// Context append (add to existing session)
-journal_append_context({
-  text: "Update: Z approach failed, trying W instead",
-  session: "datadog-integration"
 })
 ```
 
+**Note**: Session ID is automatically detected from Claude Code's most recent message (last 30 seconds) and included in the context file header. No manual session naming required.
+
 ## Design Decisions
 
-### DD-001: Directory Structure
+### DD-001: Directory Structure (Partially Superseded by DD-008)
 **Decision**: Use `journal/context/` with date-based organization
 
 ```
 journal/
   context/
-    2025-09-21-debugging-session.md
-    2025-09-21-feature-implementation.md
-    2025-09-20-performance-analysis.md
+    2025-10/
+      2025-10-13.md             # Daily files (updated per DD-008)
+      2025-10-14.md
 ```
 
 **Rationale**:
-- Flat structure for easy cleanup and discovery
-- Date prefix enables chronological sorting
-- Session suffix allows multiple contexts per day
+- Monthly subdirectories for organization (consistent with entries/reflections)
+- Daily files (not session-named files, per DD-008)
 - Consistent with existing journal directory patterns
+
+**Note**: DD-008 updated filename structure from session-based to daily files.
 
 ### DD-002: Context File Retention - Keep Forever (Updated 2025-10-13)
 **Decision**: Context files are kept indefinitely. Users manually delete files when no longer needed.
@@ -111,16 +107,16 @@ journal/
 
 **Future Consideration**: If auto-deletion becomes needed, see "Deferred Features" section for a designed approach.
 
-### DD-003: Session Management
-**Decision**: Optional session naming with automatic fallback
+### DD-003: Session Management (Superseded by DD-008/DD-009)
+**Decision**: ~~Optional session naming with automatic fallback~~ **Superseded - See DD-008/DD-009**
 
-**Format**: `YYYY-MM-DD-{session-name || 'context'}.md`
+**Original Format**: `YYYY-MM-DD-{session-name || 'context'}.md`
 
-**Rationale**:
-- Supports multiple concurrent work sessions
-- Automatic naming prevents decision fatigue
-- Session names improve context organization
-- Date prefix maintains chronological order
+**Superseded By**:
+- DD-008: Daily files with automatic session ID detection
+- DD-009: No user-provided session parameter
+
+**Note**: This design decision was replaced with automatic session ID detection from Claude Code internals (DD-008) to eliminate cognitive load (DD-009).
 
 ### DD-004: Journal Integration Points
 **Decision**: Journal generator reads available context files for current commit date
@@ -217,24 +213,112 @@ parseJournalFile(type, content, fileDate, startTime, endTime)
 
 **Impact**: Phase 2 milestones must include refactoring tasks, not just new code
 
+### DD-008: Daily Files with Automatic Session ID Detection
+**Decision**: Use daily files (not session-named files) with Claude Code session ID automatically detected
+**Date**: 2025-10-13
+
+**File Structure**:
+```
+journal/context/2025-10/2025-10-13.md
+```
+
+**Content Format**:
+```markdown
+## 10:15:32 AM GMT+1 - Session: 01935c62-e8f1-7106-9769-b4d9ad6ace27
+
+Context capture text here...
+
+═══════════════════════════════════════
+```
+
+**Rationale**:
+- **Zero cognitive load**: No user-provided session names to think about
+- **Consistency**: Matches reflections/entries pattern exactly (daily files)
+- **Journal correlation**: AI can link context to specific Claude conversations during journal generation
+- **Existing dependency**: Already parsing `.claude/projects/` structure for chat data
+
+**Session ID Detection Strategy**:
+1. Look for most recent message in `.claude/projects/[project]/` JSONL files (last 0-30 seconds)
+2. Extract `sessionId` field from that message
+3. Include session ID in context capture header
+4. Fallback: If detection fails, omit session ID gracefully
+
+**Implementation Approach**:
+- Reuse existing Claude chat parsing code from `src/collectors/claude-collector.js`
+- Extract utility function: `getCurrentSessionId()`
+- Time window: Messages from last 30 seconds only
+- Graceful degradation: Context still captured even if session ID unavailable
+
+**Supersedes**:
+- DD-001: Directory structure remains but filename changes to daily
+- DD-003: Removes user-provided session naming entirely
+
+**Impact on Milestones**:
+- M1: ✅ Complete (needs minor update to remove session param)
+- M2: Now includes session ID detection logic (adds 10-15 min)
+- File naming simplified: Use `generateJournalPath('context', date)` directly
+
+**Status**: ⏳ Outstanding - Requires M2 implementation
+
+### DD-009: No User-Provided Session Parameter
+**Decision**: Remove `session` parameter from MCP tool interface entirely
+**Date**: 2025-10-13
+
+**Before**:
+```javascript
+journal_capture_context({
+  text: "...",
+  session: "auth-debugging"  // ❌ Remove this
+})
+```
+
+**After**:
+```javascript
+journal_capture_context({
+  text: "..."  // Session ID auto-detected
+})
+```
+
+**Rationale**:
+- Eliminates unnecessary cognitive load on user
+- Session ID automatically detected from Claude Code internals
+- Simpler API surface
+- More consistent with reflection tool (no session concept)
+
+**Impact**:
+- M1: Needs update to remove session parameter handling
+- M2: Adds session ID detection instead
+- M3: Tool schema updated (no session in inputSchema)
+- Documentation simpler
+
+**Status**: ⏳ Outstanding - Requires M2 implementation
+
 ## Implementation Plan
 
 ### Phase 1: Core MCP Tool (Milestone-Based per DD-005)
 
-#### Milestone 1: Basic Context Tool (30-45 min)
-- [ ] Create `src/mcp/tools/context-tool.js` with basic structure
-- [ ] Implement input validation (text required, optional session/timestamp)
-- [ ] Create basic context file writer
-- [ ] Use existing `journal-paths.js` utilities for path generation
-- [ ] Return success/error messages
-- **Success Criteria**: Tool creates a context file in `journal/context/`
+#### Milestone 1: Basic Context Tool (30-45 min) - ✅ COMPLETE (2025-10-13)
+- [x] Create `src/mcp/tools/context-tool.js` with basic structure
+- [x] Implement input validation (text required, optional session/timestamp)
+- [x] Create basic context file writer
+- [x] Use existing `journal-paths.js` utilities for path generation
+- [x] Return success/error messages
+- **Success Criteria**: Tool creates a context file in `journal/context/` ✅
 
-#### Milestone 2: Session Management (20-30 min)
-- [ ] Implement session naming logic: `YYYY-MM-DD-{session || 'context'}.md`
+**Note**: M1 complete but needs updates in M2 per DD-008/DD-009 (remove session parameter, change to daily files)
+
+#### Milestone 2: Session Management with Auto-Detection (30-40 min, per DD-008/DD-009)
+- [ ] Update M1 code: Remove session parameter handling from context-tool.js
+- [ ] Change to daily files: `YYYY-MM-DD.md` (remove session from filename)
+- [ ] Extract `getCurrentSessionId()` utility from claude-collector patterns
+- [ ] Implement session ID detection (search messages in last 30 seconds)
+- [ ] Add session ID to header: `## HH:MM:SS [TIMEZONE] - Session: {uuid}`
+- [ ] Handle graceful fallback if session ID not found (omit session line)
 - [ ] Handle file existence check (append vs create new)
-- [ ] Add timestamp headers for each capture
 - [ ] Add separator bars between entries
-- **Success Criteria**: Multiple sessions per day work, appending to same session works
+- [ ] Test with reflection tool first to validate approach
+- [ ] Test append logic with multiple captures same day
+- **Success Criteria**: Multiple captures per day append correctly, session ID auto-detected and included
 
 #### Milestone 3: MCP Server Integration (15-20 min)
 - [ ] Import context tool in `src/mcp/server.js`
@@ -320,26 +404,29 @@ src/
 
 journal/
   context/                      # Context files directory
-    2025-09-21-debugging.md     # Session-based context files
-    2025-09-21-feature-work.md
+    2025-10/
+      2025-10-13.md             # Daily context files (per DD-008)
+      2025-10-14.md
 ```
 
-Note: Uses existing utilities from `src/utils/journal-paths.js` for path generation and directory management.
+Note: Uses existing utilities from `src/utils/journal-paths.js` for path generation and directory management. Daily file structure matches reflections and entries patterns.
 
 ### Context File Format
 ```markdown
-## HH:MM:SS [TIMEZONE] - Context Capture: {session-name}
+## HH:MM:SS [TIMEZONE] - Session: 01935c62-e8f1-7106-9769-b4d9ad6ace27
 
 {context-content}
 
 ═══════════════════════════════════════
 
-## HH:MM:SS [TIMEZONE] - Context Update
+## HH:MM:SS [TIMEZONE] - Session: 01935c62-e8f1-7106-9769-b4d9ad6ace27
 
 {additional-context}
 
 ═══════════════════════════════════════
 ```
+
+**Note**: Session UUID is automatically detected from Claude Code's most recent message (per DD-008). If detection fails, the session line is omitted gracefully.
 
 ### Configuration Integration
 No configuration required. Context files are saved to `journal/context/` using the same path management utilities as reflections.
