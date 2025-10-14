@@ -48,13 +48,33 @@ export async function generateDevelopmentDialogue(context, summary) {
       const selected = selectContext(context, ['chatSessions', 'chatMetadata']);
       const chatSessions = selected.data.chatSessions;
 
+      // Count substantial user messages in the filtered sessions (post-filtering validation)
+      const allMessages = chatSessions.flatMap(s => s.messages);
+      const userMessages = allMessages.filter(m => m.type === 'user');
+      const substantialUserMessages = userMessages.filter(m => (m.message?.content || '').length >= 20);
+
+      // Add telemetry for filtered message counts
+      const dialogueAttrs = OTEL.attrs.dialogue({
+        substantialUserMessages: substantialUserMessages.length,
+        userMessages: userMessages.length,
+        totalMessages: allMessages.length
+      });
+      span.setAttributes(dialogueAttrs);
+
+      // Emit metrics for dashboard analysis
+      Object.entries(dialogueAttrs).forEach(([name, value]) => {
+        if (typeof value === 'number') {
+          OTEL.metrics.gauge(name, value);
+        }
+      });
+
       // Check if any user messages are substantial enough for dialogue extraction (DD-054)
-      if (context.chatMetadata.data.userMessages.overTwentyCharacters === 0) {
-        logger.decision('dialogue generation', 'No substantial user messages found - skipping dialogue generation');
+      if (substantialUserMessages.length === 0) {
+        logger.decision('dialogue generation', 'No substantial user messages found in filtered sessions - skipping dialogue generation');
         return "No significant dialogue found for this development session";
       }
 
-      logger.progress('dialogue generation', `Found ${context.chatMetadata.data.userMessages.overTwentyCharacters} substantial user messages`);
+      logger.progress('dialogue generation', `Found ${substantialUserMessages.length} substantial user messages in filtered sessions`);
 
       // Create fresh OpenAI instance (DD-016: prevent context bleeding)
       const openai = new OpenAI({
@@ -75,7 +95,7 @@ ${guidelines}
       // Prepare the context for AI processing with session grouping
       // Calculate maximum quotes dynamically: 8% of substantial user messages + 1
       // This scales with session size while encouraging quality over quantity
-      const maxQuotes = Math.ceil(context.chatMetadata.data.userMessages.overTwentyCharacters * 0.08) + 1;
+      const maxQuotes = Math.ceil(substantialUserMessages.length * 0.08) + 1;
       const contextForAI = {
         summary: summary,
         chat_sessions: formatSessionsForAI(chatSessions),

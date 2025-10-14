@@ -255,6 +255,17 @@ export const OTEL = {
     },
 
     /**
+     * Dialogue generation attributes
+     * @param {Object} dialogueData - Dialogue generation data
+     * @returns {Object} Dialogue attributes with commit_story namespace
+     */
+    dialogue: (dialogueData) => ({
+      [`${OTEL.NAMESPACE}.dialogue.substantial_user_messages`]: dialogueData.substantialUserMessages,
+      [`${OTEL.NAMESPACE}.dialogue.user_messages`]: dialogueData.userMessages,
+      [`${OTEL.NAMESPACE}.dialogue.total_messages`]: dialogueData.totalMessages
+    }),
+
+    /**
      * File analysis attributes
      * @param {Object} fileData - File analysis results
      * @returns {Object} File attributes with commit_story namespace
