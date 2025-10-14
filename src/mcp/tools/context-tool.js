@@ -6,11 +6,99 @@
  */
 
 import { promises as fs } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } from '../../utils/journal-paths.js';
 
 /**
+ * Get the current Claude Code session ID from recent messages
+ * Searches for messages in the last 30 seconds to find the active session
+ * @returns {string|null} Session ID or null if not found
+ */
+function getCurrentSessionId() {
+  try {
+    const claudeProjectsDir = join(homedir(), '.claude', 'projects');
+
+    if (!existsSync(claudeProjectsDir)) {
+      return null;
+    }
+
+    // Get all JSONL files from all project directories
+    const allFiles = [];
+    const projectDirs = readdirSync(claudeProjectsDir);
+
+    for (const projectDir of projectDirs) {
+      const projectPath = join(claudeProjectsDir, projectDir);
+      try {
+        if (existsSync(projectPath)) {
+          const files = readdirSync(projectPath)
+            .filter(file => file.endsWith('.jsonl'))
+            .map(file => join(projectPath, file));
+          allFiles.push(...files);
+        }
+      } catch (error) {
+        // Skip directories that can't be read
+        continue;
+      }
+    }
+
+    // Time window: last 30 seconds
+    const now = new Date();
+    const thirtySecondsAgo = new Date(now.getTime() - 30000);
+
+    let mostRecentMessage = null;
+    let mostRecentTime = null;
+
+    // Search all files for the most recent message in the last 30 seconds
+    for (const filePath of allFiles) {
+      try {
+        const content = readFileSync(filePath, 'utf8');
+        const lines = content.trim().split('\n');
+
+        // Process lines in reverse order to find most recent messages first
+        for (let i = lines.length - 1; i >= 0; i--) {
+          const line = lines[i];
+          if (!line.trim()) continue;
+
+          try {
+            const message = JSON.parse(line);
+
+            // Parse timestamp: "2025-10-13T10:30:00.000Z"
+            if (!message.timestamp || !message.sessionId) continue;
+
+            const messageTime = new Date(message.timestamp.replace('Z', '+00:00'));
+
+            // Check if message is within last 30 seconds
+            if (messageTime >= thirtySecondsAgo && messageTime <= now) {
+              // Track most recent message
+              if (!mostRecentTime || messageTime > mostRecentTime) {
+                mostRecentMessage = message;
+                mostRecentTime = messageTime;
+              }
+            }
+          } catch (parseError) {
+            // Skip malformed JSON lines
+            continue;
+          }
+        }
+      } catch (fileError) {
+        // Skip files that can't be read
+        continue;
+      }
+    }
+
+    return mostRecentMessage?.sessionId || null;
+
+  } catch (error) {
+    // Return null on any error - graceful degradation
+    return null;
+  }
+}
+
+/**
  * Create a journal context capture entry
- * @param {Object} args - Tool arguments {text, session?, timestamp?}
+ * @param {Object} args - Tool arguments {text, timestamp?}
  * @returns {Promise<Object>} MCP tool response
  */
 export async function createContextTool(args) {
@@ -39,30 +127,21 @@ export async function createContextTool(args) {
       throw new Error('Invalid timestamp format: use ISO 8601 format (e.g., "2025-09-22T10:30:00Z")');
     }
 
-    // Parse session name (use provided or default to 'context')
-    const sessionName = args.session && typeof args.session === 'string' && args.session.trim().length > 0
-      ? args.session.trim()
-      : 'context';
-
     const contextText = args.text.trim();
 
-    // Generate context file path with session-based naming
-    const basePath = generateJournalPath('context', timestamp);
-
-    // Modify filename to include session name: YYYY-MM-DD-{session}.md
-    const pathParts = basePath.split('/');
-    const originalFilename = pathParts[pathParts.length - 1]; // e.g., "2025-10-13.md"
-    const dateOnly = originalFilename.replace('.md', ''); // e.g., "2025-10-13"
-    const sessionFilename = `${dateOnly}-${sessionName}.md`; // e.g., "2025-10-13-debugging.md"
-    pathParts[pathParts.length - 1] = sessionFilename;
-    const filePath = pathParts.join('/');
+    // Generate context file path using daily files (YYYY-MM-DD.md)
+    const filePath = generateJournalPath('context', timestamp);
 
     // Ensure directory exists
     await ensureJournalDirectory(filePath);
 
-    // Format context entry
+    // Get current session ID (auto-detected from Claude Code)
+    const sessionId = getCurrentSessionId();
+
+    // Format context entry with session ID (if available)
     const formattedTimestamp = getTimezonedTimestamp(timestamp);
-    const contextEntry = `## ${formattedTimestamp} - Context Capture: ${sessionName}
+    const sessionLine = sessionId ? ` - Session: ${sessionId}` : '';
+    const contextEntry = `## ${formattedTimestamp}${sessionLine}
 
 ${contextText}
 
@@ -70,8 +149,15 @@ ${contextText}
 
 `;
 
-    // Write context to file (always create new file for M1, append logic comes in M2)
-    await fs.writeFile(filePath, contextEntry, 'utf8');
+    // Check if file exists - append if it does, create if it doesn't
+    try {
+      await fs.access(filePath);
+      // File exists - append to it
+      await fs.appendFile(filePath, contextEntry, 'utf8');
+    } catch (error) {
+      // File doesn't exist - create new file
+      await fs.writeFile(filePath, contextEntry, 'utf8');
+    }
 
     return {
       content: [{
