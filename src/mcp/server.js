@@ -14,6 +14,7 @@ import { trace, SpanStatusCode, propagation, context, metrics } from '@opentelem
 import { OTEL } from '../telemetry/standards.js';
 import { createNarrativeLogger } from '../utils/trace-logger.js';
 import { createReflectionTool } from './tools/reflection-tool.js';
+import { createContextTool } from './tools/context-capture-tool.js';
 
 // Initialize telemetry conditionally (non-blocking)
 import('../tracing.js')
@@ -115,13 +116,22 @@ class CommitStoryMCPServer {
                   text: {
                     type: 'string',
                     description: 'The reflection content to add to the journal (must be passed verbatim from user input)'
-                  },
-                  timestamp: {
-                    type: 'string',
-                    description: 'Optional timestamp override (ISO 8601 format)'
                   }
                 },
                 required: ['text']
+              }
+            },
+            {
+              name: 'journal_capture_context',
+              description: 'Capture development context. Call with empty text for comprehensive dump prompt, or provide specific context to capture directly.',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  text: {
+                    type: 'string',
+                    description: 'Development context (omit for comprehensive dump prompt, provide for direct capture)'
+                  }
+                }
               }
             }
           ];
@@ -195,7 +205,8 @@ class CommitStoryMCPServer {
 
           // Tool registry for better maintainability and telemetry
           const toolHandlers = {
-            'journal_add_reflection': createReflectionTool
+            'journal_add_reflection': createReflectionTool,
+            'journal_capture_context': createContextTool
           };
 
           const toolHandler = toolHandlers[name];

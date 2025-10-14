@@ -61,19 +61,14 @@ export async function createReflectionTool(args, parentSpan) {
         throw new Error('Reflection too long: maximum 10,000 characters allowed');
       }
 
-      // Parse timestamp (use provided or current time)
-      const timestamp = args.timestamp ? new Date(args.timestamp) : new Date();
-
-      if (isNaN(timestamp.getTime())) {
-        throw new Error('Invalid timestamp format: use ISO 8601 format (e.g., "2025-09-22T10:30:00Z")');
-      }
+      // Always use current timestamp
+      const timestamp = new Date();
 
       const reflectionText = args.text.trim();
 
       logger.start('reflection.creation', 'Creating journal reflection', {
         text_length: reflectionText.length,
-        timestamp: timestamp.toISOString(),
-        has_custom_timestamp: !!args.timestamp
+        timestamp: timestamp.toISOString()
       });
 
       // Generate reflection file path (use 'reflections' type)
@@ -142,14 +137,12 @@ ${reflectionText}
 
       span.setAttributes({
         ...OTEL.attrs.mcp.reflection(telemetryData),
-        [`${OTEL.NAMESPACE}.reflection.processing_duration_ms`]: processingDuration,
-        [`${OTEL.NAMESPACE}.reflection.has_custom_timestamp`]: !!args.timestamp
+        [`${OTEL.NAMESPACE}.reflection.processing_duration_ms`]: processingDuration
       });
 
       // Emit metrics for dual visibility
       OTEL.metrics.counter('commit_story.reflections.added', 1, {
-        'reflection.file_created': fileCreated.toString(),
-        'reflection.has_custom_timestamp': (!!args.timestamp).toString()
+        'reflection.file_created': fileCreated.toString()
       });
 
       OTEL.metrics.gauge('commit_story.reflections.size', reflectionText.length, {
@@ -220,7 +213,7 @@ ${reflectionText}
       });
 
       // Return MCP error response
-      const errorMessage = `❌ **Failed to add reflection**\n\n🔍 **Error**: ${error.message}\n\n💡 **Help**: Make sure your reflection text is not empty and any custom timestamp follows ISO 8601 format.`;
+      const errorMessage = `❌ **Failed to add reflection**\n\n🔍 **Error**: ${error.message}\n\n💡 **Help**: Make sure your reflection text is not empty.`;
 
       return {
         content: [{

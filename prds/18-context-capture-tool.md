@@ -60,14 +60,13 @@ But it's not appropriate for permanent storage like reflections or journal entri
 ### MCP Tool Interface
 
 ```javascript
-// Primary context capture (session ID auto-detected)
-journal_capture_context({
-  text: "Current debugging context: tried X, found Y, next attempting Z",
-  timestamp: "optional-override"   // Defaults to current time
-})
-```
+// Mode 1: Comprehensive dump (empty/omitted text triggers prompt)
+journal_capture_context({})  // Step 1: Tool returns comprehensive prompt
+journal_capture_context({text: "..."})  // Step 2: AI provides rich analysis
 
-**Note**: Session ID is automatically detected from Claude Code's most recent message (last 30 seconds) and included in the context file header. No manual session naming required.
+// Mode 2: Direct capture (text provided, writes immediately)
+journal_capture_context({text: "Focused context content..."})
+```
 
 ## Design Decisions
 
@@ -330,6 +329,79 @@ const message = isDevMode && traceId
 - No additional configuration needed (reuses existing `dev` flag)
 - Consistent debugging experience across all MCP tools
 
+### DD-011: Flexible Two-Mode Context Capture
+**Decision**: Support both comprehensive dump mode and direct capture mode, with AI interpreting user intent
+**Date**: 2025-10-14
+
+**Two Modes**:
+
+**Mode 1: Comprehensive Dump** (text omitted or empty)
+```javascript
+journal_capture_context({})  // or {text: ""}
+```
+→ Tool returns: "Provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here."
+→ AI provides rich comprehensive analysis in follow-up call
+
+**Mode 2: Direct Capture** (text provided)
+```javascript
+journal_capture_context({text: "Focused content here..."})
+```
+→ Tool writes immediately to file
+
+**How AI Chooses Mode**:
+- User: "capture context" → Mode 1 (comprehensive dump)
+- User: "capture debugging steps we took" → Mode 2 (AI writes focused content directly)
+- User: "capture why we chose postgres over mongo" → Mode 2 (AI writes decision rationale directly)
+
+**Rationale**:
+- **Flexible depth**: Comprehensive checkpoints OR focused captures as needed
+- **User intent driven**: Natural language requests work intuitively
+- **No forced workflow**: AI interprets what user wants and chooses appropriate mode
+- **Proven pattern**: Dump mode successfully used in original Python implementation
+- **Minimal overhead**: Two-step only when comprehensive analysis is valuable
+
+**Comparison**:
+- **Comprehensive dump** (Mode 1): Rich analysis with insights, decisions, rationale, next steps
+- **Direct capture** (Mode 2): Focused documentation of specific processes, decisions, or discoveries
+
+**Implementation Details**:
+- Tool checks if text parameter is missing, null, or empty string
+- Empty/missing text → return comprehensive prompt (Mode 1)
+- Non-empty text → write directly to file (Mode 2)
+- No artificial length constraints on either mode
+
+**Status**: ⏳ Outstanding - Needs implementation in context-tool.js
+
+**Impact on Milestones**:
+- M3 needs update to implement mode detection logic
+- M4 needs validation of both modes working correctly
+- Tool description needs update to explain both modes
+
+### DD-012: Remove Arbitrary Character Limits
+**Decision**: Remove the 10,000 character limit on context text
+**Date**: 2025-10-14
+
+**Rationale**:
+- **No technical justification**: File system handles large files easily, no real constraint at 10KB
+- **Artificial constraint**: Comprehensive dumps legitimately exceed 10,000 characters
+- **User can manage**: If content is too large, users can edit/delete files manually
+- **No real threat**: Doesn't prevent any actual problems
+- **Trust the user**: Let natural usage patterns emerge without artificial guardrails
+
+**Removed Validation**:
+```javascript
+// DELETE THIS:
+if (args.text.length > 10000) {
+  throw new Error('Context too long: maximum 10,000 characters allowed');
+}
+```
+
+**Status**: ⏳ Outstanding - Needs removal from context-tool.js
+
+**Impact on Milestones**:
+- M3 needs removal of character length validation
+- No other impacts - purely a constraint removal
+
 ## Implementation Plan
 
 ### Phase 1: Core MCP Tool (Milestone-Based per DD-005)
@@ -357,11 +429,20 @@ const message = isDevMode && traceId
 - [x] Test append logic with multiple captures same day
 - **Success Criteria**: Multiple captures per day append correctly, session ID auto-detected and included ✅
 
-#### Milestone 3: MCP Server Integration (15-20 min)
-- [ ] Import context tool in `src/mcp/server.js`
-- [ ] Add to tool handlers registry
-- [ ] Add tool description and schema to tools list
-- **Success Criteria**: Tool appears in AI assistant and can be invoked
+#### Milestone 3: MCP Server Integration & Two-Mode Implementation (30-40 min, per DD-011 & DD-012) - ⏳ IN PROGRESS
+- [x] Import context tool in `src/mcp/server.js`
+- [x] Add to tool handlers registry
+- [x] Add tool description and schema to tools list
+- [x] Update context-capture-tool.js to implement two-mode capture (per DD-011)
+  - Remove character length validation (per DD-012)
+  - Check if text parameter is missing, null, or empty string → Mode 1 (dump)
+  - Return comprehensive prompt: "Provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here."
+  - If text provided and non-empty → Mode 2 (direct write to file)
+- [x] Update tool schema in server.js to make text parameter optional
+- [x] Update tool description to explain both modes
+- [x] Rename context-tool.js → context-capture-tool.js for clarity
+- [ ] Validate Mode 1 with fresh AI instance (comprehensive dump flow)
+- **Success Criteria**: Both comprehensive dump mode and direct capture mode work correctly with fresh AI
 
 #### Milestone 4: Format & Polish (20-30 min)
 - [ ] Format headers: `## HH:MM:SS [TIMEZONE] - Context Capture: {session-name}`

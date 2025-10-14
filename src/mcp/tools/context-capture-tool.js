@@ -98,35 +98,34 @@ function getCurrentSessionId() {
 
 /**
  * Create a journal context capture entry
- * @param {Object} args - Tool arguments {text, timestamp?}
+ * @param {Object} args - Tool arguments {text} - empty/missing text triggers comprehensive dump prompt
  * @returns {Promise<Object>} MCP tool response
  */
 export async function createContextTool(args) {
   try {
     // Validate input
     if (!args || typeof args !== 'object') {
-      throw new Error('Invalid arguments: expected object with text property');
+      throw new Error('Invalid arguments: expected object');
     }
 
-    if (!args.text || typeof args.text !== 'string') {
-      throw new Error('Missing or invalid text: context text is required');
+    // Mode detection: empty/missing text = dump mode, provided text = write mode
+    const hasText = args.hasOwnProperty('text') &&
+                    typeof args.text === 'string' &&
+                    args.text.trim().length > 0;
+
+    // Mode 1: Comprehensive Dump - return prompt
+    if (!hasText) {
+      return {
+        content: [{
+          type: 'text',
+          text: 'Provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here.'
+        }],
+        isError: false
+      };
     }
 
-    if (args.text.trim().length === 0) {
-      throw new Error('Empty context: text cannot be empty or whitespace only');
-    }
-
-    if (args.text.length > 10000) {
-      throw new Error('Context too long: maximum 10,000 characters allowed');
-    }
-
-    // Parse timestamp (use provided or current time)
-    const timestamp = args.timestamp ? new Date(args.timestamp) : new Date();
-
-    if (isNaN(timestamp.getTime())) {
-      throw new Error('Invalid timestamp format: use ISO 8601 format (e.g., "2025-09-22T10:30:00Z")');
-    }
-
+    // Mode 2: Direct Capture - proceed with file writing
+    const timestamp = new Date();
     const contextText = args.text.trim();
 
     // Generate context file path using daily files (YYYY-MM-DD.md)
@@ -173,7 +172,7 @@ ${contextText}
 
 🔍 **Error**: ${error.message}
 
-💡 **Help**: Make sure your context text is not empty and any custom timestamp follows ISO 8601 format.`;
+💡 **Help**: Provide context text to write to file, or call with empty text to trigger comprehensive dump prompt.`;
 
     return {
       content: [{
