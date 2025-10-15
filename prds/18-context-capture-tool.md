@@ -418,13 +418,63 @@ description: 'Capture development context. If the user requests specific context
 - **Standard pattern**: Tool descriptions are meant to guide AI behavior
 - **Preserves intent**: Same two modes, same comprehensive prompt guidance, just in the right place
 
-**Status**: ⏳ Implementation complete, needs validation (2025-10-15)
+**Status**: ✅ Complete (2025-10-15) - Both modes validated
 
 **Impact on Milestones**:
 - Completes M3 implementation
 - Simplifies tool code significantly
 - Better user experience overall
 - Needs human validation of both modes working
+
+### DD-014: Context Integration via Chat Flow (Supersedes DD-004 and DD-007)
+**Decision**: Keep context captures in their natural temporal position within chat messages rather than parsing context files and injecting them separately into journal generators
+**Date**: 2025-10-15
+
+**Problem with Original Approach (DD-004/DD-007)**:
+The plan was to:
+1. Discover context files for commit time window
+2. Parse context file contents
+3. Inject parsed context as additional input to journal generator prompts
+
+**Issues Identified**:
+- **Unfair prioritization**: Separately injected context might be overweighted by journal generators
+- **Temporal displacement**: Context captured at moment X loses relationship to chat/code changes after moment X
+- **Complexity**: Requires file discovery, parsing, formatting, and prompt engineering to use timestamps correctly
+- **Narrative coherence**: Breaking context out of chat flow disrupts the story
+
+**New Approach**:
+- Context capture tool calls remain in chat history (not filtered out)
+- Tool calls with their text content flow naturally with other messages
+- Journal generator sees context at its natural temporal position in conversation
+- No special parsing, discovery, or injection needed
+
+**Implementation**:
+- **Message filtering**: Ensure `journal_capture_context` tool calls are NOT filtered from chat history
+- **No file parsing**: Don't implement M2.1, M2.2, M2.4 (discovery/parsing/integration)
+- **Keep M2.3 approach**: Still add "Context Files" section with links (for reference, not content injection)
+
+**Rationale**:
+- **Simplicity**: Dramatically simpler than file parsing approach
+- **Temporal coherence**: Context stays at the moment it was captured
+- **Natural prioritization**: Generator weights context same as other chat messages
+- **Less prompt engineering**: Don't need instructions about temporal ordering
+
+**Supersedes**:
+- **DD-004**: Context files are written (still true) but NOT parsed/read for injection
+- **DD-007**: No need to refactor reflection discovery code - won't be used for context
+
+**Impact on Phase 2**:
+- **M2.1 (DRY Refactoring)**: ❌ CANCELLED - No longer needed
+- **M2.2 (Context Discovery)**: ❌ CANCELLED - No longer needed
+- **M2.3 (Integration Planning)**: ⚠️ SIMPLIFIED - Only plan link generation, not content injection
+- **M2.4 (Implementation)**: ⚠️ SIMPLIFIED - Only implement "Context Files" links section
+
+**Status**: ⏳ **Design decision made, implementation pending**
+
+**Next Steps**:
+- Verify `journal_capture_context` tool calls are not filtered in message collection
+- If filtered, update filter logic to preserve context capture tool calls
+- Implement simplified M2.3/M2.4 (links only, no content parsing)
 
 ## Implementation Plan
 
