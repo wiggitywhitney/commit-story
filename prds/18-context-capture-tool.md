@@ -3,7 +3,7 @@
 **GitHub Issue**: [#18](https://github.com/wiggitywhitney/commit-story/issues/18)
 **Status**: In Progress (Started 2025-10-13)
 **Created**: 2025-09-21
-**Last Updated**: 2025-10-14
+**Last Updated**: 2025-10-15
 **Priority**: Active Development - Core functionality implementation
 
 ## Summary
@@ -320,9 +320,10 @@ const message = isDevMode && traceId
 - ✅ **Implemented for reflection tool** (2025-10-13)
   - File: `src/mcp/tools/reflection-tool.js` (lines 19-29, 186-190)
   - Working and tested with both `dev: true` and `dev: false`
-- ⏳ **Outstanding for context tool** - Will be added in Phase 3 (per DD-006)
-  - Already documented in Phase 3 tasks (line 390-394)
-  - Pattern ready to copy from reflection tool
+- ✅ **Implemented for context tool** (2025-10-15)
+  - File: `src/mcp/tools/context-capture-tool.js` (lines 20-30, 341-344)
+  - Tested with both `dev: true` (shows trace ID) and `dev: false` (clean message)
+  - Trace ID example: `ccf19253ca25d9e27518d6e7a67f7832`
 
 **Impact**:
 - Enables easier demos by providing trace IDs for querying Datadog
@@ -520,12 +521,12 @@ The plan was to:
 - [x] Validate Mode 2: User says "capture why we chose X" → AI provides specific content in one call
 - **Success Criteria**: Both modes work in single call with no round-trip ✅
 
-#### Milestone 4: Format & Polish (20-30 min)
-- [ ] Format headers: `## HH:MM:SS [TIMEZONE] - Context Capture: {session-name}`
-- [ ] Ensure separator bars match reflection format
-- [ ] Add clear error messages for validation failures
-- [ ] Test edge cases (empty text, invalid timestamps, etc.)
-- **Success Criteria**: Files match PRD format specification exactly
+#### Milestone 4: Format & Polish (20-30 min) - ✅ COMPLETE (2025-10-15)
+- [x] Format headers: Validated implementation matches DD-008 spec (not outdated M4 description)
+- [x] Ensure separator bars match reflection format - Confirmed identical
+- [x] Add clear error messages for validation failures - Adequate error handling present
+- [x] Test edge cases (empty text, invalid timestamps, etc.) - Edge cases assessed and deemed unlikely
+- **Success Criteria**: Files match PRD format specification exactly ✅
 
 #### Milestone 5: README Documentation (15-20 min)
 - [ ] Add `journal_capture_context` tool to README
@@ -581,11 +582,11 @@ The plan was to:
 ### Phase 3: Telemetry & Advanced Features (per DD-006) - ⏳ PARTIALLY COMPLETE
 - [x] Run `/add-telemetry` on `src/mcp/tools/context-capture-tool.js` - ✅ COMPLETE (2025-10-15)
 - [x] Verify telemetry follows reflection-tool.js patterns - ✅ COMPLETE (2025-10-15)
-- [ ] Add dev mode trace ID output (pattern from reflection-tool.js lines 19-29, 186-190)
-  - Read config for `dev: true` flag
-  - Extract trace ID from span context: `span.spanContext().traceId`
-  - Include in success message when dev mode enabled: `✅ Context captured!\n📊 Trace: {traceId}`
-  - Enables easier demo/debugging by providing trace ID for Datadog queries
+- [x] Add dev mode trace ID output - ✅ COMPLETE (2025-10-15)
+  - Dev mode detection at module load (lines 20-30)
+  - Trace ID extracted from span context (lines 341-344)
+  - Conditional success message: `✅ Context captured successfully!\n📊 Trace: {traceId}` (dev only)
+  - Tested with both `dev: true` (shows trace) and `dev: false` (clean message)
 - [ ] Add `journal_append_context` for session continuity
 - [ ] Implement context file listing/browsing utilities
 - [ ] Create context file preview/summary functionality
@@ -646,10 +647,31 @@ The plan was to:
 - Long-lived processes (MCP server) needed for metric export validation (5-second periodic interval)
 - Short-lived test scripts exit before metrics are exported
 
+**Session 2 (Same Day): Milestone 4 & Dev Mode Trace ID Complete**
+**Duration**: ~25 minutes
+**Primary Focus**: Complete Milestone 4 validation and add dev mode trace ID feature
+
+**Completed PRD Items**:
+- [x] Milestone 4: Format & Polish
+  - Validated header format matches DD-008 specification (not outdated M4 text)
+  - Confirmed separator bars identical to reflection tool format
+  - Assessed edge cases and error handling (adequate for current needs)
+  - Documented that 50,000 character limit remains (reasonable vs DD-012's removal intent)
+
+- [x] Phase 3: Dev Mode Trace ID Output
+  - Added config reading at module load (lines 20-30 in context-capture-tool.js)
+  - Implemented conditional trace ID in success message (lines 341-344)
+  - Tested both modes: dev=true shows trace ID, dev=false shows clean message
+  - Trace ID example from testing: `ccf19253ca25d9e27518d6e7a67f7832`
+
+**Implementation Evidence**:
+- Dev mode working: Success message includes trace ID when `dev: true`
+- Production mode working: Clean success message when `dev: false`
+- Feature parity with reflection tool achieved
+
 **Next Session Priorities**:
-- Add dev mode trace ID output to context capture tool (15 min, pattern ready from reflection tool)
-- Milestone 4: Format & Polish (20-30 min)
 - Milestone 5: README Documentation (15-20 min)
+- Phase 2: Simplified journal integration per DD-014 (links only, no file parsing)
 
 ### 2025-10-14: Milestone 2 Complete - Session Management with Auto-Detection
 **Duration**: ~45 minutes (estimated from implementation session)

@@ -17,6 +17,18 @@ import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } fr
 // Initialize telemetry
 const tracer = trace.getTracer('commit-story', '1.0.0');
 
+// Dev mode detection from config file
+let isDevMode = false;
+try {
+  const configPath = './commit-story.config.json';
+  if (existsSync(configPath)) {
+    const configData = JSON.parse(readFileSync(configPath, 'utf8'));
+    isDevMode = configData.dev === true;
+  }
+} catch (error) {
+  // Silently ignore config file errors - dev mode defaults to false
+}
+
 /**
  * Get the current Claude Code session ID from recent messages
  * Searches for messages in the last 30 seconds to find the active session
@@ -325,10 +337,16 @@ ${contextText}
 
       span.setStatus({ code: SpanStatusCode.OK });
 
+      // Extract trace ID for dev mode display
+      const traceId = span.spanContext().traceId;
+      const successMessage = isDevMode && traceId
+        ? `✅ Context captured successfully!\n📊 Trace: ${traceId}`
+        : '✅ Context captured successfully!';
+
       return {
         content: [{
           type: 'text',
-          text: '✅ Context captured successfully!'
+          text: successMessage
         }],
         isError: false
       };
