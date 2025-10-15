@@ -453,7 +453,7 @@ description: 'Capture development context. If the user requests specific context
 - [x] Test append logic with multiple captures same day
 - **Success Criteria**: Multiple captures per day append correctly, session ID auto-detected and included ✅
 
-#### Milestone 3: MCP Server Integration & Two-Mode Implementation (30-40 min, per DD-013 & DD-012) - ⏳ IN PROGRESS
+#### Milestone 3: MCP Server Integration & Two-Mode Implementation (30-40 min, per DD-013 & DD-012) - ✅ COMPLETE (2025-10-15)
 - [x] Import context tool in `src/mcp/server.js`
 - [x] Add to tool handlers registry
 - [x] Add tool description and schema to tools list
@@ -466,9 +466,9 @@ description: 'Capture development context. If the user requests specific context
 - [x] Update tool schema in server.js to make text parameter required
 - [x] Update tool description with comprehensive prompt guidance and if/then logic
 - [x] Rename context-tool.js → context-capture-tool.js for clarity
-- [ ] Validate Mode 1: User says "capture context" → AI provides comprehensive dump in one call
-- [ ] Validate Mode 2: User says "capture why we chose X" → AI provides specific content in one call
-- **Success Criteria**: Both modes work in single call with no round-trip
+- [x] Validate Mode 1: User says "capture context" → AI provides comprehensive dump in one call
+- [x] Validate Mode 2: User says "capture why we chose X" → AI provides specific content in one call
+- **Success Criteria**: Both modes work in single call with no round-trip ✅
 
 #### Milestone 4: Format & Polish (20-30 min)
 - [ ] Format headers: `## HH:MM:SS [TIMEZONE] - Context Capture: {session-name}`
@@ -528,9 +528,9 @@ description: 'Capture development context. If the user requests specific context
 - [ ] Test with various scenarios (no context, single session, multiple sessions)
 - **Success Criteria**: Journals include context appropriately, links to context files visible
 
-### Phase 3: Telemetry & Advanced Features (per DD-006)
-- [ ] Run `/add-telemetry` on `src/mcp/tools/context-tool.js`
-- [ ] Verify telemetry follows reflection-tool.js patterns
+### Phase 3: Telemetry & Advanced Features (per DD-006) - ⏳ PARTIALLY COMPLETE
+- [x] Run `/add-telemetry` on `src/mcp/tools/context-capture-tool.js` - ✅ COMPLETE (2025-10-15)
+- [x] Verify telemetry follows reflection-tool.js patterns - ✅ COMPLETE (2025-10-15)
 - [ ] Add dev mode trace ID output (pattern from reflection-tool.js lines 19-29, 186-190)
   - Read config for `dev: true` flag
   - Extract trace ID from span context: `span.spanContext().traceId`
@@ -541,6 +541,65 @@ description: 'Capture development context. If the user requests specific context
 - [ ] Create context file preview/summary functionality
 
 ## Work Log
+
+### 2025-10-15: Telemetry Implementation & Critical Bug Fixes
+**Duration**: ~3 hours (estimated from conversation timestamps)
+**Commits**: Pending
+**Primary Focus**: OpenTelemetry instrumentation for context capture tool + codebase-wide bug fixes
+
+**Completed PRD Items**:
+- [x] Phase 3: Run `/add-telemetry` on context-capture-tool.js
+  - Added 11 metrics (counters, gauges, histograms)
+  - Added 8 spans (parent + child spans for session detection, file operations)
+  - Added comprehensive narrative logging across all operations
+  - Evidence: Metrics appearing in Datadog (`commit_story.context.captured`, `commit_story.session.detection_attempts`)
+  - Evidence: Parent span `mcp.tool.journal_capture_context` appearing in Datadog with complete trace hierarchy
+
+- [x] Phase 3: Verify telemetry follows reflection-tool.js patterns
+  - Validated span structure matches reflection tool
+  - Validated metric emission patterns
+  - Validated 100% coverage in Datadog (spans, metrics, logs)
+
+- [x] Milestone 3: Validate both context capture modes
+  - Mode 1 (comprehensive dump): Tested with "capture context" command
+  - Mode 2 (specific capture): Tested with specific context requests
+  - Both modes work in single call with no round-trip
+
+**Critical Bug Fixes (NOT in PRD but highly significant)**:
+
+**Bug 1: Metric Instrument Caching** (Affects ALL 104+ metrics in codebase)
+- **Problem**: Creating new metric instruments on every emission instead of caching
+- **Root Cause**: `OTEL.metrics.gauge/counter/histogram()` called `meter.createGauge()` every time
+- **Impact**: Metrics weren't being exported to Datadog from any tool
+- **Fix**: Implemented instrument cache with Map-based registry (lines 55-63, 830-912 in `telemetry/standards.js`)
+- **Evidence**: After fix, `commit_story.reflections.added` metric appeared at 2025-10-15T08:18:20Z
+- **Files Modified**: `src/telemetry/standards.js`
+
+**Bug 2: Async Parent Span Export** (Affects both MCP tools)
+- **Problem**: Parent spans created but not exported to Datadog (child spans appeared with missing parent IDs)
+- **Root Cause**: Async spans without explicit `span.end()` in finally block weren't reliably exported
+- **Impact**: Tool-level parent spans missing from traces for both context capture and reflection tools
+- **Fix**: Added `finally { span.end(); }` blocks to both MCP tools
+- **Evidence**: After fix + MCP server restart, parent span `mcp.tool.journal_capture_context` appeared in Datadog
+- **Files Modified**: `src/mcp/tools/context-capture-tool.js` (lines 372-374), `src/mcp/tools/reflection-tool.js` (lines 225-227)
+
+**Validation Evidence**:
+- Datadog query results show 100% telemetry coverage:
+  - Spans: Context capture parent + all children (trace: c6fb5d01c48f931e21720a467609bd27)
+  - Metrics: 2 data points for `context.captured` (08:24:34Z, 08:28:00Z)
+  - Logs: 26+ narrative logs successfully ingested
+- Both bug fixes validated with MCP server restart (PID 92079)
+
+**Key Technical Insights**:
+- OpenTelemetry instruments must be created once and cached, not recreated per emission
+- Async spans require explicit `span.end()` in finally blocks for reliable export
+- Long-lived processes (MCP server) needed for metric export validation (5-second periodic interval)
+- Short-lived test scripts exit before metrics are exported
+
+**Next Session Priorities**:
+- Add dev mode trace ID output to context capture tool (15 min, pattern ready from reflection tool)
+- Milestone 4: Format & Polish (20-30 min)
+- Milestone 5: README Documentation (15-20 min)
 
 ### 2025-10-14: Milestone 2 Complete - Session Management with Auto-Detection
 **Duration**: ~45 minutes (estimated from implementation session)

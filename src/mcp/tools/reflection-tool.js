@@ -222,6 +222,8 @@ ${reflectionText}
         }],
         isError: true
       };
+    } finally {
+      span.end();
     }
   });
 }

@@ -53,6 +53,16 @@ function getMeter() {
 }
 
 /**
+ * Metric instrument cache - instruments should be created once and reused
+ * Creating new instruments on every emission causes export issues
+ */
+const metricInstruments = {
+  gauges: new Map(),
+  counters: new Map(),
+  histograms: new Map()
+};
+
+/**
  * OpenTelemetry standards constant - centralized patterns and conventions
  */
 export const OTEL = {
@@ -158,7 +168,9 @@ export const OTEL = {
       server_shutdown: () => 'mcp.server_shutdown',
       tool_invocation: () => 'mcp.tool_invocation',
       tool: {
-        journal_add_reflection: () => 'mcp.tool.journal_add_reflection'
+        journal_add_reflection: () => 'mcp.tool.journal_add_reflection',
+        journal_capture_context: () => 'mcp.tool.journal_capture_context',
+        session_id_detection: () => 'mcp.tool.session_id_detection'
       }
     }
   },
@@ -746,6 +758,34 @@ export const OTEL = {
         [`${OTEL.NAMESPACE}.reflection.file_created`]: reflectionData.fileCreated,
         [SEMATTRS_CODE_FILEPATH]: reflectionData.filePath, // OpenTelemetry file semantic convention
         [`${OTEL.NAMESPACE}.reflection.directory`]: reflectionData.directory
+      }),
+
+      /**
+       * Context capture-specific attributes
+       * @param {Object} contextData - Context capture operation data
+       * @returns {Object} Context attributes with file semantic conventions
+       */
+      context: (contextData) => ({
+        [`${OTEL.NAMESPACE}.context.text_length`]: contextData.textLength,
+        [`${OTEL.NAMESPACE}.context.timestamp`]: contextData.timestamp,
+        [`${OTEL.NAMESPACE}.context.file_created`]: contextData.fileCreated,
+        [`${OTEL.NAMESPACE}.context.session_id`]: contextData.sessionId,
+        [`${OTEL.NAMESPACE}.context.session_detected`]: contextData.sessionDetected,
+        [SEMATTRS_CODE_FILEPATH]: contextData.filePath, // OpenTelemetry file semantic convention
+        [`${OTEL.NAMESPACE}.context.directory`]: contextData.directory
+      }),
+
+      /**
+       * Session ID detection attributes
+       * @param {Object} sessionData - Session detection operation data
+       * @returns {Object} Session detection attributes
+       */
+      sessionDetection: (sessionData) => ({
+        [`${OTEL.NAMESPACE}.session.files_scanned`]: sessionData.filesScanned,
+        [`${OTEL.NAMESPACE}.session.messages_checked`]: sessionData.messagesChecked,
+        [`${OTEL.NAMESPACE}.session.session_found`]: sessionData.sessionFound,
+        [`${OTEL.NAMESPACE}.session.time_window_seconds`]: sessionData.timeWindowSeconds,
+        [`${OTEL.NAMESPACE}.session.detection_duration_ms`]: sessionData.detectionDuration
       })
     }
   },
@@ -789,12 +829,17 @@ export const OTEL = {
      */
     gauge: (name, value, attributes = {}) => {
       try {
-        const meter = getMeter();
-        const gauge = meter.createGauge(name, {
-          description: `Gauge metric: ${name}`,
-          unit: name.includes('_ms') || name.includes('duration') ? 'ms' : '1'
-        });
+        // Get or create cached gauge instrument
+        if (!metricInstruments.gauges.has(name)) {
+          const meter = getMeter();
+          const gauge = meter.createGauge(name, {
+            description: `Gauge metric: ${name}`,
+            unit: name.includes('_ms') || name.includes('duration') ? 'ms' : '1'
+          });
+          metricInstruments.gauges.set(name, gauge);
+        }
 
+        const gauge = metricInstruments.gauges.get(name);
         const defaultAttributes = {
           'service.name': 'commit-story-dev',
           'environment': 'development'
@@ -814,12 +859,17 @@ export const OTEL = {
      */
     counter: (name, value = 1, attributes = {}) => {
       try {
-        const meter = getMeter();
-        const counter = meter.createCounter(name, {
-          description: `Counter metric: ${name}`,
-          unit: '1'
-        });
+        // Get or create cached counter instrument
+        if (!metricInstruments.counters.has(name)) {
+          const meter = getMeter();
+          const counter = meter.createCounter(name, {
+            description: `Counter metric: ${name}`,
+            unit: '1'
+          });
+          metricInstruments.counters.set(name, counter);
+        }
 
+        const counter = metricInstruments.counters.get(name);
         const defaultAttributes = {
           'service.name': 'commit-story-dev',
           'environment': 'development'
@@ -839,12 +889,17 @@ export const OTEL = {
      */
     histogram: (name, value, attributes = {}) => {
       try {
-        const meter = getMeter();
-        const histogram = meter.createHistogram(name, {
-          description: `Histogram metric: ${name}`,
-          unit: name.includes('_ms') || name.includes('duration') ? 'ms' : '1'
-        });
+        // Get or create cached histogram instrument
+        if (!metricInstruments.histograms.has(name)) {
+          const meter = getMeter();
+          const histogram = meter.createHistogram(name, {
+            description: `Histogram metric: ${name}`,
+            unit: name.includes('_ms') || name.includes('duration') ? 'ms' : '1'
+          });
+          metricInstruments.histograms.set(name, histogram);
+        }
 
+        const histogram = metricInstruments.histograms.get(name);
         const defaultAttributes = {
           'service.name': 'commit-story-dev',
           'environment': 'development'
