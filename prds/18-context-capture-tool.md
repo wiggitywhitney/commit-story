@@ -329,11 +329,12 @@ const message = isDevMode && traceId
 - No additional configuration needed (reuses existing `dev` flag)
 - Consistent debugging experience across all MCP tools
 
-### DD-011: Flexible Two-Mode Context Capture
-**Decision**: Support both comprehensive dump mode and direct capture mode, with AI interpreting user intent
+### DD-011: Flexible Two-Mode Context Capture via Prompt Return (SUPERSEDED by DD-013)
+**Decision**: Support both comprehensive dump mode and direct capture mode, with tool returning a prompt to trigger Mode 1
 **Date**: 2025-10-14
+**Status**: ❌ **SUPERSEDED** - See DD-013 for better implementation approach
 
-**Two Modes**:
+**Original Two Modes**:
 
 **Mode 1: Comprehensive Dump** (text omitted or empty)
 ```javascript
@@ -348,34 +349,16 @@ journal_capture_context({text: "Focused content here..."})
 ```
 → Tool writes immediately to file
 
-**How AI Chooses Mode**:
-- User: "capture context" → Mode 1 (comprehensive dump)
-- User: "capture debugging steps we took" → Mode 2 (AI writes focused content directly)
-- User: "capture why we chose postgres over mongo" → Mode 2 (AI writes decision rationale directly)
+**Why This Implementation Was Wrong**:
+The prompt-return mechanism created a silly user experience with an unnecessary round-trip:
+1. User: "capture context"
+2. AI calls tool with `{}`
+3. Tool returns prompt text
+4. AI reads prompt, calls tool again with comprehensive text
 
-**Rationale**:
-- **Flexible depth**: Comprehensive checkpoints OR focused captures as needed
-- **User intent driven**: Natural language requests work intuitively
-- **No forced workflow**: AI interprets what user wants and chooses appropriate mode
-- **Proven pattern**: Dump mode successfully used in original Python implementation
-- **Minimal overhead**: Two-step only when comprehensive analysis is valuable
+**Problem**: Tool returning a prompt for the AI to read is an awkward API pattern. The two modes are still valid, but the implementation approach needed to change.
 
-**Comparison**:
-- **Comprehensive dump** (Mode 1): Rich analysis with insights, decisions, rationale, next steps
-- **Direct capture** (Mode 2): Focused documentation of specific processes, decisions, or discoveries
-
-**Implementation Details**:
-- Tool checks if text parameter is missing, null, or empty string
-- Empty/missing text → return comprehensive prompt (Mode 1)
-- Non-empty text → write directly to file (Mode 2)
-- No artificial length constraints on either mode
-
-**Status**: ⏳ Outstanding - Needs implementation in context-tool.js
-
-**Impact on Milestones**:
-- M3 needs update to implement mode detection logic
-- M4 needs validation of both modes working correctly
-- Tool description needs update to explain both modes
+**Superseded By**: DD-013 (Better implementation: guidance in tool description instead of prompt return)
 
 ### DD-012: Remove Arbitrary Character Limits
 **Decision**: Remove the 10,000 character limit on context text
@@ -396,11 +379,52 @@ if (args.text.length > 10000) {
 }
 ```
 
-**Status**: ⏳ Outstanding - Needs removal from context-tool.js
+**Status**: ✅ Complete
 
 **Impact on Milestones**:
 - M3 needs removal of character length validation
 - No other impacts - purely a constraint removal
+
+### DD-013: Two-Mode via Description Guidance (Better Implementation of DD-011)
+**Decision**: Keep two modes (comprehensive dump + specific capture) but implement via tool description guidance instead of prompt return
+**Date**: 2025-10-15
+
+**The Two Modes (Still Valid)**:
+- **Mode 1: Comprehensive Dump** - User says "capture context" → AI provides comprehensive analysis
+- **Mode 2: Specific Capture** - User says "capture why we chose X" → AI provides that specific content
+
+**What Changed**: Implementation approach, not the modes themselves
+
+**Tool Description** (AI sees this upfront):
+```javascript
+description: 'Capture development context. If the user requests specific context (e.g., "capture why we chose X"), provide that specific content. Otherwise, provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here.'
+```
+
+**User Experience**:
+- User: "capture context" → AI sees description, provides comprehensive text in **one call**
+- User: "capture why we chose postgres" → AI provides that specific content in **one call**
+- No round-trip, no silly UX
+
+**Implementation**:
+- Tool always expects text parameter (required)
+- Tool always writes to file
+- Validation: text must be non-empty string
+- Intelligence lives in tool description, not in tool logic
+- AI interprets user intent and provides appropriate content
+
+**Rationale**:
+- **Better UX**: Single call instead of awkward round-trip
+- **Cleaner API**: Tools should do one thing - write files, not return prompts
+- **Standard pattern**: Tool descriptions are meant to guide AI behavior
+- **Preserves intent**: Same two modes, same comprehensive prompt guidance, just in the right place
+
+**Status**: ⏳ Implementation complete, needs validation (2025-10-15)
+
+**Impact on Milestones**:
+- Completes M3 implementation
+- Simplifies tool code significantly
+- Better user experience overall
+- Needs human validation of both modes working
 
 ## Implementation Plan
 
@@ -429,20 +453,22 @@ if (args.text.length > 10000) {
 - [x] Test append logic with multiple captures same day
 - **Success Criteria**: Multiple captures per day append correctly, session ID auto-detected and included ✅
 
-#### Milestone 3: MCP Server Integration & Two-Mode Implementation (30-40 min, per DD-011 & DD-012) - ⏳ IN PROGRESS
+#### Milestone 3: MCP Server Integration & Two-Mode Implementation (30-40 min, per DD-013 & DD-012) - ⏳ IN PROGRESS
 - [x] Import context tool in `src/mcp/server.js`
 - [x] Add to tool handlers registry
 - [x] Add tool description and schema to tools list
-- [x] Update context-capture-tool.js to implement two-mode capture (per DD-011)
+- [x] Update context-capture-tool.js to implement two-mode capture via description guidance (per DD-013)
   - Remove character length validation (per DD-012)
-  - Check if text parameter is missing, null, or empty string → Mode 1 (dump)
-  - Return comprehensive prompt: "Provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here."
-  - If text provided and non-empty → Mode 2 (direct write to file)
-- [x] Update tool schema in server.js to make text parameter optional
-- [x] Update tool description to explain both modes
+  - Remove prompt-return logic from DD-011
+  - Tool always expects text parameter (required)
+  - Simple validation: text must be non-empty string
+  - Tool always writes to file
+- [x] Update tool schema in server.js to make text parameter required
+- [x] Update tool description with comprehensive prompt guidance and if/then logic
 - [x] Rename context-tool.js → context-capture-tool.js for clarity
-- [ ] Validate Mode 1 with fresh AI instance (comprehensive dump flow)
-- **Success Criteria**: Both comprehensive dump mode and direct capture mode work correctly with fresh AI
+- [ ] Validate Mode 1: User says "capture context" → AI provides comprehensive dump in one call
+- [ ] Validate Mode 2: User says "capture why we chose X" → AI provides specific content in one call
+- **Success Criteria**: Both modes work in single call with no round-trip
 
 #### Milestone 4: Format & Polish (20-30 min)
 - [ ] Format headers: `## HH:MM:SS [TIMEZONE] - Context Capture: {session-name}`

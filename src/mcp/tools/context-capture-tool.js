@@ -98,7 +98,7 @@ function getCurrentSessionId() {
 
 /**
  * Create a journal context capture entry
- * @param {Object} args - Tool arguments {text} - empty/missing text triggers comprehensive dump prompt
+ * @param {Object} args - Tool arguments {text} - context text to capture
  * @returns {Promise<Object>} MCP tool response
  */
 export async function createContextTool(args) {
@@ -108,25 +108,18 @@ export async function createContextTool(args) {
       throw new Error('Invalid arguments: expected object');
     }
 
-    // Mode detection: empty/missing text = dump mode, provided text = write mode
-    const hasText = args.hasOwnProperty('text') &&
-                    typeof args.text === 'string' &&
-                    args.text.trim().length > 0;
-
-    // Mode 1: Comprehensive Dump - return prompt
-    if (!hasText) {
-      return {
-        content: [{
-          type: 'text',
-          text: 'Provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here.'
-        }],
-        isError: false
-      };
+    if (!args.hasOwnProperty('text') || typeof args.text !== 'string') {
+      throw new Error('Invalid arguments: text parameter is required and must be a string');
     }
 
-    // Mode 2: Direct Capture - proceed with file writing
-    const timestamp = new Date();
     const contextText = args.text.trim();
+
+    if (contextText.length === 0) {
+      throw new Error('Invalid arguments: text parameter cannot be empty');
+    }
+
+    // Proceed with file writing
+    const timestamp = new Date();
 
     // Generate context file path using daily files (YYYY-MM-DD.md)
     const filePath = generateJournalPath('context', timestamp);
@@ -172,7 +165,7 @@ ${contextText}
 
 🔍 **Error**: ${error.message}
 
-💡 **Help**: Provide context text to write to file, or call with empty text to trigger comprehensive dump prompt.`;
+💡 **Help**: Provide development context text to capture. For comprehensive context, include: current understanding of project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here.`;
 
     return {
       content: [{

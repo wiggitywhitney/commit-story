@@ -123,15 +123,16 @@ class CommitStoryMCPServer {
             },
             {
               name: 'journal_capture_context',
-              description: 'Capture development context. Call with empty text for comprehensive dump prompt, or provide specific context to capture directly.',
+              description: 'Capture development context. If the user requests specific context (e.g., "capture why we chose X"), provide that specific content. Otherwise, provide a comprehensive context capture of your current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here.',
               inputSchema: {
                 type: 'object',
                 properties: {
                   text: {
                     type: 'string',
-                    description: 'Development context (omit for comprehensive dump prompt, provide for direct capture)'
+                    description: 'Development context to capture. If user requests specific context, provide that content. Otherwise, provide comprehensive context covering: current understanding of this project, recent development insights, and key context that would help a fresh AI understand where we are and how we got here.'
                   }
-                }
+                },
+                required: ['text']
               }
             }
           ];
