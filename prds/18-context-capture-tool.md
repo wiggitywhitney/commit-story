@@ -477,6 +477,67 @@ The plan was to:
 - If filtered, update filter logic to preserve context capture tool calls
 - Implement simplified M2.3/M2.4 (links only, no content parsing)
 
+### DD-015: Conditional Session ID Removal (Pending Phase 2 Validation)
+**Decision**: Remove session IDs from context file headers if Phase 2 (DD-014) proves successful
+**Date**: 2025-10-15
+
+**Current Format** (per DD-008):
+```markdown
+## 10:15:32 AM GMT+1 - Session: 01935c62-e8f1-7106-9769-b4d9ad6ace27
+
+Context text here...
+```
+
+**Proposed Simplified Format** (matches reflections):
+```markdown
+## 10:15:32 AM GMT+1
+
+Context text here...
+```
+
+**Original Rationale for Session IDs (DD-008)**:
+1. ✅ **Zero cognitive load** - Still valid (auto-detected)
+2. ✅ **Consistency** - Still true (daily file pattern)
+3. ❌ **Journal correlation** - **INVALIDATED by DD-014** (journals now read from chat, not files)
+4. ✅ **Existing dependency** - Still true (we parse Claude projects)
+
+**Issues Identified with Session IDs**:
+1. **Visual clutter** - Long UUIDs (36 characters) make files harder to scan
+2. **Weak debugging workflow** - Hypothetical use case (grep for UUID → find conversation) has high friction, unclear benefit
+3. **Timestamp already sufficient** - Time already distinguishes multiple daily sessions
+4. **YAGNI principle** - Speculative future use case with no demonstrated need
+5. **Maintenance cost** - 80-line `getCurrentSessionId()` function adds complexity
+
+**Validation Trigger**:
+**IF** Phase 2 implementation proves successful (context flowing through chat to journal generators):
+- Session IDs serve no functional purpose
+- Remove session ID from headers
+- Delete `getCurrentSessionId()` function
+- Update DD-008 to reflect simplified approach
+- Match reflection format exactly
+
+**IF** Phase 2 reveals unexpected need for session IDs:
+- Keep current implementation
+- Document the discovered use case
+- Re-evaluate removal decision
+
+**Impact if Removed**:
+- **Codebase simplification**: Remove ~80 lines of session detection code
+- **Better UX**: Cleaner, more scannable context files
+- **Format consistency**: Exact match with reflection tool format
+- **Simpler mental model**: One less concept to understand
+
+**Implementation Tasks** (if removal confirmed):
+- [ ] Remove session ID line from header formatting
+- [ ] Delete `getCurrentSessionId()` function (lines 25-180 in context-capture-tool.js)
+- [ ] Update DD-008 to document simplified approach
+- [ ] Update code examples in PRD to show new format
+- [ ] Test context capture without session IDs
+
+**Status**: ⏳ **Pending Phase 2 validation** - Decision deferred until DD-014 implementation proves successful
+
+**Recommendation**: Keep session IDs through Phase 2 implementation. After real-world validation of DD-014 approach, revisit this decision with empirical evidence.
+
 ## Implementation Plan
 
 ### Phase 1: Core MCP Tool (Milestone-Based per DD-005)
@@ -577,7 +638,8 @@ The plan was to:
 - [ ] Add context discovery calls before journal generation
 - [ ] Add "Context Files" section at end of journal entry with links to relevant context files
 - [ ] Test with various scenarios (no context, single session, multiple sessions)
-- **Success Criteria**: Journals include context appropriately, links to context files visible
+- [ ] Validate DD-014 success and evaluate DD-015 session ID removal (if successful, implement DD-015 tasks)
+- **Success Criteria**: Journals include context appropriately, links to context files visible, DD-015 decision finalized
 
 ### Phase 3: Telemetry & Advanced Features (per DD-006) - ⏳ PARTIALLY COMPLETE
 - [x] Run `/add-telemetry` on `src/mcp/tools/context-capture-tool.js` - ✅ COMPLETE (2025-10-15)
@@ -669,9 +731,18 @@ The plan was to:
 - Production mode working: Clean success message when `dev: false`
 - Feature parity with reflection tool achieved
 
+**Design Decisions Added**:
+- [x] DD-015: Conditional Session ID Removal
+  - Documented decision to remove session IDs pending Phase 2 validation
+  - Identified that DD-008's journal correlation rationale is invalidated by DD-014
+  - Listed 5 issues with session IDs (visual clutter, weak debugging workflow, etc.)
+  - Defined validation trigger and implementation tasks
+  - Added evaluation task to M2.4 checklist
+
 **Next Session Priorities**:
 - Milestone 5: README Documentation (15-20 min)
 - Phase 2: Simplified journal integration per DD-014 (links only, no file parsing)
+- DD-015 evaluation after Phase 2 validation
 
 ### 2025-10-14: Milestone 2 Complete - Session Management with Auto-Detection
 **Duration**: ~45 minutes (estimated from implementation session)
