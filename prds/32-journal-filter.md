@@ -61,53 +61,107 @@ This is context bleed from the **previous commit** `b0b0c9b2` (license change). 
 ## Implementation Phases
 
 ### Phase 0: Research & Investigation
-**Goal**: Understand the current state and identify what broke
+**Goal**: ✅ COMPLETE - Root cause identified (2025-10-17)
 
-**Research Strategy** (Start with telemetry):
+#### Investigation Summary
 
-This problem only appeared recently (within ~3 weeks). The most efficient investigation approach is to use telemetry to understand what changed.
+Comprehensive investigation using telemetry analysis, git history, code search, and Oct 3 reflection notes revealed the root cause and clarified confusion with unrelated PRD-2.
 
-**Step 1: Telemetry Analysis** (Primary investigation method)
-- [ ] Query Datadog for traces from **3 weeks ago** (when journal quality was good)
-  - Find a successful journal generation from ~September 26, 2025
-  - Look for any file filtering operations in the trace spans
-  - Check if `journal/entries/**` files were being filtered out
-  - Document what filtering was happening then
-- [ ] Query Datadog for traces from **recent commits** (with context bleed)
-  - Compare trace structure to 3-week-old traces
-  - Identify what changed in the data flow
-  - Check if filtering spans are missing now
-  - Look for bypass conditions or changes in filtering logic
+#### Key Findings
 
-**Step 2: Code Investigation** (After telemetry reveals clues)
-- [ ] Check if filtering logic already exists in the codebase:
-  - Search for `journal/entries` filtering patterns
-  - Look in `context-filter.js`, `commit-content-analyzer.js`, etc.
-  - Check git history for removed/commented filtering code
-- [ ] Identify all current filtering mechanisms:
-  - Where are git diffs collected?
-  - Where are they filtered (or supposed to be filtered)?
-  - Which generators receive the filtered/unfiltered diffs?
-- [ ] Determine the root cause:
-  - Was filtering logic removed?
-  - Was a bypass condition added?
-  - Did a refactor break the filtering?
+**Finding 1: Message Filtering Bypass (Oct 1-3, 2025) - UNRELATED to journal path filtering**
+- ✅ **Oct 1** (commit `8db5ceb4`): Session grouping implementation bypassed message filtering
+  - Generators switched from `chatMessages` (filtered) to `chatSessions` (unfiltered)
+  - Result: 448 unfiltered messages instead of 174 filtered → dialogue timeouts
+  - This broke filtering of tool calls, system messages, etc.
+- ✅ **Oct 3** (commit `600ed65`): Message filtering was RESTORED
+  - Applied filtering to session groups to match filtered flat messages
+  - Verified with telemetry: 61% token reduction (448→174 messages)
+- ✅ **Conclusion**: Message filtering working correctly now, NOT the root cause of journal entry problem
 
-**Step 3: Impact Analysis**
-- [ ] Document how journal files currently flow through the system
-- [ ] Identify exactly where the context bleed is introduced
-- [ ] Confirm whether it's from git diffs, chat context, or both
+**Finding 2: Journal Path Filtering (NEVER IMPLEMENTED) - ROOT CAUSE**
 
-**Key Questions to Answer**:
-1. Did journal entry filtering exist 3 weeks ago?
-2. If yes, where was it implemented and what broke it?
-3. If no, when did journal files start being included in diffs?
+**Evidence from comprehensive code search**:
+- ✅ `git log -p -S "journal/entries"` → NO commits ever implemented path filtering
+- ✅ `grep -r "journal/entries" src/` → Only references in `journal-paths.js` utility (path generation, not filtering)
+- ✅ `src/collectors/git-collector.js:55` → Uses `git diff-tree -p ${commitRef}` with NO path exclusions
+- ✅ `src/generators/filters/context-filter.js:136` → Only filters by:
+  - Sensitive data redaction (`redactSensitiveData`)
+  - Diff size (summarizes if >15000 tokens)
+  - **NO path-based filtering**
+- ✅ `src/generators/utils/commit-content-analyzer.js` → Categorizes docs vs functional files, but NO journal-specific logic
+- ✅ `hooks/post-commit` → No journal commit detection
+- ✅ `src/index.js` → No journal filtering at entry point
 
-**Deliverable**: Research findings document added to this PRD with:
-- Comparison of old vs new trace structures
-- Identification of what changed
-- Root cause analysis
-- Clear diagnosis of where to implement the fix
+**Historical context that confused investigation**:
+- ❌ **PRD-1 DD-029** (Sept 2025): "Journal Path Filtering Strategy (Deferred)"
+  - This was about filtering **PRD files and task management docs** from journal generation
+  - NOT about filtering journal entries themselves from git diffs
+  - Correctly deferred pending configuration architecture
+- ❌ **PRD-2** (Sept 2-Oct 12, 2025): File Exclusion System for Journal Noise Reduction
+  - Also about filtering **PRDs/task management files**, not journal entries
+  - Status changed to "Not Planning to Implement" on Oct 12
+  - Completely separate concern from PRD-32
+
+**Actual problem**: Journal entry path filtering for `journal/entries/**` was NEVER implemented.
+
+**Finding 3: Timeline of Journal Entry Problem**
+
+| Date | Event | Impact |
+|------|-------|--------|
+| Aug 28, 2025 | `context-filter.js` created (commit `13ceb04`) | Token-based filtering only |
+| Oct 1, 2025 | Session grouping (commit `8db5ceb4`) | Message filtering bypassed (unrelated) |
+| Oct 3, 2025 | Filtering restored (commit `600ed65`) | Message filtering working again (unrelated) |
+| Oct 7-8, 2025 | Journal directory created (commit `b676b55`) | `journal/entries/` structure established |
+| Oct 15, 2025 | Recursive generation discovered (commit `1104c468`) | Journal-only commit triggered recursive generation |
+| Oct 17, 2025 | Context bleed discovered (commit `441db893`) | Old journal content in diffs causing AI to reference previous work |
+
+#### Answers to Key Questions
+
+1. **Did journal entry path filtering exist before?**
+   - NO - it was NEVER implemented
+   - DD-029 and PRD-2 were about filtering PRDs/task files (different problem)
+
+2. **What broke?**
+   - Nothing broke - filtering never existed
+   - Two issues discovered:
+     - ✅ Message filtering bypass (Oct 1) → FIXED Oct 3 (unrelated)
+     - ❌ Journal path filtering → NEVER EXISTED (this PRD)
+
+3. **When did journal files start appearing in diffs?**
+   - Always included since journal directory created (~Oct 7-8)
+   - Problem became visible when:
+     - Journal entries accumulated over time
+     - Entries committed alongside code changes
+     - Old journal content caused context bleed
+
+#### Root Cause: Two Separate Problems
+
+1. ✅ **Message filtering bypass** - ALREADY FIXED (commit `600ed65`)
+   - Tool calls, system messages properly filtered now
+   - Session grouping maintains filtering correctly
+
+2. ❌ **Journal path filtering** - NEVER IMPLEMENTED (this PRD solves it)
+   - Journal entry files always included in git diffs
+   - `filterGitDiff()` only handles size/sensitivity, NOT paths
+   - Need to implement path-based exclusion for `journal/entries/**`
+
+#### Implementation Locations
+
+**Phase 2** (Hook-Level Prevention):
+- `hooks/post-commit` or `src/index.js:204-210`
+- Detect journal-entry-only commits before context gathering
+- Skip execution entirely if only `journal/entries/**` changed
+
+**Phase 3** (Diff-Level Filtering):
+- **Option A** (Preferred): `src/collectors/git-collector.js:55`
+  - Add `-- . ':!journal/entries/**'` to `git diff-tree` command
+  - Filters at collection time (most efficient)
+- **Option B**: `src/generators/filters/context-filter.js:136`
+  - Add path filtering logic to `filterGitDiff()` function
+  - Parse diff and remove sections for `journal/entries/**` files
+- `src/generators/utils/commit-content-analyzer.js:33-36`
+  - Exclude `journal/entries/**` from `changedFiles` analysis
 
 ### Phase 1: Scope Definition
 **Goal**: ✅ COMPLETE - Scope defined (see "Filtering Scope" section above)
