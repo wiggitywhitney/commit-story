@@ -210,3 +210,25 @@ and call the service directly?"
 Reflections are saved with timestamps to `journal/entries/YYYY-MM/YYYY-MM-DD.md` for easy access, and are automatically included in your commit journal entries when you commit. This captures those "aha!" moments and design ideas as they happen, creating a continuous development narrative.
 
 **Tip:** Your journal entries are perfect for catching up. Try asking Claude Code: "Read my journal and summarize what I worked on yesterday"
+
+## License
+
+Commit Story is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+### What This Means
+
+**For Individual Developers:**
+- ✅ Use freely for personal projects
+- ✅ Modify and customize as you wish
+- ✅ No restrictions on private or commercial use
+
+**For Companies:**
+- ✅ Use freely within your organization
+- ✅ Modify for internal use
+- ⚠️ If you distribute modified versions or run it as a service, you must share your source code
+
+### Why AGPL?
+
+This project exists to help individual developers grow and learn. The AGPL license ensures that any improvements or derivatives remain available to the community. If you build on this work, others should benefit too.
+
+For commercial licensing options, please open an issue on GitHub.
