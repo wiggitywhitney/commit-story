@@ -149,8 +149,11 @@ journal/
 
 # Environment variables (API keys and secrets)
 .env
+
+# Commit Story configuration (personal settings)
+commit-story.config.json
 EOF
-    echo "   ✅ Created .gitignore with node_modules/, journal/, and .env"
+    echo "   ✅ Created .gitignore with node_modules/, journal/, .env, and commit-story.config.json"
 else
     # Add entries if missing
     changes_made=false
@@ -170,8 +173,13 @@ else
         changes_made=true
     fi
 
+    if add_to_gitignore "commit-story.config.json" "Commit Story configuration (personal settings)"; then
+        echo "   ✅ Added commit-story.config.json to .gitignore"
+        changes_made=true
+    fi
+
     if [[ "$changes_made" == "false" ]]; then
-        echo "   📝 node_modules/, journal/, and .env already in .gitignore"
+        echo "   📝 node_modules/, journal/, .env, and commit-story.config.json already in .gitignore"
     fi
 fi
 
