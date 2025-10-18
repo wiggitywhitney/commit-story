@@ -51,8 +51,10 @@ export function getLatestCommitData(commitRef = 'HEAD') {
       }
 
       // Get full diff content for the specified commit
-      logger.progress('git data collection', `Retrieving diff with git diff-tree for ${commitRef}`);
-      const diff = execSync(`git diff-tree -p ${commitRef}`, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
+      // Filter out journal/entries/** to prevent context pollution
+      // Preserves reflections and context captures (manual content)
+      logger.progress('git data collection', `Retrieving diff with git diff-tree for ${commitRef} (filtering journal entries)`);
+      const diff = execSync(`git diff-tree -p ${commitRef} -- . ':!journal/entries/'`, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
 
       const diffLines = diff.split('\n').length;
       const diffSizeKB = Math.round(diff.length / 1024);
