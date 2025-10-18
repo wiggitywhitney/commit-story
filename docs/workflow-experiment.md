@@ -43,8 +43,12 @@
 ### Initial Assessment
 CodeRabbit review added minimal value for code quality (existing workflow already sufficient), but **experiencing developer workflow friction firsthand is valuable for building better products**.
 
-### Next Steps
-- Fix nitpick
-- Push changes
-- Evaluate re-review overhead
-- Make final decision on workflow adoption
+---
+
+## Related Experiment
+
+For comparison, the same workflow experiment was run in another codebase with **dramatically different results** (60% valuable findings vs ~0% here):
+
+**See**: `/Users/whitney.lee/Documents/Repositories/content-manager/workflow-experiment.md`
+
+The key difference: CodeRabbit caught real bugs (LOG_LEVEL bypass, stderr routing, process.exit issues) in cross-cutting concerns (error handling, logging) but found nothing substantial in focused feature work (filtering logic).

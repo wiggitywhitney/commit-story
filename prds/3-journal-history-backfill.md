@@ -141,14 +141,46 @@ Implement a historical journal backfill system that can retrospectively generate
 - Maintains setup simplicity for users who decline
 
 ### DD-063: NPM Script Naming Strategy
-**Decision**: Defer naming decision to implementation review  
-**Candidates**: 
+**Decision**: Defer naming decision to implementation review
+**Candidates**:
 - `journal:populate-history`
-- `journal:generate-past` 
+- `journal:generate-past`
 - `journal:catch-up`
 - `journal:backfill`
 
 **Evaluation Criteria**: Self-descriptive, clear purpose, consistent with existing patterns
+
+### DD-064: Squash Merge Handling
+**Decision**: Defer to implementation time (requires user research and testing)
+
+**Problem**:
+Squash merges destroy granular commit history by combining multiple commits (each with their own journal entries) into a single commit. This fundamentally conflicts with commit-story's goal of preserving detailed development narrative.
+
+**Example**:
+- Individual commits: `6d80b64` (Milestone 3 impl), `135f57f` (PRD update), `7018b09` (CodeRabbit fixes) - each with detailed journal entries
+- After squash merge: Single commit `4430d2d` "Milestone 3 complete" - loses all granular context
+- Result: Condensed changelog referencing multiple features, original commits no longer exist in history
+
+**Question for Implementation**: Should backfill detect squashed commits and warn/skip them?
+
+**Considerations**:
+- Squashed commits have condensed messages that may reference multiple unrelated features
+- Original individual commits no longer exist in main branch history
+- Attempting to generate a journal entry may produce confusing/misleading narratives
+- May lack sufficient chat context (spans multiple development sessions)
+
+**Options**:
+1. **Skip with warning**: Detect squash commits, skip generation, log warning
+2. **Generate with marker**: Create entry but mark it as "squashed commit - incomplete context"
+3. **Attempt reconstruction**: Try to generate from condensed commit message (likely poor quality)
+4. **User prompt**: Ask user whether to process squashed commits during backfill
+
+**Detection Method**:
+- Check commit message for squash merge patterns (e.g., "Squash merge", "PR #123", multiple bullet points)
+- Compare commit diff size to typical commit patterns (squashed commits tend to be very large)
+- Check for multiple unrelated file changes that suggest combined work
+
+**Recommendation**: Start with Option 1 (skip with warning) - preserves journal quality, user can manually document if needed
 
 ## Risk Assessment
 

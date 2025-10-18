@@ -239,6 +239,36 @@ Comprehensive investigation using telemetry analysis, git history, code search, 
 - [ ] Verify reflections and context files remain visible in git diffs
 - [ ] Update PRD with validation results
 
+### Phase 5: Merge Commit Handling
+**Goal**: Eliminate git merge friction caused by post-commit hook
+
+**Problem**:
+When merging branches, the post-commit hook fires after the merge commit completes, generating a journal entry. This leaves the working tree dirty (journal file modified), requiring a manual `git commit --amend` step. This creates friction in the merge workflow.
+
+**Example friction**:
+```bash
+git merge feature-branch          # Creates merge commit
+# Hook fires, generates journal entry
+# Working tree now dirty
+git add journal/... && git commit --amend  # Manual step required
+```
+
+**Solution**:
+Skip journal generation for merge commits entirely. Merge commits are mechanical operations that combine branches - the real development narrative already exists in the individual commits being merged (which already have their own journal entries).
+
+**Tasks**:
+- [ ] Detect merge commits (check for multiple parent commits using `git rev-list --parents`)
+- [ ] Skip journal generation when commit is a merge commit
+- [ ] Test merge workflow (verify no manual amend step required)
+- [ ] Update telemetry to track skipped merge commits
+
+**Implementation Location**:
+- `src/utils/commit-analyzer.js` - Add `isMergeCommit(commitHash)` function
+- `src/index.js` - Add early exit check for merge commits (similar to journal-entries-only check)
+
+**Rationale**:
+Merge commits are mechanical operations combining branches. The development story, decisions, and context live in the individual commits on each branch, which already have detailed journal entries. Generating a journal entry for the merge itself adds little value while creating workflow friction.
+
 ## Open Questions
 
 1. **When did this break?** ⏳ TO BE ANSWERED in Phase 0 telemetry analysis
