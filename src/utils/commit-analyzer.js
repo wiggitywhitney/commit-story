@@ -74,4 +74,3 @@ export function isJournalEntriesOnlyCommit(commitRef) {
     changedFiles: changedFiles
   };
 }
-// Test comment for Phase 3
