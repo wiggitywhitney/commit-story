@@ -15,6 +15,7 @@ import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 import { getConfig } from './utils/config.js';
 import { createNarrativeLogger } from './utils/trace-logger.js';
+import { isJournalEntriesOnlyCommit } from './utils/commit-analyzer.js';
 
 config({ quiet: true });
 
@@ -200,6 +201,16 @@ export default async function main() {
       [`${OTEL.NAMESPACE}.commit.ref`]: commitRef,
       [`${OTEL.NAMESPACE}.journal.dry_run`]: isDryRun
     });
+
+    // Skip execution if commit only touches journal/entries/**
+    // This prevents recursive journal generation when commits only add journal entries
+    const { isJournalOnly, changedFiles } = isJournalEntriesOnlyCommit(commitRef);
+    if (isJournalOnly) {
+      debugLog(`⏭️  Skipping commit (only journal entries changed: ${changedFiles.length} files)`);
+      span.setStatus({ code: SpanStatusCode.OK, message: 'Skipped journal-entries-only commit' });
+      span.end();
+      return;
+    }
 
     try {
       // Phase 1: Context Collection
