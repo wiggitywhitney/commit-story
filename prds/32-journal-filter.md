@@ -1,10 +1,25 @@
 # PRD-32: Journal File Filtering
 
-**Status**: 🔴 Critical - Top Priority
+**Status**: ⏳ IN PROGRESS - Phase 4 (Merge Commit Handling) Next
 **GitHub Issue**: [#32](https://github.com/wiggitywhitney/commit-story/issues/32)
 **Created**: 2025-10-15
-**Last Updated**: 2025-10-18 (Phase 3 complete)
+**Last Updated**: 2025-10-18 (Phase 3 complete, Phase 4-5 reordered)
 **Priority**: P0 - Must fix before next release
+
+## Current Status & Next Steps
+
+**Completed**:
+- ✅ Phase 0: Research & Investigation - Root cause identified
+- ✅ Phase 1: Scope Definition - Filtering rules defined
+- ✅ Phase 2: Hook-Level Prevention - Journal-entries-only commits skip hook
+- ✅ Phase 3: Diff-Level Filtering - Journal entries filtered from git diffs
+
+**Next**: Phase 4 (Merge Commit Handling) - implement BEFORE validation
+- Add `isMergeCommit()` function to `src/utils/commit-analyzer.js`
+- Add early exit check in `src/index.js` for merge commits
+- Test merge workflow (verify no dirty working tree after merge)
+
+**After Phase 4**: Phase 5 (Validation) - comprehensive end-to-end testing including merge commits
 
 ## Problem Statement
 
@@ -44,12 +59,14 @@ This is context bleed from the **previous commit** `b0b0c9b2` (license change). 
 
 ## Success Criteria
 
-1. ✅ Commits that only touch `journal/entries/**` do NOT trigger the post-commit hook
-2. ✅ Files matching `journal/entries/**` are completely filtered from git diffs before being passed to any generator
-3. ✅ Old solutions and outdated context from previous journal entries no longer appear in new entries
-4. ✅ Manual reflections and context captures remain visible in git diffs and chat context (NOT filtered)
-5. ✅ Commit 1104c468 can be used to verify the fix (re-running it should produce no output)
-6. ✅ Commit 441db893 context bleed no longer occurs when regenerated
+1. ✅ Commits that only touch `journal/entries/**` do NOT trigger the post-commit hook (Phase 2)
+2. ✅ Files matching `journal/entries/**` are completely filtered from git diffs before being passed to any generator (Phase 3)
+3. ✅ Old solutions and outdated context from previous journal entries no longer appear in new entries (Phase 3)
+4. ✅ Manual reflections and context captures remain visible in git diffs and chat context (NOT filtered) (Phase 3)
+5. ⏳ Merge commits do NOT trigger the post-commit hook (Phase 4 - IN PROGRESS)
+6. ⏳ No dirty working tree after merge commits (Phase 4 - IN PROGRESS)
+7. ⏳ Commit 1104c468 can be used to verify the fix (re-running it should produce no output) (Phase 5 validation)
+8. ⏳ Commit 441db893 context bleed no longer occurs when regenerated (Phase 5 validation)
 
 ## Non-Goals
 
@@ -59,6 +76,11 @@ This is context bleed from the **previous commit** `b0b0c9b2` (license change). 
 - This does NOT change how reflections or context captures work
 
 ## Implementation Phases
+
+**⚠️ IMPORTANT: Work Order**
+- Phases 0-3: ✅ Complete
+- Phase 4 (Merge Commit Handling): ⏳ NEXT - Do this first
+- Phase 5 (Validation): ⏳ AFTER Phase 4 - Comprehensive testing including merge commits
 
 ### Phase 0: Research & Investigation
 **Goal**: ✅ COMPLETE - Root cause identified (2025-10-17)
@@ -226,21 +248,10 @@ Comprehensive investigation using telemetry analysis, git history, code search, 
 - **Test 2**: Reflection commit (f08eb69) - Reflection file visible in journal ✅
 - **Test 3**: Context bleed fix - Commit 441db893 regenerates cleanly, no AGPL pollution ✅
 
-### Phase 4: Validation
-**Goal**: Verify the fix works end-to-end
+### Phase 4: Merge Commit Handling
+**Goal**: ⏳ IN PROGRESS - Eliminate git merge friction for mechanical merges while preserving context from merges with conflicts/decisions
 
-**Tasks**:
-- [ ] Test journal-entry-only commit (e.g., 1104c468) - should skip hook execution entirely
-- [ ] Test reflection-only or context-only commit - should still run hook (manual content)
-- [ ] Test mixed commit with journal entries + code - should run but exclude journal entry diffs
-- [ ] Regenerate commit 441db893 and verify no AGPL license bleed in output
-- [ ] Review recent journal entries to confirm no more "old solutions" pollution
-- [ ] Check telemetry to verify filtering is working
-- [ ] Verify reflections and context files remain visible in git diffs
-- [ ] Update PRD with validation results
-
-### Phase 5: Merge Commit Handling
-**Goal**: Eliminate git merge friction caused by post-commit hook
+**Status**: Not started - implement this BEFORE Phase 5 (Validation)
 
 **Problem**:
 When merging branches, the post-commit hook fires after the merge commit completes, generating a journal entry. This leaves the working tree dirty (journal file modified), requiring a manual `git commit --amend` step. This creates friction in the merge workflow.
@@ -253,21 +264,54 @@ git merge feature-branch          # Creates merge commit
 git add journal/... && git commit --amend  # Manual step required
 ```
 
-**Solution**:
-Skip journal generation for merge commits entirely. Merge commits are mechanical operations that combine branches - the real development narrative already exists in the individual commits being merged (which already have their own journal entries).
+**Solution - Hybrid Approach (per DD-016)**:
+Skip journal generation ONLY for merge commits with no chat activity. If there was AI conversation during the merge (e.g., conflict resolution, strategic decisions), generate the journal to capture that context.
+
+**Why Hybrid**:
+- ✅ Eliminates friction for routine/mechanical merges (no chat = no journal)
+- ✅ Preserves conflict resolution context (chat during merge = generate journal)
+- ✅ Captures strategic merge decisions (discussions about WHEN/WHY to merge)
+- ✅ Handles squash merges appropriately (chat = context exists)
+- ⚠️ Conservative: "any chat at all → generate journal" prevents context loss
 
 **Tasks**:
+- [ ] Research existing "substantial chat" filter threshold and implementation (see DD-016)
 - [ ] Detect merge commits (check for multiple parent commits using `git rev-list --parents`)
-- [ ] Skip journal generation when commit is a merge commit
-- [ ] Test merge workflow (verify no manual amend step required)
-- [ ] Update telemetry to track skipped merge commits
+- [ ] Check for chat activity during merge commit time window
+- [ ] Skip journal generation ONLY if merge commit AND no chat messages
+- [ ] Test merge workflows:
+  - [ ] Clean merge with no chat (should skip)
+  - [ ] Merge with conflict resolution conversation (should generate)
+  - [ ] Merge with strategic planning chat (should generate)
+- [ ] Update telemetry to track skipped vs generated merge commits
 
 **Implementation Location**:
 - `src/utils/commit-analyzer.js` - Add `isMergeCommit(commitHash)` function
-- `src/index.js` - Add early exit check for merge commits (similar to journal-entries-only check)
+- `src/index.js` - Add early exit check for merge commits with chat activity check
+- Reuse existing chat message collection logic to check for activity during merge window
 
 **Rationale**:
-Merge commits are mechanical operations combining branches. The development story, decisions, and context live in the individual commits on each branch, which already have detailed journal entries. Generating a journal entry for the merge itself adds little value while creating workflow friction.
+Merge commits without conflicts are mechanical operations where the development story lives in individual commits. BUT merge commits with conflicts involve real development work (decisions, new code, AI conversations) that should be documented. Using chat activity as a proxy for "significant merge work" gives us the best of both worlds.
+
+### Phase 5: Validation
+**Goal**: ⏳ NEXT - Verify the fix works end-to-end (including merge commit handling)
+
+**Status**: Not started - complete this AFTER Phase 4 (Merge Commit Handling)
+
+**Tasks**:
+- [ ] Test journal-entry-only commit (e.g., 1104c468) - should skip hook execution entirely
+- [ ] Test reflection-only or context-only commit - should still run hook (manual content)
+- [ ] Test mixed commit with journal entries + code - should run but exclude journal entry diffs
+- [ ] **Test merge commit scenarios (Phase 4 validation)**:
+  - [ ] Silent merge (no chat activity) - should skip hook execution
+  - [ ] Merge with chat activity - should generate journal with conflict resolution context
+  - [ ] Verify no dirty working tree after silent merges
+- [ ] Regenerate commit 441db893 and verify no AGPL license bleed in output
+- [ ] Review recent journal entries to confirm no more "old solutions" pollution
+- [ ] Check telemetry to verify filtering is working
+- [ ] Verify reflections and context files remain visible in git diffs
+- [ ] Verify telemetry shows merge skip reasons: `merge_no_chat` vs generated
+- [ ] Update PRD with validation results
 
 ## Open Questions
 
@@ -289,9 +333,136 @@ Merge commits are mechanical operations combining branches. The development stor
 
 ## Design Decisions
 
-_(To be filled in during implementation)_
+### DD-016: Hybrid Merge Commit Handling - Skip Only Silent Merges
+**Decision**: Skip journal generation for merge commits ONLY when there is no chat activity during the merge window. Generate journals for merges with AI conversation.
+**Date**: 2025-10-18
+**Status**: ⏳ Outstanding - Not yet implemented
+
+**Problem Analysis**:
+Initial approach was to skip ALL merge commits to eliminate workflow friction (dirty working tree after merge). However, this has significant drawbacks:
+
+**Cons of Skipping All Merges**:
+1. **Merge conflicts = real development work**
+   - Developer makes decisions about conflict resolution
+   - AI conversations guide resolution strategy
+   - May involve writing NEW code that doesn't exist in either parent
+   - Context is valuable for understanding WHY conflicts were resolved a certain way
+
+2. **Strategic merge decisions**
+   - Emergency hotfix merges (why merge incomplete work)
+   - Integration testing insights discovered during merge
+   - Decisions about WHEN to merge (timing matters)
+
+3. **Squash merges**
+   - `git merge --squash` makes feature branch commits disappear from history
+   - Skipping the merge commit = losing ALL documentation of that work
+
+4. **Integration insights**
+   - Trade-offs made during complex integrations
+   - Integration bugs discovered when combining features
+   - Architectural insights from seeing how things fit together
+
+**Decision**: Use chat activity as a proxy for "significant merge work"
+
+**Implementation Strategy**:
+```javascript
+if (isMergeCommit(commitRef)) {
+  const chatMessages = getChatMessagesForCommit(commitRef);
+
+  // Skip merge ONLY if absolutely no chat activity
+  if (chatMessages.length === 0) {
+    return { shouldSkip: true, reason: 'merge_no_chat' };
+  }
+
+  // If there's ANY chat, generate journal
+  // (Dialogue section can still apply its own "substantial" filter)
+  return { shouldSkip: false };
+}
+```
+
+**Threshold Decision**:
+- Use LOWER threshold than existing "substantial chat" filter for dialogue section
+- Dialogue filter skips section if chat not substantial (e.g., < 5 messages)
+- Merge filter skips ENTIRE JOURNAL only if NO chat at all (0 messages)
+- Rationale: Higher stakes for skipping entire journal vs skipping one section
+
+**Research Required**:
+- [ ] Investigate existing "substantial chat" filter implementation
+- [ ] Understand threshold and logic for what makes chat "substantial"
+- [ ] Find where it's used (likely in dialogue generator)
+- [ ] Check metrics: `commit_story.dialogue.substantial_user_messages`
+- [ ] Determine if we should reuse that logic or create simpler "any chat" check
+
+**Benefits**:
+- ✅ Eliminates friction for routine merges (90% case: clean merge, no chat)
+- ✅ Preserves conflict resolution context (10% case: conflicts, chat happened)
+- ✅ Conservative approach prevents context loss
+- ✅ Handles edge cases well (squash merges with chat = context exists)
+
+**Edge Cases Handled**:
+1. Silent conflict resolution (no chat) → Skip (context lost, but user chose not to document)
+2. Pre-merge planning → Skip (chat wasn't during merge window, but feature commits have journals)
+3. Post-merge fixes → Skip merge, generate journal for fix commit
+4. Squash merges with chat → Generate (context preserved)
+5. Octopus merges (3+ parents) → Generate if chat, skip if silent
+
+**Impact on Phases**:
+- Phase 4 Task 1: Research substantial chat filter (NEW)
+- Phase 4 implementation: Check chat messages before skipping
+- Phase 5 validation: Test both silent and chatty merges
 
 ## Work Log
+
+### 2025-10-18: Phase 4 Design Discussion - Hybrid Merge Commit Approach
+**Duration**: ~45 minutes
+**Commits**: None (design phase)
+**Focus**: Refining merge commit handling strategy based on edge case analysis
+
+**Design Decisions Made**:
+- [x] DD-016: Hybrid merge commit handling - skip only silent merges
+- [x] Updated Phase 4 with research task for substantial chat filter
+- [x] Updated Phase 5 validation to test both silent and chatty merges
+- [x] Reordered phases (4 before 5) per user request
+
+**Key Discussion Points**:
+1. **Problem identified**: Initial approach to skip ALL merge commits would lose valuable context:
+   - Merge conflicts involve real development decisions
+   - Conflict resolution conversations with AI are valuable
+   - Squash merges would lose all feature documentation
+   - Integration insights and strategic merge decisions matter
+
+2. **Solution: Chat activity as proxy**:
+   - Skip merge commits ONLY if no chat messages during merge window
+   - Generate journal if ANY chat activity (conservative approach)
+   - Lower threshold than existing "substantial chat" filter
+   - Higher stakes: skipping entire journal vs skipping dialogue section
+
+3. **Research required**:
+   - Investigate existing "substantial chat" filter implementation
+   - Understand threshold for dialogue section (likely 5+ messages)
+   - Decide whether to reuse logic or create simpler "any chat" check
+   - Check metric: `commit_story.dialogue.substantial_user_messages`
+
+4. **Edge cases analyzed**:
+   - Silent conflict resolution → Skip (user chose not to document)
+   - Pre-merge planning → Skip merge (feature commits have journals)
+   - Post-merge fixes → Skip merge, generate for fix commit
+   - Squash merges with chat → Generate (context preserved)
+   - Octopus merges (3+ parents) → Generate if chat, skip if silent
+
+**Phase 4 Updates**:
+- Added research task as first step
+- Clarified hybrid approach in goal and solution
+- Listed specific test scenarios for validation
+- Updated rationale to explain why hybrid is better
+
+**Phase 5 Updates**:
+- Added specific merge commit test scenarios
+- Included telemetry validation for skip reasons
+- Added test for dirty working tree verification
+
+**Status**: Design complete, ready for implementation
+**Next**: Implement Phase 4 per DD-016 strategy
 
 ### 2025-10-18: Phase 2 Implementation Complete
 **Duration**: ~1 hour
