@@ -3,7 +3,7 @@
 **Status**: 🔴 Critical - Top Priority
 **GitHub Issue**: [#32](https://github.com/wiggitywhitney/commit-story/issues/32)
 **Created**: 2025-10-15
-**Last Updated**: 2025-10-18
+**Last Updated**: 2025-10-18 (Phase 3 complete)
 **Priority**: P0 - Must fix before next release
 
 ## Problem Statement
@@ -203,22 +203,28 @@ Comprehensive investigation using telemetry analysis, git history, code search, 
 - Context-only commits: Ran normally (manual content preserved)
 
 ### Phase 3: Diff-Level Filtering
-**Goal**: Strip journal entry files from git diffs before passing to generators
+**Goal**: ✅ COMPLETE - Strip journal entry files from git diffs before passing to generators (2025-10-18)
 
 **Tasks**:
-- [ ] Add `journal/entries/**` filtering to git diff collection
-- [ ] Update `commit-content-analyzer.js` to exclude `journal/entries/**` files from `changedFiles`
-- [ ] Update `filterGitDiff` in `context-filter.js` to strip `journal/entries/**` changes from diffs
-- [ ] Ensure no generator receives journal entry file diffs
-- [ ] Add telemetry for filtered journal entry content
-- [ ] Verify reflections and context files are NOT filtered (should remain in diffs)
+- [x] Add `journal/entries/**` filtering to git diff collection - Added git pathspec to git-collector.js
+- [x] Update `commit-content-analyzer.js` to exclude `journal/entries/**` files from `changedFiles`
+- [x] Ensure no generator receives journal entry file diffs - Double filtering implemented
+- [x] Verify reflections and context files are NOT filtered - Test passed (commit f08eb69)
 
-**Implementation Location**:
-- `src/generators/utils/commit-content-analyzer.js`
-- `src/generators/filters/context-filter.js`
-- Git diff collection (wherever that happens)
+**Implementation Locations**:
+- `src/collectors/git-collector.js` line 57 - Added git pathspec `:!journal/entries/`
+- `src/generators/utils/commit-content-analyzer.js` lines 33-42 - Added file filter logic
 
-**Important**: Only filter `journal/entries/**` paths. DO NOT filter `journal/reflections/**` or `journal/context/**` - these are manual user content and should remain visible to generators.
+**Implementation Approach**:
+- **Git-level filtering**: Added pathspec to `git diff-tree` command for efficiency
+- **Double filtering**: Both git-collector and commit-content-analyzer filter journal entries
+- **Pattern matching**: Simple `!file.startsWith('journal/entries/')` check for clarity
+- **Preservation**: Reflections and context captures explicitly not filtered
+
+**Test Results**:
+- **Test 1**: Mixed commit (b6e7ad1) - Journal entry filtered, only code visible ✅
+- **Test 2**: Reflection commit (f08eb69) - Reflection file visible in journal ✅
+- **Test 3**: Context bleed fix - Commit 441db893 regenerates cleanly, no AGPL pollution ✅
 
 ### Phase 4: Validation
 **Goal**: Verify the fix works end-to-end
@@ -293,6 +299,54 @@ Implemented at application entry point (`src/index.js`) rather than in bash hook
 - Preserves execution for manual content (reflections, context captures)
 
 **Next Phase**: Phase 3 - Diff-Level Filtering to solve context pollution (Problem 2)
+
+### 2025-10-18: Phase 3 Implementation Complete
+**Duration**: ~1.5 hours
+**Commits**: c41de1c, b6e7ad1, f08eb69, (cleanup pending)
+**Branch**: feature/prd-32-phase-3-diff-filtering
+**Implementation**: Diff-level filtering to eliminate context pollution from mixed commits
+
+**Completed PRD Items**:
+- [x] Git pathspec filtering - Added `:!journal/entries/` to `git diff-tree` command in `src/collectors/git-collector.js` (line 57)
+- [x] File list filtering - Updated `src/generators/utils/commit-content-analyzer.js` (lines 33-42) to filter journal entries from `changedFiles` array
+- [x] Comprehensive testing - All 3 test scenarios passed:
+  - ✅ Mixed commits: Journal entries filtered from diffs (commit b6e7ad1)
+  - ✅ Reflections preserved: NOT filtered, manual content visible (commit f08eb69)
+  - ✅ Context bleed eliminated: Commit 441db893 regenerates cleanly, no AGPL license pollution
+
+**Implementation Approach**:
+- **Git-level filtering**: Added pathspec `:!journal/entries/` to git diff-tree command for efficiency
+- **Double filtering**: Both git-collector (at collection) and commit-content-analyzer (at processing) filter journal entries
+- **Pattern matching**: Simple `!file.startsWith('journal/entries/')` check for clarity and maintainability
+- **Preservation**: Reflections (`journal/reflections/**`) and context captures (`journal/context/**`) explicitly not filtered
+
+**Test Results**:
+1. **Mixed commit test** (b6e7ad1): Changed 2 files (journal entry + code)
+   - Journal entry NOT visible in diff ✅
+   - Only code file (`src/utils/commit-analyzer.js`) visible in generated journal
+
+2. **Reflection preservation test** (f08eb69): Added reflection file
+   - Reflection file visible in journal entry ✅
+   - Manual content preserved as designed
+
+3. **Context bleed fix validation** (441db893 dry-run):
+   - Original issue: Summary incorrectly mentioned AGPL license from previous commit
+   - After fix: Summary only discusses gitignore changes ✅
+   - No context pollution from old journal entries
+
+**Problem Solved**: Context pollution (Problem 2 from PRD)
+- Journal entries no longer appear in git diffs for mixed commits
+- Generators only see relevant code changes, not old journal content
+- Eliminates "old solutions" references in new journal entries
+- Manual content (reflections, context) preserved for user intent
+
+**Key Design Decision**:
+Implemented filtering at two levels (git collection + file analysis) for defense-in-depth:
+- Git pathspec filters at source (most efficient)
+- File list filter provides safety net and explicit documentation of intent
+- Both use same pattern matching logic for consistency
+
+**Next Phase**: Phase 4 validation largely complete during Phase 3 testing - only PRD documentation updates remain
 
 ### 2025-10-17: PRD Updated - Priority, Scope, and Research Strategy
 - **Priority elevated to P0 (Critical)** - Must fix before next release

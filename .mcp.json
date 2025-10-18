@@ -2,8 +2,19 @@
   "mcpServers": {
     "commit-story": {
       "command": "node",
-      "args": ["src/mcp/server.js"],
+      "args": [
+        "src/mcp/server.js"
+      ],
       "env": {}
+    },
+    "coderabbitai": {
+      "command": "npx",
+      "args": [
+        "coderabbitai-mcp@latest"
+      ],
+      "env": {
+        "GITHUB_PAT": "${GITHUB_TOKEN}"
+      }
     }
   }
 }

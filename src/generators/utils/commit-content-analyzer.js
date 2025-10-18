@@ -30,12 +30,16 @@ export function analyzeCommitContent(diff) {
       logger.start('commit content analysis', `Analyzing git diff to categorize ${diff.length} characters of changes`);
 
       const diffLines = diff.split('\n');
-      const changedFiles = diffLines
+      const allFiles = diffLines
         .filter(line => line.startsWith('diff --git'))
         .map(line => line.match(/diff --git a\/(.+) b\/.+/)?.[1])
         .filter(Boolean);
 
-      logger.progress('commit content analysis', `Found ${changedFiles.length} changed files in diff`);
+      // Filter out journal/entries/** to prevent context pollution
+      // Preserves reflections and context captures (manual content)
+      const changedFiles = allFiles.filter(file => !file.startsWith('journal/entries/'));
+
+      logger.progress('commit content analysis', `Found ${changedFiles.length} changed files in diff (filtered ${allFiles.length - changedFiles.length} journal entries)`);
 
       // Documentation files: .md, .txt, README, CHANGELOG
       const docFiles = changedFiles.filter(file =>
