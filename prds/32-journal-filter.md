@@ -264,34 +264,38 @@ git merge feature-branch          # Creates merge commit
 git add journal/... && git commit --amend  # Manual step required
 ```
 
-**Solution - Hybrid Approach (per DD-016)**:
-Skip journal generation ONLY for merge commits with no chat activity. If there was AI conversation during the merge (e.g., conflict resolution, strategic decisions), generate the journal to capture that context.
+**Solution - Hybrid Approach (per DD-016 v2)**:
+Skip journal generation ONLY for merge commits that are both silent (no chat) AND clean (no diff). Generate journals for merges with AI conversation OR code changes (conflict resolution).
 
 **Why Hybrid**:
-- ✅ Eliminates friction for routine/mechanical merges (no chat = no journal)
-- ✅ Preserves conflict resolution context (chat during merge = generate journal)
+- ✅ Eliminates friction for routine/mechanical merges (no chat AND no diff = no journal)
+- ✅ Preserves conflict resolution context (chat OR diff = generate journal)
 - ✅ Captures strategic merge decisions (discussions about WHEN/WHY to merge)
-- ✅ Handles squash merges appropriately (chat = context exists)
-- ⚠️ Conservative: "any chat at all → generate journal" prevents context loss
+- ✅ Handles silent conflict resolutions (no chat but has diff = generate journal) - **DD-016 v2 improvement**
+- ✅ Handles squash merges appropriately (chat OR diff = context preserved)
+- ⚠️ Conservative: "any chat OR any diff → generate journal" prevents context loss
 
 **Tasks**:
 - [ ] Research existing "substantial chat" filter threshold and implementation (see DD-016)
 - [ ] Detect merge commits (check for multiple parent commits using `git rev-list --parents`)
 - [ ] Check for chat activity during merge commit time window
-- [ ] Skip journal generation ONLY if merge commit AND no chat messages
-- [ ] Test merge workflows:
-  - [ ] Clean merge with no chat (should skip)
-  - [ ] Merge with conflict resolution conversation (should generate)
-  - [ ] Merge with strategic planning chat (should generate)
-- [ ] Update telemetry to track skipped vs generated merge commits
+- [ ] Check for diff presence (any non-empty diff = meaningful changes, per DD-016 v2)
+- [ ] Skip journal generation ONLY if merge commit AND no chat messages AND no diff
+- [ ] Test merge workflows (DD-016 v2 test matrix):
+  - [ ] Clean merge with no chat, no diff (should skip)
+  - [ ] Clean merge with chat, no diff (should generate - strategic discussion)
+  - [ ] Merge with conflicts but no chat, has diff (should generate - silent conflict resolution)
+  - [ ] Merge with conflict resolution conversation and diff (should generate)
+- [ ] Update telemetry to track skip reasons: `merge_no_changes_no_chat` vs generated with reasons
 
 **Implementation Location**:
 - `src/utils/commit-analyzer.js` - Add `isMergeCommit(commitHash)` function
-- `src/index.js` - Add early exit check for merge commits with chat activity check
+- `src/index.js` - Add early exit check for merge commits with chat AND diff checks (DD-016 v2)
 - Reuse existing chat message collection logic to check for activity during merge window
+- Reuse existing git diff collection logic to check for diff presence
 
-**Rationale**:
-Merge commits without conflicts are mechanical operations where the development story lives in individual commits. BUT merge commits with conflicts involve real development work (decisions, new code, AI conversations) that should be documented. Using chat activity as a proxy for "significant merge work" gives us the best of both worlds.
+**Rationale (Updated DD-016 v2)**:
+Merge commits without conflicts AND without chat are mechanical operations where the development story lives in individual commits. BUT merge commits with conflicts (visible via diff) OR strategic discussions (visible via chat) involve real development work that should be documented. Using BOTH chat activity and diff presence as signals for "significant merge work" prevents losing context from silent conflict resolutions.
 
 ### Phase 5: Validation
 **Goal**: ⏳ NEXT - Verify the fix works end-to-end (including merge commit handling)
@@ -333,9 +337,9 @@ Merge commits without conflicts are mechanical operations where the development 
 
 ## Design Decisions
 
-### DD-016: Hybrid Merge Commit Handling - Skip Only Silent Merges
-**Decision**: Skip journal generation for merge commits ONLY when there is no chat activity during the merge window. Generate journals for merges with AI conversation.
-**Date**: 2025-10-18
+### DD-016: Hybrid Merge Commit Handling - Skip Only Silent, Clean Merges
+**Decision**: Skip journal generation for merge commits ONLY when there is BOTH no chat activity AND no diff (empty merge). Generate journals for merges with AI conversation OR code changes.
+**Date**: 2025-10-18 (Updated 2025-10-19 with diff check)
 **Status**: ⏳ Outstanding - Not yet implemented
 
 **Problem Analysis**:
@@ -362,29 +366,48 @@ Initial approach was to skip ALL merge commits to eliminate workflow friction (d
    - Integration bugs discovered when combining features
    - Architectural insights from seeing how things fit together
 
-**Decision**: Use chat activity as a proxy for "significant merge work"
+**Evolution of Decision**:
+1. **Original (DD-016 v1)**: Skip if no chat activity
+2. **Problem identified (2025-10-19)**: What about silent conflict resolutions with meaningful code changes but no AI chat?
+3. **Refined (DD-016 v2)**: Skip ONLY if no chat AND no diff
+
+**Final Decision**: Use chat activity OR diff presence as signals for "significant merge work"
 
 **Implementation Strategy**:
 ```javascript
 if (isMergeCommit(commitRef)) {
-  const chatMessages = getChatMessagesForCommit(commitRef);
+  const hasChat = chatMessages.length > 0;
+  const diff = getDiffForCommit(commitRef);
+  const hasMeaningfulChanges = diff.trim().length > 0;
 
-  // Skip merge ONLY if absolutely no chat activity
-  if (chatMessages.length === 0) {
-    return { shouldSkip: true, reason: 'merge_no_chat' };
+  // Skip ONLY if both no chat AND no changes
+  if (!hasChat && !hasMeaningfulChanges) {
+    return { shouldSkip: true, reason: 'merge_no_changes_no_chat' };
   }
 
-  // If there's ANY chat, generate journal
-  // (Dialogue section can still apply its own "substantial" filter)
+  // Either chat OR changes = generate journal
   return { shouldSkip: false };
 }
 ```
 
-**Threshold Decision**:
+**Threshold Decisions**:
+
+**Chat threshold**:
 - Use LOWER threshold than existing "substantial chat" filter for dialogue section
 - Dialogue filter skips section if chat not substantial (e.g., < 5 messages)
 - Merge filter skips ENTIRE JOURNAL only if NO chat at all (0 messages)
 - Rationale: Higher stakes for skipping entire journal vs skipping one section
+
+**Diff threshold (DD-016 v2, 2025-10-19)**:
+- **Decision**: Any non-empty diff triggers journal generation
+- **Rationale for merge commits**: Diff shows ONLY conflict resolution/integration code (not all feature branch changes)
+  - Empty diff = completely clean merge (git auto-resolved everything)
+  - Any non-empty diff = conflicts resolved OR manual integration code written
+  - Even 1 line changed in merge commit is usually meaningful
+- **Rejected alternatives**:
+  - Line threshold (5-10 lines): Arbitrary, might skip meaningful small conflicts
+  - Character threshold (50-100 chars): Also arbitrary, complex to tune
+  - "Any diff" is simplest boolean check and most conservative
 
 **Research Required**:
 - [ ] Investigate existing "substantial chat" filter implementation
@@ -399,19 +422,69 @@ if (isMergeCommit(commitRef)) {
 - ✅ Conservative approach prevents context loss
 - ✅ Handles edge cases well (squash merges with chat = context exists)
 
-**Edge Cases Handled**:
-1. Silent conflict resolution (no chat) → Skip (context lost, but user chose not to document)
-2. Pre-merge planning → Skip (chat wasn't during merge window, but feature commits have journals)
-3. Post-merge fixes → Skip merge, generate journal for fix commit
-4. Squash merges with chat → Generate (context preserved)
-5. Octopus merges (3+ parents) → Generate if chat, skip if silent
+**Edge Cases Handled (Updated with DD-016 v2)**:
+1. **Silent conflict resolution with code changes** (no chat, has diff) → **Generate** ✅ (DD-016 v2 fix)
+2. **Clean merge with chat** (has chat, no diff) → **Generate** (strategic discussion documented)
+3. **Clean merge, no chat** (no chat, no diff) → **Skip** (truly mechanical merge)
+4. **Pre-merge planning** (chat before merge, not during) → **Skip merge** (but feature commits have journals)
+5. **Post-merge fixes** (problems found after merge) → **Skip merge**, generate journal for fix commit
+6. **Squash merges with chat** → **Generate** (context preserved)
+7. **Squash merges with diff but no chat** → **Generate** (conflict resolution preserved)
+8. **Octopus merges** (3+ parents) → **Generate if chat OR diff**, skip if silent and clean
 
 **Impact on Phases**:
-- Phase 4 Task 1: Research substantial chat filter (NEW)
-- Phase 4 implementation: Check chat messages before skipping
-- Phase 5 validation: Test both silent and chatty merges
+- Phase 4 Task 1: Research substantial chat filter
+- Phase 4 implementation: Check chat messages AND diff before skipping (DD-016 v2)
+- Phase 5 validation: Test multiple merge scenarios (silent clean, silent with conflicts, chatty clean, chatty with conflicts)
 
 ## Work Log
+
+### 2025-10-19: DD-016 v2 - Refined Merge Commit Strategy with Diff Check
+**Duration**: ~20 minutes
+**Commits**: None (design refinement)
+**Focus**: Adding diff presence check to DD-016 to handle silent conflict resolutions
+
+**Problem Identified**:
+User asked: "Would a merge commit with a meaningful code diff but not much chat be worth making an entry about?"
+
+**Key Insight**:
+Original DD-016 would skip merge commits with no chat, even if they had significant conflict resolution code changes. This would lose valuable context from silent conflict resolutions.
+
+**Design Refinement (DD-016 v2)**:
+- **v1 logic**: Skip if no chat
+- **v2 logic**: Skip ONLY if no chat AND no diff
+- **Rationale**: For merge commits, diff shows ONLY conflict resolution/integration code (not all feature branch changes)
+  - Empty diff = clean merge (git auto-resolved)
+  - Any non-empty diff = conflicts manually resolved
+  - Even 1-line diff in merge is usually meaningful
+
+**Threshold Discussion**:
+- Considered: line count (5-10), character count (50-100), "any diff"
+- **Decision**: "Any non-empty diff" (simplest, most conservative)
+- Rejected line/character thresholds as arbitrary
+
+**Updated Implementation**:
+```javascript
+// Skip ONLY if BOTH conditions true
+if (!hasChat && !hasMeaningfulChanges) {
+  skip();
+}
+// Either chat OR diff = generate
+```
+
+**Updated Test Matrix**:
+1. Clean merge, no chat, no diff → Skip ✅
+2. Clean merge, has chat, no diff → Generate (strategic discussion)
+3. Merge with conflicts, no chat, has diff → Generate ✅ (v2 fix)
+4. Merge with conflicts, has chat, has diff → Generate
+
+**Phase 4 Updates**:
+- Added diff check task
+- Updated test scenarios to cover 4 cases
+- Updated implementation locations to include diff collection
+- Updated skip reason telemetry: `merge_no_changes_no_chat`
+
+**Status**: Design refinement complete, ready for Phase 4 implementation
 
 ### 2025-10-18: Phase 4 Design Discussion - Hybrid Merge Commit Approach
 **Duration**: ~45 minutes
