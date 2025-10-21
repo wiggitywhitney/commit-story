@@ -14,6 +14,12 @@ import { execSync } from 'child_process';
  */
 export function getChangedFilesInCommit(commitRef) {
   try {
+    // Validate commit ref format to prevent command injection
+    // Allows: SHA hashes, HEAD, branch names with safe characters
+    if (!/^[a-zA-Z0-9/_.-]+$/.test(commitRef)) {
+      return [];
+    }
+
     // Use git diff-tree to get list of changed files
     // --no-commit-id: Suppress commit ID output
     // --name-only: Show only file names
@@ -34,6 +40,50 @@ export function getChangedFilesInCommit(commitRef) {
     // On error, return empty array (safer to allow execution)
     // This handles cases like invalid commit refs or git command failures
     return [];
+  }
+}
+
+/**
+ * Check if a commit is a merge commit
+ *
+ * A merge commit has multiple parent commits (2+ parents).
+ * Regular commits have 1 parent, initial commits have 0 parents.
+ *
+ * @param {string} commitRef - Git commit reference
+ * @returns {Object} Analysis result
+ * @returns {boolean} return.isMerge - True if commit is a merge commit
+ * @returns {number} return.parentCount - Number of parent commits
+ */
+export function isMergeCommit(commitRef) {
+  try {
+    // Validate commit ref format to prevent command injection
+    // Allows: SHA hashes, HEAD, branch names with safe characters
+    if (!/^[a-zA-Z0-9/_.-]+$/.test(commitRef)) {
+      return { isMerge: false, parentCount: 0 };
+    }
+
+    // Use git rev-list to get parent commits
+    // Format: commit_hash parent1_hash parent2_hash ...
+    // For merge commits, there will be 2+ parent hashes
+    const output = execSync(
+      `git rev-list --parents -n 1 ${commitRef}`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+
+    // Split output: first element is commit hash, rest are parents
+    const parts = output.trim().split(' ');
+    const parentCount = parts.length - 1;
+
+    return {
+      isMerge: parentCount >= 2,
+      parentCount: parentCount
+    };
+  } catch (error) {
+    // On error, return false (safer to allow execution)
+    return {
+      isMerge: false,
+      parentCount: 0
+    };
   }
 }
 

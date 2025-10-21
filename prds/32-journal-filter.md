@@ -1,9 +1,9 @@
 # PRD-32: Journal File Filtering
 
-**Status**: ⏳ IN PROGRESS - Phase 4 (Merge Commit Handling) Next
+**Status**: ⏳ IN PROGRESS - Phase 5 (Validation) Next
 **GitHub Issue**: [#32](https://github.com/wiggitywhitney/commit-story/issues/32)
 **Created**: 2025-10-15
-**Last Updated**: 2025-10-18 (Phase 3 complete, Phase 4-5 reordered)
+**Last Updated**: 2025-10-21 (Phase 4 implementation complete)
 **Priority**: P0 - Must fix before next release
 
 ## Current Status & Next Steps
@@ -13,13 +13,12 @@
 - ✅ Phase 1: Scope Definition - Filtering rules defined
 - ✅ Phase 2: Hook-Level Prevention - Journal-entries-only commits skip hook
 - ✅ Phase 3: Diff-Level Filtering - Journal entries filtered from git diffs
+- ✅ Phase 4: Merge Commit Handling - Hybrid skip logic implemented
 
-**Next**: Phase 4 (Merge Commit Handling) - implement BEFORE validation
-- Add `isMergeCommit()` function to `src/utils/commit-analyzer.js`
-- Add early exit check in `src/index.js` for merge commits
-- Test merge workflow (verify no dirty working tree after merge)
-
-**After Phase 4**: Phase 5 (Validation) - comprehensive end-to-end testing including merge commits
+**Next**: Phase 5 (Validation) - comprehensive end-to-end testing
+- Test all 4 merge commit scenarios with real-world merges
+- Validate Phases 2-4 work correctly together
+- Verify no context pollution or recursive generation issues
 
 ## Problem Statement
 
@@ -249,9 +248,9 @@ Comprehensive investigation using telemetry analysis, git history, code search, 
 - **Test 3**: Context bleed fix - Commit 441db893 regenerates cleanly, no AGPL pollution ✅
 
 ### Phase 4: Merge Commit Handling
-**Goal**: ⏳ IN PROGRESS - Eliminate git merge friction for mechanical merges while preserving context from merges with conflicts/decisions
+**Goal**: ✅ COMPLETE - Eliminate git merge friction for mechanical merges while preserving context from merges with conflicts/decisions
 
-**Status**: Not started - implement this BEFORE Phase 5 (Validation)
+**Status**: Implementation complete (2025-10-21) - Full validation pending production merge scenarios
 
 **Problem**:
 When merging branches, the post-commit hook fires after the merge commit completes, generating a journal entry. This leaves the working tree dirty (journal file modified), requiring a manual `git commit --amend` step. This creates friction in the merge workflow.
@@ -276,23 +275,30 @@ Skip journal generation ONLY for merge commits that are both silent (no chat) AN
 - ⚠️ Conservative: "any chat OR any diff → generate journal" prevents context loss
 
 **Tasks**:
-- [ ] Research existing "substantial chat" filter threshold and implementation (see DD-016)
-- [ ] Detect merge commits (check for multiple parent commits using `git rev-list --parents`)
-- [ ] Check for chat activity during merge commit time window
-- [ ] Check for diff presence (any non-empty diff = meaningful changes, per DD-016 v2)
-- [ ] Skip journal generation ONLY if merge commit AND no chat messages AND no diff
-- [ ] Test merge workflows (DD-016 v2 test matrix):
-  - [ ] Clean merge with no chat, no diff (should skip)
-  - [ ] Clean merge with chat, no diff (should generate - strategic discussion)
-  - [ ] Merge with conflicts but no chat, has diff (should generate - silent conflict resolution)
-  - [ ] Merge with conflict resolution conversation and diff (should generate)
-- [ ] Update telemetry to track skip reasons: `merge_no_changes_no_chat` vs generated with reasons
+- [x] Research existing "substantial chat" filter threshold and implementation (see DD-016)
+- [x] Detect merge commits (check for multiple parent commits using `git rev-list --parents`)
+- [x] Check for chat activity during merge commit time window
+- [x] Check for diff presence (any non-empty diff = meaningful changes, per DD-016 v2)
+- [x] Skip journal generation ONLY if merge commit AND no chat messages AND no diff
+- [x] Test merge workflows (DD-016 v2 test matrix):
+  - [~] Clean merge with no chat, no diff (should skip) - **Deferred: requires production merge**
+  - [x] Clean merge with chat, no diff (should generate - strategic discussion) - ✅ Tested with bb6a16f
+  - [~] Merge with conflicts but no chat, has diff (should generate - silent conflict resolution) - **Deferred: requires production merge**
+  - [~] Merge with conflict resolution conversation and diff (should generate) - **Deferred: requires production merge**
+- [~] Update telemetry to track skip reasons - **Deferred: can be added later**
 
-**Implementation Location**:
-- `src/utils/commit-analyzer.js` - Add `isMergeCommit(commitHash)` function
-- `src/index.js` - Add early exit check for merge commits with chat AND diff checks (DD-016 v2)
-- Reuse existing chat message collection logic to check for activity during merge window
-- Reuse existing git diff collection logic to check for diff presence
+**Implementation Details**:
+- **`src/utils/commit-analyzer.js`** (lines 40-76): Added `isMergeCommit()` function
+  - Uses `git rev-list --parents -n 1` to detect commits with 2+ parents
+  - Returns `{ isMerge: boolean, parentCount: number }`
+  - Error-safe: returns false on git command failures
+- **`src/index.js`** (lines 18, 222-239): Hybrid skip logic
+  - Imports `isMergeCommit` from commit-analyzer
+  - Checks merge status after context collection (needs chat/diff data)
+  - Evaluates: `hasChat = context.chatMessages.data.length > 0`
+  - Evaluates: `hasDiff = context.commit.data.diff.trim().length > 0`
+  - Skips ONLY if `!hasChat && !hasDiff`
+  - Debug logging shows merge detection and decision rationale
 
 **Rationale (Updated DD-016 v2)**:
 Merge commits without conflicts AND without chat are mechanical operations where the development story lives in individual commits. BUT merge commits with conflicts (visible via diff) OR strategic discussions (visible via chat) involve real development work that should be documented. Using BOTH chat activity and diff presence as signals for "significant merge work" prevents losing context from silent conflict resolutions.
@@ -438,6 +444,47 @@ if (isMergeCommit(commitRef)) {
 - Phase 5 validation: Test multiple merge scenarios (silent clean, silent with conflicts, chatty clean, chatty with conflicts)
 
 ## Work Log
+
+### 2025-10-21: Phase 4 Implementation Complete
+**Duration**: ~2 hours
+**Branch**: feature/prd-32-phase-4-merge-commit-handling
+**Focus**: Implementing hybrid merge commit detection and skip logic per DD-016 v2
+
+**Completed Tasks**:
+- [x] Researched existing "substantial chat" filter implementations
+  - Found thresholds: summary-generator (>=3 messages), dialogue-generator (>=1 message)
+  - Decided: Use simpler "any chat" (>0 messages) for merge detection
+- [x] Implemented `isMergeCommit()` function in commit-analyzer.js:40-76
+  - Uses `git rev-list --parents -n 1` to detect commits with 2+ parents
+  - Returns `{ isMerge: boolean, parentCount: number }`
+  - Error-safe: defaults to allowing execution on failures
+- [x] Implemented hybrid skip logic in index.js:222-239
+  - Imports and calls `isMergeCommit()` after context collection
+  - Checks `hasChat = context.chatMessages.data.length > 0`
+  - Checks `hasDiff = context.commit.data.diff.trim().length > 0`
+  - Skips ONLY if `!hasChat && !hasDiff`
+  - Includes debug logging for merge detection and decisions
+- [x] Initial testing with existing merge commit bb6a16f
+  - Correctly identified as merge commit (2 parents)
+  - Correctly generated journal (has 113 chat messages, clean merge)
+  - Validates Scenario 2: "Clean merge with chat, no diff → Generate"
+
+**Implementation Notes**:
+- Telemetry deferred per user request (can be added separately later)
+- Full 4-scenario test matrix requires real-world merges to complete validation
+- Phase 3 journal filtering integrates correctly with Phase 4 merge detection
+- Filtered diff (excluding journal/entries/**) is appropriate for merge commit checks
+
+**Testing Status**:
+- ✅ Scenario 2 tested: Clean merge with chat → Generates journal correctly
+- ⏳ Scenario 1 pending: Clean merge without chat → Should skip (needs real merge)
+- ⏳ Scenario 3 pending: Merge with conflicts, no chat → Should generate (needs real merge)
+- ⏳ Scenario 4 pending: Merge with conflicts and chat → Should generate (needs real merge)
+
+**Next Steps**:
+- Phase 5 validation with comprehensive end-to-end testing
+- Real-world merge scenarios will naturally validate remaining test cases
+- Consider adding telemetry for merge skip reasons once logic is validated
 
 ### 2025-10-19: DD-016 v2 - Refined Merge Commit Strategy with Diff Check
 **Duration**: ~20 minutes
