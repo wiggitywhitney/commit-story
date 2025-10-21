@@ -38,6 +38,44 @@ export function getChangedFilesInCommit(commitRef) {
 }
 
 /**
+ * Check if a commit is a merge commit
+ *
+ * A merge commit has multiple parent commits (2+ parents).
+ * Regular commits have 1 parent, initial commits have 0 parents.
+ *
+ * @param {string} commitRef - Git commit reference
+ * @returns {Object} Analysis result
+ * @returns {boolean} return.isMerge - True if commit is a merge commit
+ * @returns {number} return.parentCount - Number of parent commits
+ */
+export function isMergeCommit(commitRef) {
+  try {
+    // Use git rev-list to get parent commits
+    // Format: commit_hash parent1_hash parent2_hash ...
+    // For merge commits, there will be 2+ parent hashes
+    const output = execSync(
+      `git rev-list --parents -n 1 ${commitRef}`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+
+    // Split output: first element is commit hash, rest are parents
+    const parts = output.trim().split(' ');
+    const parentCount = parts.length - 1;
+
+    return {
+      isMerge: parentCount >= 2,
+      parentCount: parentCount
+    };
+  } catch (error) {
+    // On error, return false (safer to allow execution)
+    return {
+      isMerge: false,
+      parentCount: 0
+    };
+  }
+}
+
+/**
  * Check if a commit only touches auto-generated journal entry files
  *
  * Returns true only if ALL changed files are under journal/entries/

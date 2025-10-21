@@ -15,7 +15,7 @@ import { saveJournalEntry } from './managers/journal-manager.js';
 import { OTEL } from './telemetry/standards.js';
 import { getConfig } from './utils/config.js';
 import { createNarrativeLogger } from './utils/trace-logger.js';
-import { isJournalEntriesOnlyCommit } from './utils/commit-analyzer.js';
+import { isJournalEntriesOnlyCommit, isMergeCommit } from './utils/commit-analyzer.js';
 
 config({ quiet: true });
 
@@ -218,6 +218,25 @@ export default async function main() {
 
       // Gather all context for the specified commit
       const context = await gatherContextForCommit(commitRef);
+
+      // Check if this is a merge commit that should be skipped (DD-016 v2)
+      // Skip ONLY if: merge commit AND no chat messages AND no diff
+      const { isMerge, parentCount } = isMergeCommit(commitRef);
+      if (isMerge) {
+        const hasChat = context.chatMessages.data.length > 0;
+        const hasDiff = context.commit.data.diff && context.commit.data.diff.trim().length > 0;
+
+        if (!hasChat && !hasDiff) {
+          // Clean merge with no conversation and no changes - skip to avoid dirty working tree
+          debugLog(`⏭️  Skipping merge commit (${parentCount} parents, no chat, no diff)`);
+          span.setStatus({ code: SpanStatusCode.OK, message: 'Skipped clean merge commit with no chat or diff' });
+          span.end();
+          return;
+        }
+
+        // Merge has chat or diff - generate journal to preserve context
+        debugLog(`📝 Merge commit detected (${parentCount} parents) - generating journal (${hasChat ? 'has chat' : 'no chat'}, ${hasDiff ? 'has diff' : 'no diff'})`);
+      }
 
       // Show detailed context results
       debugLog(`📊 Git: Found commit "${context.commit.data.message.split('\n')[0]}" by ${context.commit.data.author.name} (${new Date(context.commit.data.timestamp).toISOString().split('T')[0]})`);
