@@ -371,8 +371,11 @@ function parseReflectionFile(content, fileDate, startTime, endTime) {
         contentLinesProcessed++;
 
         // Look for timestamp headers (## HH:MM:SS [TIMEZONE])
-        // Supports both standard abbreviations (EDT, BST, UTC) and offset formats (GMT+1, UTC-5)
-        const timestampMatch = line.match(/^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{2,4}[+-]?\d*)$/);
+        // Supports standard abbreviations (EDT, BST, UTC) and offset formats (GMT+1, UTC-5, UTC+05:30, UTC+0530)
+        // Accept TZ abbrev 2–5 letters, optional ±HH[:MM] or ±HHMM; AM/PM case-insensitive
+        const timestampMatch = line.match(
+          /^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{2,5}(?:[+-]\d{1,2}(?::?\d{2})?)?)$/i
+        );
 
         if (timestampMatch) {
           timestampHeadersFound++;
@@ -605,13 +608,25 @@ function parseReflectionTimestamp(fileDate, timeString) {
       let utcDate;
 
       if (!ianaTimezone) {
-        // Check if this is an offset-based timezone (e.g., GMT+1, UTC-5)
-        const offsetMatch = detectedTimezone.match(/^([A-Z]{2,4})([+-])(\d+)$/);
+        // Check if this is an offset-based timezone (e.g., GMT+1, UTC-5, UTC+05:30, UTC+0530)
+        const offsetMatch = detectedTimezone.match(/^([A-Z]{2,5})([+-])(\d{1,2})(?::?(\d{2}))?$/i);
 
         if (offsetMatch) {
-          // Parse offset-based timezone
-          const [, baseZone, sign, offsetHours] = offsetMatch;
-          const offsetMinutes = (sign === '+' ? 1 : -1) * parseInt(offsetHours) * 60;
+          // Parse offset-based timezone with optional minutes
+          const [, baseZone, sign, hh, mm = '0'] = offsetMatch;
+          const h = parseInt(hh, 10);
+          const m = parseInt(mm, 10);
+
+          // Validate offset ranges (hours: 0-14, minutes: 0-59)
+          if (Number.isNaN(h) || Number.isNaN(m) || h > 14 || m >= 60) {
+            logger.error('timestamp parsing', `Invalid timezone offset: ${detectedTimezone}`, new Error('Out of range'), {
+              hours: h,
+              minutes: m
+            });
+            throw new Error(`Invalid timezone offset: ${detectedTimezone}`);
+          }
+
+          const offsetMinutes = (sign === '+' ? 1 : -1) * (h * 60 + m);
 
           logger.progress('timestamp parsing', `Parsing offset-based timezone "${detectedTimezone}" (${offsetMinutes}min offset)`);
 
@@ -626,7 +641,7 @@ function parseReflectionTimestamp(fileDate, timeString) {
           );
 
           // Apply the offset (subtract because we're converting TO UTC)
-          utcDate = new Date(naiveUTC - (offsetMinutes * 60 * 1000));
+          utcDate = new Date(naiveUTC - offsetMinutes * 60 * 1000);
 
           logger.progress('timestamp parsing', `Converted ${timeString} to UTC using offset ${offsetMinutes}min`);
         } else {
