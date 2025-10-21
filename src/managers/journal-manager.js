@@ -371,7 +371,8 @@ function parseReflectionFile(content, fileDate, startTime, endTime) {
         contentLinesProcessed++;
 
         // Look for timestamp headers (## HH:MM:SS [TIMEZONE])
-        const timestampMatch = line.match(/^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{3,4})$/);
+        // Supports both standard abbreviations (EDT, BST, UTC) and offset formats (GMT+1, UTC-5)
+        const timestampMatch = line.match(/^## (\d{1,2}:\d{2}:\d{2} (?:AM|PM) [A-Z]{2,4}[+-]?\d*)$/);
 
         if (timestampMatch) {
           timestampHeadersFound++;
@@ -604,16 +605,42 @@ function parseReflectionTimestamp(fileDate, timeString) {
       let utcDate;
 
       if (!ianaTimezone) {
-        // Fallback for unknown timezones: use native parsing
-        logger.progress('timestamp parsing', `Unknown timezone "${detectedTimezone}", attempting native parsing`);
-        const nativeAttempt = new Date(`${fileDate.toDateString()} ${timeString}`);
-        if (!isNaN(nativeAttempt.getTime())) {
-          utcDate = nativeAttempt;
+        // Check if this is an offset-based timezone (e.g., GMT+1, UTC-5)
+        const offsetMatch = detectedTimezone.match(/^([A-Z]{2,4})([+-])(\d+)$/);
+
+        if (offsetMatch) {
+          // Parse offset-based timezone
+          const [, baseZone, sign, offsetHours] = offsetMatch;
+          const offsetMinutes = (sign === '+' ? 1 : -1) * parseInt(offsetHours) * 60;
+
+          logger.progress('timestamp parsing', `Parsing offset-based timezone "${detectedTimezone}" (${offsetMinutes}min offset)`);
+
+          // Create naive UTC date for the specified date/time
+          const naiveUTC = Date.UTC(
+            fileDate.getFullYear(),
+            fileDate.getMonth(),
+            fileDate.getDate(),
+            hour24,
+            minutes,
+            seconds || 0
+          );
+
+          // Apply the offset (subtract because we're converting TO UTC)
+          utcDate = new Date(naiveUTC - (offsetMinutes * 60 * 1000));
+
+          logger.progress('timestamp parsing', `Converted ${timeString} to UTC using offset ${offsetMinutes}min`);
         } else {
-          // Final fallback: assume local timezone
-          const localDate = new Date(fileDate);
-          localDate.setHours(hour24, minutes, seconds || 0, 0);
-          utcDate = localDate;
+          // Fallback for unknown timezones: use native parsing
+          logger.progress('timestamp parsing', `Unknown timezone "${detectedTimezone}", attempting native parsing`);
+          const nativeAttempt = new Date(`${fileDate.toDateString()} ${timeString}`);
+          if (!isNaN(nativeAttempt.getTime())) {
+            utcDate = nativeAttempt;
+          } else {
+            // Final fallback: assume local timezone
+            const localDate = new Date(fileDate);
+            localDate.setHours(hour24, minutes, seconds || 0, 0);
+            utcDate = localDate;
+          }
         }
       } else {
         // Create naive UTC date for the specified date/time
