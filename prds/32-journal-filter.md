@@ -486,6 +486,17 @@ if (isMergeCommit(commitRef)) {
 - Real-world merge scenarios will naturally validate remaining test cases
 - Consider adding telemetry for merge skip reasons once logic is validated
 
+**Additional Work Done**:
+- [x] Fixed security vulnerability (command injection) in commit-analyzer.js
+  - Added input validation to `isMergeCommit()` and `getChangedFilesInCommit()`
+  - Validates commitRef format: `/^[a-zA-Z0-9/_.-]+$/`
+  - Returns safe defaults on invalid input
+- [x] Updated README.md with "Journal Management" section
+  - Documents default .gitignore behavior and tradeoffs
+  - Explains merge commit behavior when journals are tracked
+  - Clarifies that journals persist locally across branches when ignored
+  - Provides workaround for merge commits with conflicts (manual amend)
+
 ### 2025-10-19: DD-016 v2 - Refined Merge Commit Strategy with Diff Check
 **Duration**: ~20 minutes
 **Commits**: None (design refinement)

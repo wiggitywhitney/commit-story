@@ -149,6 +149,30 @@ The debug output will show you:
 - Check `journal/entries/YYYY-MM/YYYY-MM-DD.md`
 - Journal directory is in `.gitignore` by default (private)
 
+## Journal Management
+
+### Default Behavior: Journals in .gitignore 
+By default, the `journal/` directory is added to your `.gitignore` during setup. 
+
+### Merge Commit Behavior (When Journals Are Tracked)
+
+If you track journals in git, most merges are frictionless:
+
+**GitHub PR Merges (Most Common):**
+- Clean PR merges automatically skip journal generation
+- No extra steps needed
+
+**Local Merges with Conflicts:**
+- After resolving conflicts and committing the merge, a journal entry is generated
+- The journal file will be untracked in your working directory
+- To include it in the merge commit:
+  ```bash
+  git add journal/entries/...
+  git commit --amend --no-edit
+  ```
+
+**Why this happens:** Journal generation uses a post-commit hook (runs after the commit is finalized). This keeps regular commits fast, but requires a manual amend for merge commits with conflicts.
+
 ## Uninstalling
 
 To fully remove Commit Story:
