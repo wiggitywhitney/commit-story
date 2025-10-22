@@ -1,0 +1,1 @@
+- when i ask for architecture diagrams, do not write them to files. just show in chat
