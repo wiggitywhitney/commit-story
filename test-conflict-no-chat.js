@@ -1,4 +1,4 @@
-// Conflict test - main version
+// Conflict test - resolved to feature version
 function conflictTest() {
-  return 'main version';
+  return 'feature version';
 }
