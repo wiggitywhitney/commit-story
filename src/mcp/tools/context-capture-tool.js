@@ -145,7 +145,7 @@ function getCurrentSessionId() {
       });
 
       OTEL.metrics.counter('commit_story.session.detection_attempts', 1, {
-        'session.found': sessionId ? 'true' : 'false'
+        'commit_story.session.found': sessionId ? 'true' : 'false'
       });
 
       if (sessionId) {
@@ -315,16 +315,16 @@ ${contextText}
 
       // Emit metrics for dual visibility
       OTEL.metrics.counter('commit_story.context.captured', 1, {
-        'context.file_created': fileCreated.toString(),
-        'context.session_detected': (!!sessionId).toString()
+        'commit_story.context.file_created': fileCreated.toString(),
+        'commit_story.context.session_detected': (!!sessionId).toString()
       });
 
       OTEL.metrics.gauge('commit_story.context.size', contextText.length, {
-        'context.timestamp': timestamp.toISOString().split('T')[0] // Date only
+        'commit_story.context.timestamp': timestamp.toISOString().split('T')[0] // Date only
       });
 
       OTEL.metrics.histogram('commit_story.context.processing_duration_ms', processingDuration, {
-        'context.operation': fileCreated ? 'create' : 'append'
+        'commit_story.context.operation': fileCreated ? 'create' : 'append'
       });
 
       logger.complete('context creation', 'Journal context captured successfully', {

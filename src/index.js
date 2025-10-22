@@ -226,6 +226,25 @@ export default async function main() {
         const hasChat = context.chatMessages.data.length > 0;
         const hasDiff = context.commit.data.diff && context.commit.data.diff.trim().length > 0;
 
+        // Add merge commit decision telemetry
+        const mergeDecisionAttrs = {
+          [`${OTEL.NAMESPACE}.commit.is_merge`]: true,
+          [`${OTEL.NAMESPACE}.commit.parent_count`]: parentCount,
+          [`${OTEL.NAMESPACE}.commit.has_chat`]: hasChat,
+          [`${OTEL.NAMESPACE}.commit.has_diff`]: hasDiff,
+          [`${OTEL.NAMESPACE}.commit.skip_decision`]: !hasChat && !hasDiff
+        };
+        span.setAttributes(mergeDecisionAttrs);
+
+        // Emit metrics for merge commit decision tracking
+        Object.entries(mergeDecisionAttrs).forEach(([name, value]) => {
+          if (typeof value === 'number') {
+            OTEL.metrics.gauge(name, value);
+          } else if (typeof value === 'boolean') {
+            OTEL.metrics.gauge(name, value ? 1 : 0);
+          }
+        });
+
         if (!hasChat && !hasDiff) {
           // Clean merge with no conversation and no changes - skip to avoid dirty working tree
           debugLog(`⏭️  Skipping merge commit (${parentCount} parents, no chat, no diff)`);

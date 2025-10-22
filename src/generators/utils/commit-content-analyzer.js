@@ -38,8 +38,9 @@ export function analyzeCommitContent(diff) {
       // Filter out journal/entries/** to prevent context pollution
       // Preserves reflections and context captures (manual content)
       const changedFiles = allFiles.filter(file => !file.startsWith('journal/entries/'));
+      const filteredJournalEntries = allFiles.length - changedFiles.length;
 
-      logger.progress('commit content analysis', `Found ${changedFiles.length} changed files in diff (filtered ${allFiles.length - changedFiles.length} journal entries)`);
+      logger.progress('commit content analysis', `Found ${changedFiles.length} changed files in diff (filtered ${filteredJournalEntries} journal entries)`);
 
       // Documentation files: .md, .txt, README, CHANGELOG
       const docFiles = changedFiles.filter(file =>
@@ -83,7 +84,8 @@ export function analyzeCommitContent(diff) {
           functional: functionalFiles.length,
           hasFunctionalCode,
           onlyDocumentation: hasOnlyDocs
-        })
+        }),
+        [`${OTEL.NAMESPACE}.files.journal_entries_filtered`]: filteredJournalEntries
       };
 
       span.setAttributes(attrs);
