@@ -53,8 +53,9 @@ export function getLatestCommitData(commitRef = 'HEAD') {
       // Get full diff content for the specified commit
       // Filter out journal/entries/** to prevent context pollution
       // Preserves reflections and context captures (manual content)
+      // Use -m --first-parent to show diffs for merge commits (vs first parent)
       logger.progress('git data collection', `Retrieving diff with git diff-tree for ${commitRef} (filtering journal entries)`);
-      const diff = execSync(`git diff-tree -p ${commitRef} -- . ':!journal/entries/'`, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
+      const diff = execSync(`git diff-tree -p -m --first-parent ${commitRef} -- . ':!journal/entries/'`, { encoding: 'utf8', maxBuffer: 1024 * 1024 * 10 }); // 10MB buffer
 
       const diffLines = diff.split('\n').length;
       const diffSizeKB = Math.round(diff.length / 1024);
