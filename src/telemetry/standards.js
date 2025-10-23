@@ -234,7 +234,10 @@ export const OTEL = {
       [`${OTEL.NAMESPACE}.commit.hash`]: commitData.hash,
       [`${OTEL.NAMESPACE}.commit.message`]: commitData.message?.split('\n')[0], // First line only
       [`${OTEL.NAMESPACE}.commit.timestamp`]: commitData.timestamp?.toISOString(),
-      [`${OTEL.NAMESPACE}.commit.author`]: commitData.author,
+      // Emit only author name as string primitive; avoid email to reduce PII exposure
+      [`${OTEL.NAMESPACE}.commit.author_name`]: typeof commitData.author === 'string'
+        ? commitData.author
+        : commitData.author?.name || 'unknown',
       [`${OTEL.NAMESPACE}.commit.ref`]: commitData.ref
     }),
 
@@ -909,6 +912,11 @@ export const OTEL = {
      */
     counter: (name, value = 1, attributes = {}) => {
       try {
+        // Enforce counter naming convention
+        if (!name.endsWith('_total')) {
+          console.warn(`Counter name "${name}" should end with "_total" (metrics convention).`);
+        }
+
         // Get or create cached counter instrument
         if (!metricInstruments.counters.has(name)) {
           const meter = getMeter();

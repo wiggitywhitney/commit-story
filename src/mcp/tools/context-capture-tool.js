@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { trace, SpanStatusCode, context as otelContext } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
 import { createNarrativeLogger } from '../../utils/trace-logger.js';
 import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } from '../../utils/journal-paths.js';
@@ -198,13 +198,18 @@ function getCurrentSessionId() {
  * @returns {Promise<Object>} MCP tool response
  */
 export async function createContextTool(args, parentSpan) {
-  return tracer.startActiveSpan(OTEL.span.mcp.tool.journal_capture_context(), {
-    attributes: {
-      'code.function': 'createContextTool'
+  // Set parent span context properly using OpenTelemetry context API
+  const ctx = trace.setSpan(otelContext.active(), parentSpan);
+  return tracer.startActiveSpan(
+    OTEL.span.mcp.tool.journal_capture_context(),
+    {
+      attributes: {
+        'code.function': 'createContextTool'
+      }
     },
-    parent: parentSpan
-  }, async (span) => {
-    const startTime = Date.now();
+    ctx,
+    async (span) => {
+      const startTime = Date.now();
     const logger = createNarrativeLogger('context.creation');
 
     try {

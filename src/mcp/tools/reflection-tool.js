@@ -7,7 +7,7 @@
 
 import { promises as fs } from 'fs';
 import fsSync from 'fs';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { trace, SpanStatusCode, context as otelContext } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
 import { createNarrativeLogger } from '../../utils/trace-logger.js';
 import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } from '../../utils/journal-paths.js';
@@ -35,13 +35,18 @@ try {
  * @returns {Promise<Object>} MCP tool response
  */
 export async function createReflectionTool(args, parentSpan) {
-  return tracer.startActiveSpan(OTEL.span.mcp.tool.journal_add_reflection(), {
-    attributes: {
-      'code.function': 'createReflectionTool'
+  // Set parent span context properly using OpenTelemetry context API
+  const ctx = trace.setSpan(otelContext.active(), parentSpan);
+  return tracer.startActiveSpan(
+    OTEL.span.mcp.tool.journal_add_reflection(),
+    {
+      attributes: {
+        'code.function': 'createReflectionTool'
+      }
     },
-    parent: parentSpan
-  }, async (span) => {
-    const startTime = Date.now();
+    ctx,
+    async (span) => {
+      const startTime = Date.now();
 
     try {
       // Validate input

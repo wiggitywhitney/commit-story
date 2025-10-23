@@ -5,7 +5,7 @@
  * the commit should trigger journal generation.
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
 import { createNarrativeLogger } from './trace-logger.js';
@@ -73,8 +73,9 @@ export function getChangedFilesInCommit(commitRef) {
       // --name-only: Show only file names
       // -r: Recurse into subdirectories
       const gitStartTime = Date.now();
-      const output = execSync(
-        `git diff-tree --no-commit-id --name-only -r ${commitRef}`,
+      const output = execFileSync(
+        'git',
+        ['diff-tree', '--no-commit-id', '--name-only', '-r', commitRef],
         { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
       );
       const gitCommandDuration = Date.now() - gitStartTime;
@@ -214,8 +215,9 @@ export function isMergeCommit(commitRef) {
       // Format: commit_hash parent1_hash parent2_hash ...
       // For merge commits, there will be 2+ parent hashes
       const gitStartTime = Date.now();
-      const output = execSync(
-        `git rev-list --parents -n 1 ${commitRef}`,
+      const output = execFileSync(
+        'git',
+        ['rev-list', '--parents', '-n', '1', commitRef],
         { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
       );
       const gitCommandDuration = Date.now() - gitStartTime;
