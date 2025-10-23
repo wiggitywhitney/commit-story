@@ -3,7 +3,7 @@
 **Status**: ✅ COMPLETE - All phases implemented, tested, and validated
 **GitHub Issue**: [#32](https://github.com/wiggitywhitney/commit-story/issues/32)
 **Created**: 2025-10-15
-**Last Updated**: 2025-10-22 (Phase 5 validation complete)
+**Completed**: 2025-10-23 (Issue closed)
 **Priority**: P0 - Must fix before next release
 
 ## Current Status & Next Steps
@@ -16,9 +16,8 @@
 - ✅ Phase 4: Merge Commit Handling - Hybrid skip logic implemented
 - ✅ Phase 5: Validation - All tests passed, merge diff bug found and fixed
 
-**Next Steps**:
-- Merge to main and close GitHub issue #32
-- Ready for next release
+**Implementation Complete**: All work merged to main as of 2025-10-22
+- GitHub issue #32 ready to close
 
 ## Problem Statement
 
@@ -62,10 +61,10 @@ This is context bleed from the **previous commit** `b0b0c9b2` (license change). 
 2. ✅ Files matching `journal/entries/**` are completely filtered from git diffs before being passed to any generator (Phase 3)
 3. ✅ Old solutions and outdated context from previous journal entries no longer appear in new entries (Phase 3)
 4. ✅ Manual reflections and context captures remain visible in git diffs and chat context (NOT filtered) (Phase 3)
-5. ⏳ Merge commits do NOT trigger the post-commit hook (Phase 4 - IN PROGRESS)
-6. ⏳ No dirty working tree after merge commits (Phase 4 - IN PROGRESS)
-7. ⏳ Commit 1104c468 can be used to verify the fix (re-running it should produce no output) (Phase 5 validation)
-8. ⏳ Commit 441db893 context bleed no longer occurs when regenerated (Phase 5 validation)
+5. ✅ Merge commits with no chat and no diff do NOT trigger the post-commit hook (Phase 4)
+6. ✅ No dirty working tree after mechanical merge commits (Phase 4)
+7. ✅ Commit 1104c468 can be used to verify the fix (re-running it should produce no output) (Phase 5 validation)
+8. ✅ Commit 441db893 context bleed no longer occurs when regenerated (Phase 5 validation)
 
 ## Non-Goals
 
