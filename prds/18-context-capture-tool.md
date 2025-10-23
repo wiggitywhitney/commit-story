@@ -1,10 +1,27 @@
 # PRD-18: Context Capture Tool for AI Working Memory
 
 **GitHub Issue**: [#18](https://github.com/wiggitywhitney/commit-story/issues/18)
-**Status**: In Progress (Started 2025-10-13)
+**Status**: ⏳ Blocked - Message filter fix required (DD-014 not fully implemented)
 **Created**: 2025-09-21
-**Last Updated**: 2025-10-15
-**Priority**: Active Development - Core functionality implementation
+**Last Updated**: 2025-10-23
+**Priority**: P0 - Blocking v1.3.0 release (PRD-33)
+
+## Current Status & Next Steps
+
+**Completed**:
+- ✅ Milestone 1-4: Core MCP tool, session management, two-mode implementation, format & polish
+
+**Blocking Issue Discovered (2025-10-23)**:
+- ❌ **Context capture tool calls are being filtered out of chat messages**
+- Location: `src/generators/filters/context-filter.js` line 77-80
+- Impact: DD-014 design (context via chat flow) is not working - tool calls filtered before reaching generators
+- **NEXT SESSION: Start here** - Fix `isNoisyMessage()` to allow `journal_capture_context` tool calls through
+
+**Remaining Work**:
+1. ⏳ **Fix message filter** (30-45 min) - Allow context capture tool calls in chat flow per DD-014
+2. ⏳ **Milestone 5**: README Documentation (15-20 min)
+
+**Estimated Time to Complete**: ~1 hour
 
 ## Summary
 
@@ -595,20 +612,47 @@ Context text here...
 - [ ] Include basic usage example
 - **Success Criteria**: Tool documented in README, simple and straightforward
 
-### Phase 2: Journal Integration (Milestone-Based per DD-007)
+### Phase 2: Journal Integration (Per DD-014 - Context via Chat Flow)
 
-#### Milestone 2.1: Refactor for DRY (45-60 min)
-- [ ] Extract `discoverReflections()` → `discoverJournalFiles(type, commitTime, previousCommitTime)`
-- [ ] Extract `parseReflectionFile()` → `parseJournalFile(type, content, fileDate, startTime, endTime)`
-- [ ] Update existing reflection code to use new generic functions
-- [ ] Test reflection discovery/parsing (ensure no regression)
-- **Success Criteria**: Reflections still work using generalized functions
+**⚠️ CRITICAL BLOCKER DISCOVERED (2025-10-23)**: DD-014 implementation is incomplete - context capture tool calls are being filtered out!
 
-#### Milestone 2.2: Context Discovery (20-30 min)
-- [ ] Add 'context' type support to `discoverJournalFiles()`
-- [ ] Use existing path utilities with type='context'
-- [ ] Test context file discovery for commit time windows
-- **Success Criteria**: Context files discovered correctly for given commit dates
+#### Milestone 2.0: Fix Message Filter (30-45 min) - ⏳ **START HERE NEXT SESSION**
+
+**Problem**: `src/generators/filters/context-filter.js` function `isNoisyMessage()` (lines 77-80) filters out ALL tool calls, including `journal_capture_context`.
+
+**Impact**: Context capture tool calls never reach journal generators, breaking DD-014 design.
+
+**Tasks**:
+- [ ] Update `isNoisyMessage()` to preserve `journal_capture_context` tool calls
+- [ ] Keep filtering other tool calls (Read, Write, Edit, Bash, etc.)
+- [ ] Test that context tool calls flow through to generators
+- [ ] Verify other tool calls are still filtered (no regression)
+
+**Implementation Strategy**:
+```javascript
+// In isNoisyMessage() around line 77-80
+if (message.type === 'assistant' && content.some(item => item.type === 'tool_use')) {
+  // ALLOW journal_capture_context through, filter everything else
+  const hasContextCapture = content.some(item =>
+    item.type === 'tool_use' && item.name === 'journal_capture_context'
+  );
+  if (!hasContextCapture) {
+    return true; // Filter non-context tool calls
+  }
+  // Context capture tool calls fall through to be included
+}
+```
+
+**Success Criteria**:
+- Context capture tool calls appear in filtered chat messages
+- Other tool calls still filtered out
+- Journal generators receive context via chat flow per DD-014
+
+#### Milestone 2.1: ~~Refactor for DRY~~ - SUPERSEDED by DD-014
+**Status**: ❌ Not needed - DD-014 uses chat flow, not file parsing
+
+#### Milestone 2.2: ~~Context Discovery~~ - SUPERSEDED by DD-014
+**Status**: ❌ Not needed - DD-014 uses chat flow, not file parsing
 
 #### Milestone 2.3: Narrative Integration Planning (Discussion & Design - 30-45 min)
 **Purpose**: Design how context integrates into journal generation before implementing
