@@ -144,8 +144,8 @@ function getCurrentSessionId() {
         }
       });
 
-      OTEL.metrics.counter('commit_story.session.detection_attempts', 1, {
-        'commit_story.session.found': sessionId ? 'true' : 'false'
+      OTEL.metrics.counter('commit_story.session.detection_attempts_total', 1, {
+        'commit_story.session.session_found': sessionId ? 'true' : 'false'
       });
 
       if (sessionId) {
@@ -319,7 +319,7 @@ ${contextText}
       });
 
       // Emit metrics for dual visibility
-      OTEL.metrics.counter('commit_story.context.captured', 1, {
+      OTEL.metrics.counter('commit_story.context.captured_total', 1, {
         'commit_story.context.file_created': fileCreated.toString(),
         'commit_story.context.session_detected': (!!sessionId).toString()
       });
@@ -373,7 +373,7 @@ ${contextText}
         processing_duration_ms: processingDuration
       });
 
-      OTEL.metrics.counter('commit_story.context.errors', 1, {
+      OTEL.metrics.counter('commit_story.context.errors_total', 1, {
         'error.type': error.name,
         'error.validation': error.message.includes('Invalid') || error.message.includes('Missing') ? 'true' : 'false'
       });

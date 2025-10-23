@@ -47,7 +47,7 @@ export function getChangedFilesInCommit(commitRef) {
           refValid: false,
           filesChanged: 0,
           gitCommandDuration: 0,
-          parseDuration: analysisDuration
+          parseDuration: 0
         });
 
         span.setAttributes(attrs);
@@ -137,7 +137,7 @@ export function getChangedFilesInCommit(commitRef) {
         refValid: true,
         filesChanged: 0,
         gitCommandDuration: 0,
-        parseDuration: analysisDuration
+        parseDuration: 0
       });
 
       span.setAttributes(attrs);
@@ -190,7 +190,7 @@ export function isMergeCommit(commitRef) {
           isMerge: false,
           parentCount: 0,
           gitCommandDuration: 0,
-          parseDuration: analysisDuration
+          parseDuration: 0
         });
 
         span.setAttributes(attrs);
@@ -285,7 +285,7 @@ export function isMergeCommit(commitRef) {
         isMerge: false,
         parentCount: 0,
         gitCommandDuration: 0,
-        parseDuration: analysisDuration
+        parseDuration: 0
       });
 
       span.setAttributes(attrs);
