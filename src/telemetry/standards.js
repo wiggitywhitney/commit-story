@@ -147,6 +147,11 @@ export const OTEL = {
       contextSelect: () => 'utils.select_context',
       sessionFormat: () => 'utils.session_format',
       commitContentAnalyzer: () => 'utils.commit_content_analyzer.analyze',
+      commitAnalyzer: {
+        getChangedFiles: () => 'utils.commit_analyzer.get_changed_files',
+        isMergeCommit: () => 'utils.commit_analyzer.is_merge_commit',
+        isJournalEntriesOnly: () => 'utils.commit_analyzer.is_journal_entries_only'
+      },
       journal_paths: {
         generate_path: () => 'utils.journal_paths.generate_path',
         create_directory: () => 'utils.journal_paths.create_directory',
@@ -229,7 +234,10 @@ export const OTEL = {
       [`${OTEL.NAMESPACE}.commit.hash`]: commitData.hash,
       [`${OTEL.NAMESPACE}.commit.message`]: commitData.message?.split('\n')[0], // First line only
       [`${OTEL.NAMESPACE}.commit.timestamp`]: commitData.timestamp?.toISOString(),
-      [`${OTEL.NAMESPACE}.commit.author`]: commitData.author,
+      // Emit only author name as string primitive; avoid email to reduce PII exposure
+      [`${OTEL.NAMESPACE}.commit.author_name`]: typeof commitData.author === 'string'
+        ? commitData.author
+        : commitData.author?.name || 'unknown',
       [`${OTEL.NAMESPACE}.commit.ref`]: commitData.ref
     }),
 
@@ -650,6 +658,51 @@ export const OTEL = {
       }),
 
       /**
+       * Commit analyzer operation attributes
+       */
+      commitAnalyzer: {
+        /**
+         * Get changed files operation attributes
+         * @param {Object} data - Operation data
+         * @returns {Object} Attributes
+         */
+        getChangedFiles: (data) => ({
+          [`${OTEL.NAMESPACE}.commit.ref`]: data.commitRef,
+          [`${OTEL.NAMESPACE}.commit.ref_valid`]: data.refValid,
+          [`${OTEL.NAMESPACE}.commit.files_changed`]: data.filesChanged,
+          [`${OTEL.NAMESPACE}.commit.git_command_duration_ms`]: data.gitCommandDuration,
+          [`${OTEL.NAMESPACE}.commit.parse_duration_ms`]: data.parseDuration
+        }),
+
+        /**
+         * Is merge commit operation attributes
+         * @param {Object} data - Operation data
+         * @returns {Object} Attributes
+         */
+        isMergeCommit: (data) => ({
+          [`${OTEL.NAMESPACE}.commit.ref`]: data.commitRef,
+          [`${OTEL.NAMESPACE}.commit.ref_valid`]: data.refValid,
+          [`${OTEL.NAMESPACE}.commit.is_merge`]: data.isMerge,
+          [`${OTEL.NAMESPACE}.commit.parent_count`]: data.parentCount,
+          [`${OTEL.NAMESPACE}.commit.git_command_duration_ms`]: data.gitCommandDuration,
+          [`${OTEL.NAMESPACE}.commit.parse_duration_ms`]: data.parseDuration
+        }),
+
+        /**
+         * Is journal entries only commit operation attributes
+         * @param {Object} data - Operation data
+         * @returns {Object} Attributes
+         */
+        isJournalEntriesOnly: (data) => ({
+          [`${OTEL.NAMESPACE}.commit.ref`]: data.commitRef,
+          [`${OTEL.NAMESPACE}.commit.files_changed`]: data.filesChanged,
+          [`${OTEL.NAMESPACE}.commit.journal_entries_count`]: data.journalEntriesCount,
+          [`${OTEL.NAMESPACE}.commit.is_journal_only`]: data.isJournalOnly,
+          [`${OTEL.NAMESPACE}.commit.analysis_duration_ms`]: data.analysisDuration
+        })
+      },
+
+      /**
        * Journal paths operation attributes
        * @param {Object} pathData - Path operation data
        * @returns {Object} Journal paths attributes
@@ -859,6 +912,11 @@ export const OTEL = {
      */
     counter: (name, value = 1, attributes = {}) => {
       try {
+        // Enforce counter naming convention
+        if (!name.endsWith('_total')) {
+          console.warn(`Counter name "${name}" should end with "_total" (metrics convention).`);
+        }
+
         // Get or create cached counter instrument
         if (!metricInstruments.counters.has(name)) {
           const meter = getMeter();

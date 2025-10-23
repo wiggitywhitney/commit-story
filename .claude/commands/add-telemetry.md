@@ -97,6 +97,8 @@ Add these imports if not present:
 - `createNarrativeLogger` from the trace logger utility
 - Initialize tracer as `trace.getTracer('commit-story', '1.0.0')`
 
+**Note:** If you need to set parent spans, also import `context as otelContext` from `@opentelemetry/api`.
+
 ### Wrap Functions with Spans
 Transform each function to:
 1. Call `tracer.startActiveSpan()` with appropriate OTEL.span builder
@@ -105,6 +107,19 @@ Transform each function to:
 4. Wrap original logic in try/catch
 5. Set success/error status appropriately
 6. Return result through the span
+
+**IMPORTANT - Parent Span Context:**
+If you need to set a parent span (e.g., when a parentSpan parameter is passed), you MUST use the OpenTelemetry context API:
+```javascript
+const ctx = trace.setSpan(otelContext.active(), parentSpan);
+return tracer.startActiveSpan(
+  OTEL.span.operation(),
+  { attributes: { 'code.function': 'myFunction' } },
+  ctx,  // Pass context as third parameter
+  async (span) => { ... }
+);
+```
+Note: The `parent` option in the options object is NOT valid and will be silently ignored.
 
 ### Add Metrics
 Within each span, emit metrics using the dual emission pattern:

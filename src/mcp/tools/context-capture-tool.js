@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { trace, SpanStatusCode, context as otelContext } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
 import { createNarrativeLogger } from '../../utils/trace-logger.js';
 import { generateJournalPath, ensureJournalDirectory, getTimezonedTimestamp } from '../../utils/journal-paths.js';
@@ -144,8 +144,8 @@ function getCurrentSessionId() {
         }
       });
 
-      OTEL.metrics.counter('commit_story.session.detection_attempts', 1, {
-        'session.found': sessionId ? 'true' : 'false'
+      OTEL.metrics.counter('commit_story.session.detection_attempts_total', 1, {
+        'commit_story.session.session_found': sessionId ? 'true' : 'false'
       });
 
       if (sessionId) {
@@ -198,13 +198,18 @@ function getCurrentSessionId() {
  * @returns {Promise<Object>} MCP tool response
  */
 export async function createContextTool(args, parentSpan) {
-  return tracer.startActiveSpan(OTEL.span.mcp.tool.journal_capture_context(), {
-    attributes: {
-      'code.function': 'createContextTool'
+  // Set parent span context properly using OpenTelemetry context API
+  const ctx = trace.setSpan(otelContext.active(), parentSpan);
+  return tracer.startActiveSpan(
+    OTEL.span.mcp.tool.journal_capture_context(),
+    {
+      attributes: {
+        'code.function': 'createContextTool'
+      }
     },
-    parent: parentSpan
-  }, async (span) => {
-    const startTime = Date.now();
+    ctx,
+    async (span) => {
+      const startTime = Date.now();
     const logger = createNarrativeLogger('context.creation');
 
     try {
@@ -314,17 +319,17 @@ ${contextText}
       });
 
       // Emit metrics for dual visibility
-      OTEL.metrics.counter('commit_story.context.captured', 1, {
-        'context.file_created': fileCreated.toString(),
-        'context.session_detected': (!!sessionId).toString()
+      OTEL.metrics.counter('commit_story.context.captured_total', 1, {
+        'commit_story.context.file_created': fileCreated.toString(),
+        'commit_story.context.session_detected': (!!sessionId).toString()
       });
 
       OTEL.metrics.gauge('commit_story.context.size', contextText.length, {
-        'context.timestamp': timestamp.toISOString().split('T')[0] // Date only
+        'commit_story.context.timestamp': timestamp.toISOString().split('T')[0] // Date only
       });
 
       OTEL.metrics.histogram('commit_story.context.processing_duration_ms', processingDuration, {
-        'context.operation': fileCreated ? 'create' : 'append'
+        'commit_story.context.operation': fileCreated ? 'create' : 'append'
       });
 
       logger.complete('context creation', 'Journal context captured successfully', {
@@ -368,7 +373,7 @@ ${contextText}
         processing_duration_ms: processingDuration
       });
 
-      OTEL.metrics.counter('commit_story.context.errors', 1, {
+      OTEL.metrics.counter('commit_story.context.errors_total', 1, {
         'error.type': error.name,
         'error.validation': error.message.includes('Invalid') || error.message.includes('Missing') ? 'true' : 'false'
       });
