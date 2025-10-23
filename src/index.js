@@ -222,8 +222,8 @@ export default async function main() {
       // Check if this is a merge commit that should be skipped (DD-016 v2)
       // Skip ONLY if: merge commit AND no chat messages AND no diff
       const { isMerge, parentCount } = isMergeCommit(commitRef);
-      const hasChat = context.chatMessages.data.length > 0;
-      const hasDiff = context.commit.data.diff && context.commit.data.diff.trim().length > 0;
+      const hasChat = ((context.chatMessages?.data?.length ?? 0) > 0);
+      const hasDiff = !!(context.commit?.data?.diff && context.commit.data.diff.trim().length > 0);
 
       // Add commit decision telemetry (for all commits, not just merges)
       // This ensures consistent attributes for simpler Datadog queries
