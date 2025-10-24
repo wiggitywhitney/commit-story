@@ -158,6 +158,11 @@ export const OTEL = {
         format_date: () => 'utils.journal_paths.format_date',
         format_timestamp: () => 'utils.journal_paths.format_timestamp',
         write_file: () => 'utils.journal_paths.write_file'
+      },
+      messageUtils: {
+        contentHasContextCapture: () => 'utils.message_utils.content_has_context_capture',
+        messageHasContextCapture: () => 'utils.message_utils.message_has_context_capture',
+        messagesContainContextCapture: () => 'utils.message_utils.messages_contain_context_capture'
       }
     },
 
@@ -735,6 +740,35 @@ export const OTEL = {
         formatTimestamp: (timestampData) => ({
           [`${OTEL.NAMESPACE}.timestamp.formatted`]: timestampData.formatted,
           [`${OTEL.NAMESPACE}.timestamp.timezone`]: timestampData.timezone
+        })
+      },
+
+      /**
+       * Message utility operation attributes
+       * @param {Object} messageData - Message utility operation data
+       * @returns {Object} Message utility attributes
+       */
+      messageUtils: {
+        contentHasContextCapture: (data) => ({
+          [`${OTEL.NAMESPACE}.message.content_is_array`]: data.contentIsArray,
+          [`${OTEL.NAMESPACE}.message.content_items`]: data.contentItems,
+          [`${OTEL.NAMESPACE}.message.has_context_capture`]: data.hasContextCapture,
+          [`${OTEL.NAMESPACE}.message.check_duration_ms`]: data.checkDuration
+        }),
+
+        messageHasContextCapture: (data) => ({
+          [`${OTEL.NAMESPACE}.message.type`]: data.messageType,
+          [`${OTEL.NAMESPACE}.message.content_is_array`]: data.contentIsArray,
+          [`${OTEL.NAMESPACE}.message.has_context_capture`]: data.hasContextCapture,
+          [`${OTEL.NAMESPACE}.message.check_duration_ms`]: data.checkDuration
+        }),
+
+        messagesContainContextCapture: (data) => ({
+          [`${OTEL.NAMESPACE}.messages.total_count`]: data.totalCount,
+          [`${OTEL.NAMESPACE}.messages.is_array`]: data.isArray,
+          [`${OTEL.NAMESPACE}.messages.checked_count`]: data.checkedCount,
+          [`${OTEL.NAMESPACE}.messages.contain_context_capture`]: data.containContextCapture,
+          [`${OTEL.NAMESPACE}.messages.check_duration_ms`]: data.checkDuration
         })
       }
     },

@@ -13,6 +13,7 @@ import { redactSensitiveData } from '../generators/filters/sensitive-data-filter
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../telemetry/standards.js';
 import { createNarrativeLogger } from '../utils/trace-logger.js';
+import { messagesContainContextCapture } from '../utils/message-utils.js';
 
 /**
  * Extracts clean text content from grouped Claude messages, handling mixed content formats
@@ -432,6 +433,34 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       OTEL.metrics.gauge('commit_story.chat.assistant_messages', finalChatData.assistantMessages);
       OTEL.metrics.gauge('commit_story.chat.user_messages_over_twenty', finalChatData.userMessagesOverTwenty);
 
+      // Check if context capture tool calls are present
+      const hasContextCapture = messagesContainContextCapture(filteredContext.chatMessages);
+
+      // Build chat descriptions conditionally based on presence of context captures
+      const baseChatDescription = "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses";
+      const contextCaptureDetails = ". Messages include assistant messages with content array containing tool_use objects where name='mcp__commit-story__journal_capture_context' and input.text contains development context captured during the session.";
+
+      const chatMessagesDescription = hasContextCapture
+        ? baseChatDescription + contextCaptureDetails
+        : baseChatDescription;
+
+      const baseSessionDescription = `Chat sessions - array of session objects, each containing:
+  - session_id: "Session 1", "Session 2", etc.
+  - session_start: ISO 8601 timestamp when session began
+  - message_count: Total messages in this session
+  - messages: Array of message objects, each with:
+    - type: "user" (human developer) or "assistant" (AI)`;
+      const sessionContentWithContext = `
+    - content: The message text, or array containing text/tool_use objects. Tool_use objects (name='mcp__commit-story__journal_capture_context') contain development context in input.text field.`;
+      const sessionContentWithoutContext = `
+    - content: The message text`;
+      const sessionTimestamp = `
+    - timestamp: ISO 8601 timestamp when message was sent`;
+
+      const chatSessionsDescription = hasContextCapture
+        ? baseSessionDescription + sessionContentWithContext + sessionTimestamp
+        : baseSessionDescription + sessionContentWithoutContext + sessionTimestamp;
+
       // Return self-documenting context object for journal generation
       const result = {
         commit: {
@@ -451,18 +480,11 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
         },
         chatMessages: {
           data: filteredContext.chatMessages, // Filtered chat messages with token optimization (flattened)
-          description: "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses"
+          description: chatMessagesDescription
         },
         chatSessions: {
           data: filteredChatSessions, // Session-grouped chat messages (filtered to match chatMessages)
-          description: `Chat sessions - array of session objects, each containing:
-  - session_id: "Session 1", "Session 2", etc.
-  - session_start: ISO 8601 timestamp when session began
-  - message_count: Total messages in this session
-  - messages: Array of message objects, each with:
-    - type: "user" (human developer) or "assistant" (AI)
-    - content: The message text
-    - timestamp: ISO 8601 timestamp when message was sent`
+          description: chatSessionsDescription
         },
         chatMetadata: {
           data: metadata,

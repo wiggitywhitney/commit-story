@@ -26,8 +26,14 @@ async function testInstrumentation() {
   console.log('📊 Testing commit-story with OpenTelemetry instrumentation...');
   console.log('💡 Look for trace output below this message');
   console.log('');
-  
+
   try {
+    // Initialize telemetry before running main
+    // This is critical because main() immediately calls gatherContextForCommit() which needs tracing
+    const { initializeTelemetry } = await import('../src/tracing.js');
+    await initializeTelemetry();
+    console.log('');
+
     // Get commit timestamp to know which journal file will be created
     const metadataOutput = execSync(`git show --format=format:"%at" --no-patch HEAD`, { encoding: 'utf8' }).trim();
     const commitTimestamp = new Date(parseInt(metadataOutput) * 1000);
