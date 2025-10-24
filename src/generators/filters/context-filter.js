@@ -11,6 +11,7 @@ import { redactSensitiveData } from './sensitive-data-filter.js';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { OTEL } from '../../telemetry/standards.js';
 import { createNarrativeLogger } from '../../utils/trace-logger.js';
+import { contentHasContextCapture } from '../../utils/message-utils.js';
 
 // Get tracer instance for context filtering instrumentation
 const tracer = trace.getTracer('commit-story-context-filter', '1.0.0');
@@ -61,10 +62,7 @@ function isNoisyMessage(message) {
     // Tool calls: assistant messages with tool_use items
     if (message.type === 'assistant' && content.some(item => item.type === 'tool_use')) {
       // Allow journal_capture_context through, filter everything else
-      const hasContextCapture = content.some(item =>
-        item.type === 'tool_use' && item.name === 'mcp__commit-story__journal_capture_context'
-      );
-      if (!hasContextCapture) {
+      if (!contentHasContextCapture(content)) {
         return true; // Filter non-context tool calls
       }
       // Context capture tool calls fall through - don't filter
