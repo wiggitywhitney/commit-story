@@ -1,10 +1,10 @@
 # PRD-18: Context Capture Tool for AI Working Memory
 
 **GitHub Issue**: [#18](https://github.com/wiggitywhitney/commit-story/issues/18)
-**Status**: ⏳ In Progress - M5 (README) only remaining
+**Status**: ✅ COMPLETE
 **Created**: 2025-09-21
 **Last Updated**: 2025-10-24
-**Priority**: P0 - Blocking v1.3.0 release (PRD-33)
+**Priority**: P0 - Unblocks v1.3.0 release (PRD-33)
 
 ## Current Status & Next Steps
 
@@ -12,17 +12,17 @@
 - ✅ Milestone 1-4: Core MCP tool, session management, two-mode implementation, format & polish
 - ✅ Milestone 2.0: Message filter fix - Context captures now flow through to generators
 - ✅ Milestone 2.3-2.4: Journal integration via conditional context descriptions
+- ✅ Milestone 5: README documentation complete
 
-**Blocking Issue RESOLVED (2025-10-24)**:
-- ✅ **Fixed message filter to allow context capture tool calls through**
-- ✅ **Integrated context into generator prompts via conditional descriptions**
-- Result: DD-014 design working - context captures flow through chat to generators
-- Approach: Description-based integration (inform generators about context capture structure)
+**PRD-18 Status**: ✅ 100% COMPLETE
+- Phase 1: MCP Tool (M1-M5) ✅
+- Phase 2: Journal Integration (M2.0, M2.3-M2.4) ✅
+- Phase 3: Telemetry ✅
 
-**Remaining Work**:
-1. ⏳ **Milestone 5**: README Documentation (15-20 min)
-
-**Estimated Time to Complete**: ~20 min
+**Next Steps**:
+- Create PR to merge `feature/prd-18-fix-context-filter` to main
+- Run `/add-telemetry` on `src/utils/message-utils.js` before merging
+- Unblocks PRD-33 (v1.3.0 release)
 
 ## Summary
 
@@ -607,11 +607,11 @@ Context text here...
 - [x] Test edge cases (empty text, invalid timestamps, etc.) - Edge cases assessed and deemed unlikely
 - **Success Criteria**: Files match PRD format specification exactly ✅
 
-#### Milestone 5: README Documentation (15-20 min)
-- [ ] Add `journal_capture_context` tool to README
-- [ ] Mirror documentation style from reflection tool section
-- [ ] Include basic usage example
-- **Success Criteria**: Tool documented in README, simple and straightforward
+#### Milestone 5: README Documentation (15-20 min) - ✅ COMPLETE (2025-10-24)
+- [x] Add `journal_capture_context` tool to README
+- [x] Mirror documentation style from reflection tool section
+- [x] Include basic usage example
+- **Success Criteria**: Tool documented in README, simple and straightforward ✅
 
 ### Phase 2: Journal Integration (Per DD-014 - Context via Chat Flow)
 
@@ -699,6 +699,38 @@ if (message.type === 'assistant' && content.some(item => item.type === 'tool_use
 - [ ] Create context file preview/summary functionality
 
 ## Work Log
+
+### 2025-10-24: README Documentation Complete - PRD-18 100% Complete
+**Duration**: ~15 minutes
+**Commits**: Pending (staged changes)
+**Primary Focus**: Complete final milestone - README documentation
+
+**Completed PRD Items (Milestone 5)**:
+- [x] Added `journal_capture_context` tool to README
+  - Evidence: New "Capturing Development Context" section added after reflections section
+  - Format: Mirrors reflection tool documentation style
+- [x] Mirrored documentation style from reflection tool section
+  - Evidence: Same structure (overview, when-to-use, usage examples, storage explanation)
+- [x] Included basic usage examples
+  - Evidence: Two modes documented with clear examples
+
+**Documentation Details**:
+- When-to-use guidance: 4 practical scenarios (before breaks, after progress, during planning, when debugging)
+- Usage examples:
+  - Basic mode: "Capture context" → Claude provides comprehensive session summary
+  - Specific mode: "Capture why we chose X" → Claude provides focused context
+- Storage location: `journal/context/YYYY-MM/YYYY-MM-DD.md` with timestamps
+- Integration explanation: Context enriches journal entries during commits
+
+**PRD-18 Final Status**: ✅ 100% COMPLETE
+- Phase 1: MCP Tool (M1-M5) ✅ ALL COMPLETE
+- Phase 2: Journal Integration (M2.0, M2.3-M2.4) ✅ ALL COMPLETE
+- Phase 3: Telemetry ✅ COMPLETE
+
+**Next Steps**:
+- Create PR to merge `feature/prd-18-fix-context-filter` to main
+- Run `/add-telemetry` on `src/utils/message-utils.js` before merging
+- This unblocks PRD-33 (v1.3.0 release)
 
 ### 2025-10-24: Filter Fix & Journal Integration Complete
 **Duration**: ~1.5 hours

@@ -235,6 +235,34 @@ Reflections are saved with timestamps to `journal/entries/YYYY-MM/YYYY-MM-DD.md`
 
 **Tip:** Your journal entries are perfect for catching up. Try asking Claude Code: "Read my journal and summarize what I worked on yesterday"
 
+### Capturing Development Context
+
+The MCP server also provides a `journal_capture_context` tool that helps Claude Code maintain working memory during development sessions. When you capture context, that information flows through to your journal generators, enriching the automated narratives with your current understanding.
+
+**When to use context capture:**
+- Before taking a break: Capture what you're working on and next steps
+- After making progress: Document your current understanding of a problem
+- During planning: Capture design decisions and rationale as you discuss them
+- When debugging: Save your current hypothesis and investigation approach
+
+**Basic usage:**
+
+```
+"Capture context"
+```
+
+Claude Code will provide a comprehensive summary of the current session, including what you're working on, recent progress, and key insights.
+
+**Specific context:**
+
+```
+"Capture why we chose React over Vue for this feature"
+```
+
+Claude Code will provide focused context about that specific decision.
+
+Context is stored in `journal/context/YYYY-MM/YYYY-MM-DD.md` with timestamps. When you commit, context captured during that development session automatically enriches your journal entry with deeper insights about your thinking and approach.
+
 ## License
 
 Commit Story is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
