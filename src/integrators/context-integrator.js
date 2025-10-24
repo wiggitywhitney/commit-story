@@ -437,27 +437,29 @@ export async function gatherContextForCommit(commitRef = 'HEAD') {
       const hasContextCapture = messagesContainContextCapture(filteredContext.chatMessages);
 
       // Build chat descriptions conditionally based on presence of context captures
+      const baseChatDescription = "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses";
+      const contextCaptureDetails = ". Messages include assistant messages with content array containing tool_use objects where name='mcp__commit-story__journal_capture_context' and input.text contains development context captured during the session.";
+
       const chatMessagesDescription = hasContextCapture
-        ? "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses. Messages include assistant messages with content array containing tool_use objects where name='mcp__commit-story__journal_capture_context' and input.text contains development context captured during the session."
-        : "Chat messages where type:'user' = HUMAN DEVELOPER input, type:'assistant' = AI ASSISTANT responses";
+        ? baseChatDescription + contextCaptureDetails
+        : baseChatDescription;
+
+      const baseSessionDescription = `Chat sessions - array of session objects, each containing:
+  - session_id: "Session 1", "Session 2", etc.
+  - session_start: ISO 8601 timestamp when session began
+  - message_count: Total messages in this session
+  - messages: Array of message objects, each with:
+    - type: "user" (human developer) or "assistant" (AI)`;
+      const sessionContentWithContext = `
+    - content: The message text, or array containing text/tool_use objects. Tool_use objects (name='mcp__commit-story__journal_capture_context') contain development context in input.text field.`;
+      const sessionContentWithoutContext = `
+    - content: The message text`;
+      const sessionTimestamp = `
+    - timestamp: ISO 8601 timestamp when message was sent`;
 
       const chatSessionsDescription = hasContextCapture
-        ? `Chat sessions - array of session objects, each containing:
-  - session_id: "Session 1", "Session 2", etc.
-  - session_start: ISO 8601 timestamp when session began
-  - message_count: Total messages in this session
-  - messages: Array of message objects, each with:
-    - type: "user" (human developer) or "assistant" (AI)
-    - content: The message text, or array containing text/tool_use objects. Tool_use objects (name='mcp__commit-story__journal_capture_context') contain development context in input.text field.
-    - timestamp: ISO 8601 timestamp when message was sent`
-        : `Chat sessions - array of session objects, each containing:
-  - session_id: "Session 1", "Session 2", etc.
-  - session_start: ISO 8601 timestamp when session began
-  - message_count: Total messages in this session
-  - messages: Array of message objects, each with:
-    - type: "user" (human developer) or "assistant" (AI)
-    - content: The message text
-    - timestamp: ISO 8601 timestamp when message was sent`;
+        ? baseSessionDescription + sessionContentWithContext + sessionTimestamp
+        : baseSessionDescription + sessionContentWithoutContext + sessionTimestamp;
 
       // Return self-documenting context object for journal generation
       const result = {

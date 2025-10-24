@@ -12,6 +12,20 @@ import { createNarrativeLogger } from './trace-logger.js';
 const tracer = trace.getTracer('commit-story-message-utils', '1.0.0');
 
 /**
+ * Emits metrics for all attributes based on their type
+ * @param {Object} attrs - Attributes object to emit as metrics
+ */
+function emitAttributeMetrics(attrs) {
+  Object.entries(attrs).forEach(([name, value]) => {
+    if (typeof value === 'number') {
+      OTEL.metrics.gauge(name, value);
+    } else if (typeof value === 'boolean') {
+      OTEL.metrics.gauge(name, value ? 1 : 0);
+    }
+  });
+}
+
+/**
  * Checks if a content array contains a context capture tool call
  * @param {Array} content - Message content array
  * @returns {boolean} True if content contains journal_capture_context tool call
@@ -46,13 +60,7 @@ export function contentHasContextCapture(content) {
         span.setAttributes(attrs);
 
         // Emit correlated metrics
-        Object.entries(attrs).forEach(([name, value]) => {
-          if (typeof value === 'number') {
-            OTEL.metrics.gauge(name, value);
-          } else if (typeof value === 'boolean') {
-            OTEL.metrics.gauge(name, value ? 1 : 0);
-          }
-        });
+        emitAttributeMetrics(attrs);
 
         logger.complete('content context capture check', `Check completed: no context capture found (non-array content) in ${checkDuration}ms`);
 
@@ -79,13 +87,7 @@ export function contentHasContextCapture(content) {
       span.setAttributes(attrs);
 
       // Emit correlated metrics
-      Object.entries(attrs).forEach(([name, value]) => {
-        if (typeof value === 'number') {
-          OTEL.metrics.gauge(name, value);
-        } else if (typeof value === 'boolean') {
-          OTEL.metrics.gauge(name, value ? 1 : 0);
-        }
-      });
+      emitAttributeMetrics(attrs);
 
       // Additional key business metrics
       OTEL.metrics.gauge('commit_story.message.content_check_duration_ms', checkDuration);
@@ -142,13 +144,7 @@ export function messageHasContextCapture(message) {
         span.setAttributes(attrs);
 
         // Emit correlated metrics
-        Object.entries(attrs).forEach(([name, value]) => {
-          if (typeof value === 'number') {
-            OTEL.metrics.gauge(name, value);
-          } else if (typeof value === 'boolean') {
-            OTEL.metrics.gauge(name, value ? 1 : 0);
-          }
-        });
+        emitAttributeMetrics(attrs);
 
         logger.complete('message context capture check', `Check completed: no context capture (non-assistant message) in ${checkDuration}ms`);
 
@@ -175,13 +171,7 @@ export function messageHasContextCapture(message) {
       span.setAttributes(attrs);
 
       // Emit correlated metrics
-      Object.entries(attrs).forEach(([name, value]) => {
-        if (typeof value === 'number') {
-          OTEL.metrics.gauge(name, value);
-        } else if (typeof value === 'boolean') {
-          OTEL.metrics.gauge(name, value ? 1 : 0);
-        }
-      });
+      emitAttributeMetrics(attrs);
 
       // Additional key business metrics
       OTEL.metrics.gauge('commit_story.message.message_check_duration_ms', checkDuration);
@@ -237,13 +227,7 @@ export function messagesContainContextCapture(messages) {
         span.setAttributes(attrs);
 
         // Emit correlated metrics
-        Object.entries(attrs).forEach(([name, value]) => {
-          if (typeof value === 'number') {
-            OTEL.metrics.gauge(name, value);
-          } else if (typeof value === 'boolean') {
-            OTEL.metrics.gauge(name, value ? 1 : 0);
-          }
-        });
+        emitAttributeMetrics(attrs);
 
         logger.complete('messages context capture check', `Check completed: no context capture found (non-array messages) in ${checkDuration}ms`);
 
@@ -272,13 +256,7 @@ export function messagesContainContextCapture(messages) {
       span.setAttributes(attrs);
 
       // Emit correlated metrics
-      Object.entries(attrs).forEach(([name, value]) => {
-        if (typeof value === 'number') {
-          OTEL.metrics.gauge(name, value);
-        } else if (typeof value === 'boolean') {
-          OTEL.metrics.gauge(name, value ? 1 : 0);
-        }
-      });
+      emitAttributeMetrics(attrs);
 
       // Additional key business metrics
       OTEL.metrics.gauge('commit_story.messages.messages_check_duration_ms', checkDuration);
