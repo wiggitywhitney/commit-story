@@ -21,7 +21,7 @@
 
 **Next Steps**:
 - Create PR to merge `feature/prd-18-fix-context-filter` to main
-- Run `/add-telemetry` on `src/utils/message-utils.js` before merging
+- ✅ COMPLETE: Telemetry added to `src/utils/message-utils.js`
 - Unblocks PRD-33 (v1.3.0 release)
 
 ## Summary
@@ -699,6 +699,56 @@ if (message.type === 'assistant' && content.some(item => item.type === 'tool_use
 - [ ] Create context file preview/summary functionality
 
 ## Work Log
+
+### 2025-10-24: Message-Utils Telemetry & Critical Test Script Fix
+**Duration**: ~3 hours
+**Commits**:
+- `7424a0c` - refactor: extract context capture detection into reusable utility
+- `e38dfbe` - fix(context-filter): allow journal_capture_context tool calls through filter
+**Primary Focus**: Add comprehensive telemetry to message-utils.js and fix critical timing bug in test script
+
+**Completed Work**:
+- [x] Added comprehensive telemetry to `src/utils/message-utils.js`
+  - Instrumented 3 functions: `contentHasContextCapture()`, `messageHasContextCapture()`, `messagesContainContextCapture()`
+  - Added spans with parent-child relationships
+  - Added 12+ custom attributes per function call
+  - Added dual emission pattern (span attributes + queryable metrics)
+  - Added narrative logging with start/progress/decision/complete events
+  - Evidence: All spans and metrics visible in Datadog trace e871949558869aa75b87f3d65910d0b4
+
+- [x] Extended telemetry standards module (`src/telemetry/standards.js`)
+  - Added span name builders: `OTEL.span.utils.messageUtils.*`
+  - Added attribute builders: `OTEL.attrs.utils.messageUtils.*`
+  - Followed exact patterns from existing code
+  - Evidence: Static validation passed with `npm run validate:telemetry`
+
+- [x] Fixed critical bug in `scripts/test-otel.js`
+  - **Problem**: Context spans (context.gather_for_commit, context.filter_messages, etc.) were never appearing in Datadog
+  - **Root Cause**: Test script called `main()` without awaiting telemetry initialization
+  - **Impact**: First spans executed (context.*) used no-op tracer before SDK ready
+  - **Fix**: Added `await initializeTelemetry()` before calling `main()` (lines 31-34)
+  - **Evidence**: After fix, all 36 context/message-utils spans appeared in Datadog with correct parent-child relationships
+
+**Validation Evidence**:
+- ✅ Static validation: `npm run validate:telemetry` passed
+- ✅ Console output: All spans appearing with correct attributes
+- ✅ Datadog validation: Trace e871949558869aa75b87f3d65910d0b4 shows:
+  - 1x `utils.message_utils.messages_contain_context_capture` (2.23ms, 21 messages checked)
+  - 21x `utils.message_utils.message_has_context_capture` (0.047-0.31ms each)
+  - Multiple `utils.message_utils.content_has_context_capture` (0.049-0.13ms each)
+  - 4x context.* spans (gather_for_commit, filter_messages, extract_text, calculate_metadata)
+  - Complete 14.5 second end-to-end trace from CLI to journal save
+
+**Technical Insights**:
+- Telemetry initialization timing is critical - instrumented code must run AFTER SDK initialization
+- Test script timing bugs can hide for months because production paths work correctly
+- Span hierarchy validation requires checking both console output AND Datadog backend
+
+**PRD Impact**:
+- ✅ Completes final telemetry requirement for PRD-18
+- ✅ All Phase 3 telemetry work now complete
+- ✅ Fixes pre-existing bug affecting context span visibility
+- Ready to create PR to merge feature branch to main
 
 ### 2025-10-24: README Documentation Complete - PRD-18 100% Complete
 **Duration**: ~15 minutes
