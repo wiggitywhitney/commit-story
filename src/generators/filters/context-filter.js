@@ -60,7 +60,14 @@ function isNoisyMessage(message) {
   if (Array.isArray(content)) {
     // Tool calls: assistant messages with tool_use items
     if (message.type === 'assistant' && content.some(item => item.type === 'tool_use')) {
-      return true;
+      // Allow journal_capture_context through, filter everything else
+      const hasContextCapture = content.some(item =>
+        item.type === 'tool_use' && item.name === 'mcp__commit-story__journal_capture_context'
+      );
+      if (!hasContextCapture) {
+        return true; // Filter non-context tool calls
+      }
+      // Context capture tool calls fall through - don't filter
     }
     
     // Tool results: user messages with tool_result items  
