@@ -1,10 +1,10 @@
 # PRD-33: Release v1.3.0 - Context Capture Tool
 
-**Status**: 🔵 Blocked (waiting on PRD-18 + PRD-32)
+**Status**: 🟢 Ready to Execute - All blockers complete
 **GitHub Issue**: [#33](https://github.com/wiggitywhitney/commit-story/issues/33)
 **Created**: 2025-10-17
-**Last Updated**: 2025-10-17
-**Priority**: P1 - Release when blockers complete
+**Last Updated**: 2025-10-27
+**Priority**: P1 - Ready for release
 
 ## Summary
 
@@ -16,16 +16,17 @@ Release v1.3.0 introducing the new context capture tool for AI-generated working
 
 ### Required for Release (Blockers)
 
-**PRD-18: Context Capture Tool** - ⏳ M5 pending
-- Status: M1-M4 complete, M5 (README docs) pending
+**PRD-18: Context Capture Tool** - ✅ COMPLETE
+- Status: All milestones complete (M1-M5)
 - Deliverable: `journal_capture_context` MCP tool fully documented
-- Estimated time to complete: 15-20 minutes
+- Merged: PR #39 on 2025-10-24 (commit 11f6012)
+- GitHub Issue #18: Closed
 
-**PRD-32: Journal Filter Bug Fix** - ⏳ Not started (P0 critical)
-- Status: Phase 0 (research) not started
+**PRD-32: Journal Filter Bug Fix** - ✅ COMPLETE
+- Status: All phases complete (Phase 0-5)
 - Deliverable: Journal entries no longer pollute generator context
-- Estimated time to complete: 3-6 hours
-- **Critical**: Cannot ship context bleed bug to 456+ users
+- Completed: 2025-10-23
+- GitHub Issue #32: Closed
 
 ### What's New in v1.3.0
 
@@ -51,40 +52,44 @@ Release v1.3.0 introducing the new context capture tool for AI-generated working
 
 ### Phase 1: Pre-Release Validation
 
-**Milestone 1.1: Verify Blockers Complete** (5 min)
-- [ ] Confirm PRD-18 M5 complete (README updated with context tool docs)
-- [ ] Confirm PRD-32 Phase 4 complete (bug validation passed)
-- [ ] Review PRD-18 and PRD-32 work logs for any outstanding tasks
+**Milestone 1.1: Verify Blockers Complete** (5 min) - ✅ COMPLETE
+- [x] Confirm PRD-18 M5 complete (README updated with context tool docs)
+- [x] Confirm PRD-32 Phase 5 complete (bug validation passed)
+- [x] Review PRD-18 and PRD-32 work logs for any outstanding tasks
 
-**Milestone 1.2: Local Package Testing** (15-20 min)
-- [ ] Run `npm link` in commit-story repo
+**Milestone 1.2: Local Package Testing** (15-20 min) - ⏳ PARTIAL
+- [x] Run `npm link` in commit-story repo
 - [ ] Test context capture tool locally in this repo
-  - [ ] Test Mode 1: "capture context" (comprehensive dump)
-  - [ ] Test Mode 2: "capture why we chose X" (specific context)
-  - [ ] Verify files created in `journal/context/`
-  - [ ] Check file format matches spec (headers, separators)
-- [ ] Verify journal filter working (no context bleed)
-  - [ ] Make a test commit that only touches journal entries
-  - [ ] Verify hook skips execution
-  - [ ] Make a test commit with code + journal entries
-  - [ ] Verify journal entries are filtered from git diffs
+  - [ ] Test Mode 1: "capture context" (comprehensive dump) - Requires user to invoke MCP tool
+  - [ ] Test Mode 2: "capture why we chose X" (specific context) - Requires user to invoke MCP tool
+  - [x] Verify files created in `journal/context/` - Existing context files confirmed
+  - [ ] Check file format matches spec (headers, separators) - Deferred to M1.3 user testing
+- [x] Verify journal filter working (no context bleed)
+  - [x] Make a test commit that only touches journal entries
+  - [x] Verify hook skips execution
+  - [x] Make a test commit with code + journal entries
+  - [x] Verify journal entries are filtered from git diffs
 
-**Milestone 1.3: External Repository Testing** (20-30 min)
-- [ ] Create or use a separate test repository
-- [ ] Install package from local build: `npm install /path/to/commit-story`
-- [ ] Run installation script in test repo
-- [ ] Test context capture tool in external repo:
-  - [ ] Verify MCP server starts correctly
-  - [ ] Test "capture context" command
-  - [ ] Verify context file created in correct location
-  - [ ] Confirm tool is accessible from Claude Code
-  - [ ] Make a commit and verify journal generation works
-- [ ] Verify no regressions in existing features:
-  - [ ] Journal entries generate correctly
-  - [ ] Reflections work as expected
-  - [ ] Telemetry is working (if dev mode enabled)
+**Milestone 1.3: External Repository Testing** (20-30 min, per DD-003)
+- [ ] Create tarball: Run `npm pack` to produce `commit-story-1.3.0.tgz`
+- [ ] Provide detailed test instructions to user (see DD-003 Test Plan)
+- [ ] User installs from tarball in their chosen repository
+- [ ] User tests Phase 1: Installation
+  - [ ] Verify `npx commit-story-init` creates all files
+  - [ ] Check `.git/hooks/post-commit`, `commit-story.config.json`, `.env` exist
+- [ ] User tests Phase 2: Context Capture Tool
+  - [ ] Test Mode 1: Ask Claude Code to "capture context" (comprehensive dump)
+  - [ ] Test Mode 2: Ask Claude Code to "capture why we chose X" (specific context)
+  - [ ] Verify files created in `journal/context/YYYY-MM/` with correct format
+- [ ] User tests Phase 3: Journal Integration
+  - [ ] Make a code commit
+  - [ ] Verify journal entry generated and includes context appropriately
+- [ ] User tests Phase 4: Journal Filter
+  - [ ] Make journal-only commit (should skip hook)
+  - [ ] Make mixed commit with code + journal (should run normally)
+- [ ] User reports ✅ or ❌ for each phase
 
-**Success Criteria**: All tests pass, no critical bugs found
+**Success Criteria**: User reports ✅ for all four test phases, no installation errors
 
 ### Phase 2: Version & Documentation
 
@@ -235,17 +240,113 @@ If critical issues are discovered post-release:
 - Verify all functionality works as expected
 - Catches installation script issues, path problems, missing files
 
+### DD-003: User-Driven External Repository Testing with Tarball
+**Decision**: Use `npm pack` to create a tarball, provide detailed testing instructions to user, and have user test in their own real repository instead of AI-driven testing in sterile environment
+**Date**: 2025-10-27
+
+**Rationale**:
+- **Real Environment Testing**: User's actual repository with real API keys, real MCP server configuration, and real development workflow
+- **Context Capture Tool Validation**: Only the user can actually test both modes by asking Claude Code to "capture context" - AI cannot test its own MCP tools
+- **Full End-to-End Flow**: Real commits, real journal generation, real context integration - not a sterile test environment without proper credentials
+- **Critical for 456 Users**: This release goes to real users, so testing in a realistic scenario with actual usage patterns is essential
+- **Automated Testing Limitations**: AI-driven testing in `/tmp` directory lacks API keys, active MCP server sessions, and realistic development context
+
+**Implementation Approach**:
+1. Create distributable tarball: `npm pack` → produces `commit-story-1.3.0.tgz`
+2. Provide comprehensive test instructions covering:
+   - Installation from tarball in user's chosen repository
+   - Context capture tool testing (both comprehensive and specific modes)
+   - Journal integration validation
+   - Journal filter validation (recursive generation prevention)
+3. User executes tests in real environment and reports results
+4. Proceed to release only after user confirms all tests pass
+
+**Test Plan for User**:
+- **Phase 1**: Install from tarball, verify files created
+- **Phase 2**: Test Mode 1 (comprehensive dump) and Mode 2 (specific context)
+- **Phase 3**: Make code commit, verify journal generation with context integration
+- **Phase 4**: Test journal filter (journal-only commits skip, mixed commits run)
+
+**Success Criteria**:
+- User reports ✅ for all four test phases
+- No installation errors or missing files
+- Both context capture modes work in single call
+- Journal generation includes context appropriately
+- Journal filter prevents recursive generation
+
+**Status**: ⏳ Outstanding - Awaiting tarball creation and user testing
+
+**Impact on Milestones**:
+- M1.3 updated: Create tarball and provide test instructions instead of automated testing
+- Phase 2 (M2.1-M2.3) blocked until user confirms M1.3 tests pass
+
 ## Risks and Mitigations
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| PRD-32 takes longer than estimated | High | Medium | Start PRD-32 investigation immediately, adjust timeline if needed |
+| ~~PRD-32 takes longer than estimated~~ | ~~High~~ | ~~Medium~~ | ~~RESOLVED: PRD-32 complete as of 2025-10-23~~ |
 | Context tool breaks in external repo | High | Low | Thorough external repo testing in Phase 1.3 |
 | npm publish fails | Medium | Low | Verify npm credentials before Phase 3, have rollback plan |
 | Critical bug discovered post-release | High | Low | Comprehensive testing in Phases 1 & 4, fast hotfix process ready |
 | Users confused by new tool | Low | Medium | Clear README documentation (PRD-18 M5), examples in CHANGELOG |
 
 ## Work Log
+
+### 2025-10-27: PRD-33 Implementation Started - Phase 1 Validation
+**Duration**: ~2 hours
+**Branch**: feature/prd-33-release-v1.3.0
+**Primary Focus**: Pre-release validation and external testing strategy
+
+**Completed Work**:
+- [x] M1.1: Verify Blockers Complete (100% complete)
+  - Reviewed PRD-18 work log: All milestones M1-M5 complete, merged via PR #39
+  - Reviewed PRD-32 work log: All phases (0-5) complete, bug validated
+  - No outstanding tasks found in either blocker PRD
+- [x] M1.2: Local Package Testing (partial - 60% complete)
+  - Successfully ran `npm link` for local package testing
+  - Verified journal filter working correctly:
+    - Journal-only commit correctly skipped hook execution
+    - Mixed commit (code + journal) ran hook normally
+    - Confirmed PRD-32 functionality operational
+  - Confirmed existing context files in `journal/context/` directory
+  - Note: Context capture tool modes 1 & 2 require user invocation (can't test own MCP tools)
+
+**Design Decisions**:
+- [x] DD-003: User-Driven External Repository Testing with Tarball
+  - Documented comprehensive rationale for user-driven testing approach
+  - Real environment with API keys, MCP server, actual workflow
+  - Context capture tool can only be tested by user asking Claude Code
+  - Created detailed 4-phase test plan for user execution
+  - Updated M1.3 milestone checklist to reflect tarball approach
+
+**Testing Evidence**:
+- Test repository created: `/private/tmp/commit-story-test-prd33`
+- Package installation validated: `npm install` from local directory successful
+- Installation script validated: `npx commit-story-init` creates all required files
+- Journal filter validated: Tested both skip and run scenarios successfully
+
+**Next Session Priorities**:
+1. Create tarball with `npm pack` (M1.3)
+2. Provide comprehensive test instructions to user (M1.3)
+3. User executes 4-phase testing in real repository
+4. Proceed to Phase 2 (Version & Documentation) after user confirms all tests pass
+
+**Blockers**:
+- Phase 2 (M2.1-M2.3) blocked until M1.3 user testing complete per DD-003
+- Cannot proceed with version bump or CHANGELOG updates until external validation passes
+
+### 2025-10-27: Blockers Complete - Ready for Release
+- ✅ PRD-18 completed and merged via PR #39 on 2025-10-24
+  - All milestones M1-M5 complete including README documentation
+  - Context capture tool fully implemented with telemetry
+  - GitHub Issue #18 closed
+- ✅ PRD-32 completed on 2025-10-23
+  - All phases (0-5) complete including validation
+  - Journal filter bug fixed and validated
+  - GitHub Issue #32 closed
+- Updated PRD-33 status: Blocked → Ready to Execute
+- Both M1.1 checklist items marked complete
+- Release now ready to proceed with Phase 1 validation testing
 
 ### 2025-10-17: PRD Created
 - Created release PRD for v1.3.0
@@ -259,8 +360,8 @@ If critical issues are discovered post-release:
 ## References
 
 ### Blocker PRDs
-- **PRD-18**: [Context Capture Tool](./18-context-capture-tool.md) - M5 pending
-- **PRD-32**: [Journal File Filtering](./32-journal-filter.md) - Phase 0 not started
+- **PRD-18**: [Context Capture Tool](./18-context-capture-tool.md) - ✅ Complete
+- **PRD-32**: [Journal File Filtering](./32-journal-filter.md) - ✅ Complete
 
 ### Package Information
 - **npm package**: https://www.npmjs.com/package/commit-story
