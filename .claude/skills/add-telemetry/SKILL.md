@@ -2,6 +2,7 @@
 name: add-telemetry
 description: AI-powered OpenTelemetry instrumentation tool - automatically adds telemetry to uninstrumented code
 category: development
+disable-model-invocation: true
 ---
 
 # Add Telemetry - AI-Powered OTEL Instrumentation

@@ -2,6 +2,7 @@
 name: prd-next
 description: Analyze existing PRD to identify and recommend the single highest-priority task to work on next
 category: project-management
+disable-model-invocation: true
 ---
 
 # PRD Next - Work On the Next Task
@@ -18,6 +19,8 @@ You are helping analyze an existing Product Requirements Document (PRD) to sugge
 4. **Identify the Single Best Next Task** - Find the one task that should be worked on next
 5. **Present Recommendation** - Give clear rationale and wait for confirmation
 6. **Design Discussion** - If confirmed, dive into implementation design details
+7. **Implementation** - User implements the task
+8. **Update Progress** - Prompt user to run /prd-update-progress
 
 ## Step 0: Context Awareness Check
 
@@ -26,7 +29,7 @@ You are helping analyze an existing Product Requirements Document (PRD) to sugge
 **Skip detection/analysis if recent conversation shows:**
 - **Recent PRD work discussed** - "We just worked on PRD 29", "Just completed PRD update", etc.
 - **Specific PRD mentioned** - "PRD #X", "MCP Prompts PRD", etc.
-- **PRD-specific commands used** - Recent use of `prd-update-progress`, `prd-start` with specific PRD
+- **PRD-specific commands used** - Recent use of `/prd-update-progress`, `/prd-start` with specific PRD
 - **Clear work context** - Discussion of specific features, tasks, or requirements for a known PRD
 
 **If context is clear:**
@@ -198,8 +201,6 @@ Present findings in this focused format:
 
 **Dependencies**: [What's already complete that makes this ready to work on]
 
-**Effort estimate**: [Realistic time estimate]
-
 **Success criteria**: [How you'll know it's done]
 
 ---
@@ -245,3 +246,19 @@ This command should:
 - ✅ If confirmed, provide detailed implementation design guidance
 - ✅ Keep teams focused on the most important work rather than overwhelming them with options
 - ✅ Enable immediate action by transitioning from recommendation to design discussion
+
+## Step 8: Update Progress After Completion
+
+**CRITICAL: Do NOT update the PRD yourself. Do NOT edit PRD files directly. Your job is to prompt the user to run the update command.**
+
+After the user completes the task implementation, output ONLY this message:
+
+---
+
+**Task implementation complete.**
+
+To update PRD progress and commit your work, run `/prd-update-progress`.
+
+---
+
+Then STOP. Do not proceed further. The `/prd-update-progress` command handles PRD updates, progress tracking, and commits. This separation ensures proper workflow and avoids duplicate/conflicting updates.

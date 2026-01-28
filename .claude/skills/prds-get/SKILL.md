@@ -2,11 +2,14 @@
 name: prds-get
 description: Fetch all open GitHub issues from this project that have the 'PRD' label
 category: project-management
+disable-model-invocation: true
 ---
 
 # Get All PRDs
 
 Fetch all open GitHub issues from this project that have the 'PRD' label.
+
+**Note**: If any `gh` command fails with "command not found", inform the user that GitHub CLI is required and provide the installation link: https://cli.github.com/
 
 ## Process
 
